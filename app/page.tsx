@@ -1,4 +1,22 @@
+'use client'
+import { useEffect, useState } from 'react'
+import { supabase } from '../lib/supabase'
+
 export default function Home() {
+  const [status, setStatus] = useState('Mengecek koneksi database...')
+
+  useEffect(() => {
+    async function cekKoneksi() {
+      const { data, error } = await supabase.from('users').select('*')
+      if (error) {
+        setStatus('Gagal koneksi: ' + error.message)
+      } else {
+        setStatus('Koneksi Supabase berhasil! Database siap dipakai.')
+      }
+    }
+    cekKoneksi()
+  }, [])
+
   return (
     <main style={{
       minHeight: '100vh',
@@ -51,6 +69,17 @@ export default function Home() {
               Dari, oleh, dan untuk alumni SMPN 5 Bandung
             </p>
           </div>
+        </div>
+
+        <div style={{
+          background: '#fff',
+          borderRadius: '10px',
+          padding: '16px',
+          border: '0.5px solid #c5d9ef',
+          color: '#0C447C',
+          fontWeight: '500'
+        }}>
+          {status}
         </div>
       </div>
     </main>
