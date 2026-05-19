@@ -12,11 +12,18 @@ export default function Home() {
         alignItems: 'center',
         gap: '12px'
       }}>
-        <div style={{color: '#fff', fontSize: '18px', fontWeight: '500'}}>
-          Superfive Market
-        </div>
-        <div style={{color: '#B5D4F4', fontSize: '11px', letterSpacing: '1px'}}>
-          ALUMNI SMPN 5 BANDUNG
+        <img
+          src="/LOGO.jpeg"
+          alt="Superfive Logo"
+          style={{width:'40px', height:'40px', objectFit:'contain'}}
+        />
+        <div>
+          <div style={{color: '#fff', fontSize: '16px', fontWeight: '500'}}>
+            Superfive Market
+          </div>
+          <div style={{color: '#B5D4F4', fontSize: '10px', letterSpacing: '1px'}}>
+            ALUMNI SMPN 5 BANDUNG
+          </div>
         </div>
       </nav>
 
@@ -26,19 +33,25 @@ export default function Home() {
           borderRadius: '10px',
           padding: '20px',
           color: '#fff',
-          marginBottom: '16px'
+          marginBottom: '16px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '16px'
         }}>
-          <h2 style={{fontSize: '18px', marginBottom: '6px'}}>
-            Ekosistem Bisnis Superfive
-          </h2>
-          <p style={{fontSize: '13px', color: '#B5D4F4'}}>
-            Dari, oleh, dan untuk alumni SMPN 5 Bandung
-          </p>
+          <img
+            src="/LOGO.jpeg"
+            alt="Superfive Logo"
+            style={{width:'72px', height:'72px', objectFit:'contain'}}
+          />
+          <div>
+            <h2 style={{fontSize: '18px', marginBottom: '6px'}}>
+              Ekosistem Bisnis Superfive
+            </h2>
+            <p style={{fontSize: '13px', color: '#B5D4F4'}}>
+              Dari, oleh, dan untuk alumni SMPN 5 Bandung
+            </p>
+          </div>
         </div>
-
-        <p style={{color: '#0C447C', fontWeight: '500', fontSize: '14px'}}>
-          Superfive Market berhasil dijalankan!
-        </p>
       </div>
     </main>
   )
