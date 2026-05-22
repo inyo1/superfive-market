@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '../../../lib/supabase'
 import Navbar from '../../components/Navbar'
 import { useCart } from '../../context/CartContext'
@@ -37,6 +37,7 @@ function fmt(n: number) {
 
 export default function TokoPage() {
   const { id } = useParams<{ id: string }>()
+  const router = useRouter()
   const { tambah } = useCart()
 
   const [toko, setToko] = useState<Toko | null>(null)
@@ -54,6 +55,7 @@ export default function TokoPage() {
 
   // Keranjang notif
   const [notifId, setNotifId] = useState<string | null>(null)
+  const [startingChat, setStartingChat] = useState(false)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id ?? null))
@@ -108,6 +110,27 @@ export default function TokoPage() {
     tambah({ id: p.id, nama: p.nama, harga: p.harga, kategori: p.kategori })
     setNotifId(p.id)
     setTimeout(() => setNotifId(null), 2000)
+  }
+
+  async function handleChatSeller() {
+    if (!toko || startingChat) return
+    if (!currentUserId) { router.push('/auth'); return }
+    if (currentUserId === toko.seller_id) return
+    setStartingChat(true)
+
+    const { data: existing } = await supabase
+      .from('conversations').select('id')
+      .eq('buyer_id', currentUserId).eq('seller_id', toko.seller_id).single()
+
+    if (existing) { router.push(`/chat/${existing.id}`); return }
+
+    const { data: newConv } = await supabase
+      .from('conversations')
+      .insert({ buyer_id: currentUserId, seller_id: toko.seller_id })
+      .select('id').single()
+
+    if (newConv) router.push(`/chat/${newConv.id}`)
+    setStartingChat(false)
   }
 
   const isOwner = toko && currentUserId === toko.seller_id
@@ -242,6 +265,22 @@ export default function TokoPage() {
               + Tambah Produk
             </a>
           </div>
+        )}
+
+        {/* Tombol chat untuk buyer */}
+        {!isOwner && toko && (
+          <button
+            onClick={handleChatSeller}
+            disabled={startingChat}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+              background: '#fff', border: '1px solid #0C447C', color: '#0C447C',
+              padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: '500',
+              cursor: startingChat ? 'not-allowed' : 'pointer', marginBottom: '16px',
+            }}
+          >
+            {startingChat ? 'Membuka chat...' : '💬 Chat dengan Penjual'}
+          </button>
         )}
 
         {/* Daftar produk */}

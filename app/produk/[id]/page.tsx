@@ -45,6 +45,12 @@ export default function DetailProduk() {
   const [notFound, setNotFound] = useState(false)
   const [toast, setToast] = useState<{ text: string; ok: boolean } | null>(null)
   const [adding, setAdding] = useState(false)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [startingChat, setStartingChat] = useState(false)
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id ?? null))
+  }, [])
 
   useEffect(() => {
     async function fetchProduk() {
@@ -85,6 +91,28 @@ export default function DetailProduk() {
     } else {
       showToast('✗ Gagal: ' + result.error, false)
     }
+  }
+
+  async function handleChatSeller() {
+    if (!produk || startingChat) return
+    if (!currentUserId) { router.push('/auth'); return }
+    const sellerId = (produk.toko as any)?.seller_id
+    if (!sellerId || currentUserId === sellerId) return
+    setStartingChat(true)
+
+    const { data: existing } = await supabase
+      .from('conversations').select('id')
+      .eq('buyer_id', currentUserId).eq('seller_id', sellerId).single()
+
+    if (existing) { router.push(`/chat/${existing.id}`); return }
+
+    const { data: newConv } = await supabase
+      .from('conversations')
+      .insert({ buyer_id: currentUserId, seller_id: sellerId, produk_id: produk.id })
+      .select('id').single()
+
+    if (newConv) router.push(`/chat/${newConv.id}`)
+    setStartingChat(false)
   }
 
   async function handleBeliSekarang() {
@@ -207,6 +235,35 @@ export default function DetailProduk() {
             <div style={{ fontSize: '12px', color: '#0C447C' }}>Lihat Toko →</div>
           </div>
         </a>
+
+        {/* Chat dengan seller */}
+        {currentUserId && currentUserId !== (produk.toko as any)?.seller_id && (
+          <button
+            onClick={handleChatSeller}
+            disabled={startingChat}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+              background: '#fff', border: '1px solid #0C447C', color: '#0C447C',
+              padding: '11px', borderRadius: '10px', fontSize: '13px', fontWeight: '500',
+              cursor: startingChat ? 'not-allowed' : 'pointer', marginBottom: '12px',
+            }}
+          >
+            {startingChat ? 'Membuka chat...' : '💬 Chat dengan Penjual'}
+          </button>
+        )}
+        {!currentUserId && (
+          <button
+            onClick={() => router.push('/auth')}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+              background: '#fff', border: '1px solid #c5d9ef', color: '#5a7da0',
+              padding: '11px', borderRadius: '10px', fontSize: '13px', fontWeight: '500',
+              cursor: 'pointer', marginBottom: '12px',
+            }}
+          >
+            💬 Login untuk chat dengan penjual
+          </button>
+        )}
 
         {/* Toast notification */}
         {toast && (

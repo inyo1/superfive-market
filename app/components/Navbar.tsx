@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 import { useCart } from '../context/CartContext'
+import { useChatContext } from '../context/ChatContext'
 import SearchOverlay from './SearchOverlay'
 
 const links = [
@@ -22,6 +23,7 @@ export default function Navbar() {
   const pathname = usePathname()
   const router = useRouter()
   const { totalItem } = useCart()
+  const { unreadCount } = useChatContext()
 
   async function fetchProfile(userId: string) {
     const { data } = await supabase
@@ -80,6 +82,27 @@ export default function Navbar() {
       ) : (
         <span style={{ fontSize: `${Math.round(size * 0.4)}px`, fontWeight: '700', color: '#fff', lineHeight: 1 }}>
           {initials}
+        </span>
+      )}
+    </a>
+  )
+
+  const ChatBadge = ({ size = 20 }: { size?: number }) => (
+    <a
+      href="/chat"
+      style={{ position: 'relative', color: '#fff', textDecoration: 'none', fontSize: `${size}px`, lineHeight: 1, padding: '4px 2px', display: 'flex', alignItems: 'center' }}
+      aria-label="Chat"
+    >
+      💬
+      {unreadCount > 0 && (
+        <span style={{
+          position: 'absolute', top: '-2px', right: '-6px',
+          background: '#e53935', color: '#fff',
+          fontSize: '10px', fontWeight: '700',
+          borderRadius: '50%', width: '16px', height: '16px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
+        }}>
+          {unreadCount > 99 ? '99+' : unreadCount}
         </span>
       )}
     </a>
@@ -183,6 +206,7 @@ export default function Navbar() {
             </button>
 
             <CartBadge size={20} />
+            {user && <ChatBadge size={20} />}
             {/* Auth */}
             {user ? (
               <>
@@ -258,6 +282,16 @@ export default function Navbar() {
             {user && (
               <a href="/toko/saya" onClick={() => setOpen(false)} style={{ display: 'block', color: '#B5D4F4', fontSize: '14px', textDecoration: 'none', padding: '10px 12px', borderRadius: '8px', marginBottom: '2px' }}>
                 🏪 Toko Saya
+              </a>
+            )}
+            {user && (
+              <a href="/chat" onClick={() => setOpen(false)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#B5D4F4', fontSize: '14px', textDecoration: 'none', padding: '10px 12px', borderRadius: '8px', marginBottom: '2px' }}>
+                <span>💬 Pesan</span>
+                {unreadCount > 0 && (
+                  <span style={{ background: '#e53935', color: '#fff', borderRadius: '50%', minWidth: '20px', height: '20px', fontSize: '11px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
               </a>
             )}
             {user && (
