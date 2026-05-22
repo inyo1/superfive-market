@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import Navbar from '../components/Navbar'
 
 export default function AuthPage() {
   const [mode, setMode] = useState<'login' | 'register'>('login')
@@ -10,6 +11,7 @@ export default function AuthPage() {
   const [angkatan, setAngkatan] = useState('')
   const [loading, setLoading] = useState(false)
   const [pesan, setPesan] = useState('')
+  const [registered, setRegistered] = useState(false)
 
   async function handleLogin() {
     setLoading(true)
@@ -26,27 +28,52 @@ export default function AuthPage() {
     if (data.user) {
       await supabase.from('users').insert({
         id: data.user.id,
-        nama, email, angkatan: parseInt(angkatan)
+        nama, email, angkatan: angkatan ? parseInt(angkatan) : null,
       })
-      setPesan('Registrasi berhasil! Selamat bergabung Superfive!')
+      setRegistered(true)
     }
     setLoading(false)
   }
 
+  if (registered) {
+    return (
+      <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
+        <Navbar />
+        <div style={{ maxWidth: '380px', margin: '40px auto', padding: '0 16px' }}>
+          <div style={{ background: '#fff', borderRadius: '16px', padding: '36px 24px', border: '0.5px solid #c5d9ef', textAlign: 'center' }}>
+            <div style={{ fontSize: '52px', marginBottom: '16px' }}>📧</div>
+            <div style={{ fontSize: '17px', fontWeight: '700', color: '#1a1a1a', marginBottom: '10px' }}>
+              Cek email kamu!
+            </div>
+            <p style={{ fontSize: '14px', color: '#5a7da0', lineHeight: '1.7', margin: '0 0 6px' }}>
+              Kami sudah mengirim link konfirmasi ke
+            </p>
+            <div style={{ fontSize: '14px', fontWeight: '600', color: '#0C447C', marginBottom: '20px', wordBreak: 'break-all' }}>
+              {email}
+            </div>
+            <p style={{ fontSize: '13px', color: '#9ab4cc', lineHeight: '1.6', margin: '0 0 24px' }}>
+              Klik link di email untuk mengaktifkan akun, lalu kembali ke sini untuk masuk.
+            </p>
+            <button
+              onClick={() => { setRegistered(false); setMode('login'); setPesan('') }}
+              style={{ background: '#0C447C', color: '#fff', border: 'none', padding: '11px 28px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}
+            >
+              Ke halaman Masuk
+            </button>
+          </div>
+        </div>
+      </main>
+    )
+  }
+
   return (
     <main style={{minHeight:'100vh',background:'#f0f5fb',fontFamily:'sans-serif'}}>
-      <nav style={{background:'#0C447C',padding:'12px 20px',display:'flex',alignItems:'center',gap:'12px'}}>
-        <img src="/LOGO.jpeg" alt="Logo" style={{width:'36px',height:'36px',objectFit:'contain'}} />
-        <div>
-          <div style={{color:'#fff',fontSize:'15px',fontWeight:'500'}}>Superfive Market</div>
-          <div style={{color:'#B5D4F4',fontSize:'10px',letterSpacing:'1px'}}>ALUMNI SMPN 5 BANDUNG</div>
-        </div>
-      </nav>
+      <Navbar />
 
       <div style={{maxWidth:'380px',margin:'30px auto',padding:'0 16px'}}>
         <div style={{background:'#fff',borderRadius:'12px',padding:'24px',border:'0.5px solid #c5d9ef'}}>
           <div style={{textAlign:'center',marginBottom:'20px'}}>
-            <img src="/LOGO.jpeg" alt="Logo" style={{width:'60px',height:'60px',objectFit:'contain',marginBottom:'8px'}} />
+            <img src="/logo.png" alt="Logo" style={{width:'60px',height:'60px',objectFit:'contain',marginBottom:'8px'}} />
             <div style={{fontSize:'16px',fontWeight:'500',color:'#0C447C'}}>Superfive Market</div>
             <div style={{fontSize:'12px',color:'#5a7da0'}}>Khusus alumni SMPN 5 Bandung</div>
           </div>
@@ -78,7 +105,7 @@ export default function AuthPage() {
               <label style={{fontSize:'12px',color:'#5a7da0',display:'block',marginBottom:'4px'}}>Angkatan (Tahun Lulus)</label>
               <select value={angkatan} onChange={e=>setAngkatan(e.target.value)} style={{width:'100%',padding:'9px 12px',border:'0.5px solid #c5d9ef',borderRadius:'8px',fontSize:'13px',outline:'none',background:'#fff'}}>
                 <option value="">-- Pilih Angkatan --</option>
-                {Array.from({length:35},(_,i)=>1990+i).map(y=>(
+                {Array.from({length:new Date().getFullYear()-1970+1},(_,i)=>new Date().getFullYear()-i).map(y=>(
                   <option key={y} value={y}>Angkatan {y}</option>
                 ))}
               </select>
