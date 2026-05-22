@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCart } from '../context/CartContext'
 import { supabase } from '../../lib/supabase'
@@ -20,6 +20,19 @@ const emojiKategori: Record<string, string> = {
   Properti: '🏠', Jasa: '🛠️', UMKM: '🏪',
 }
 
+function buildAlamat(data: Record<string, string | null>) {
+  const parts: string[] = []
+  if (data.jalan) parts.push(data.jalan)
+  const subdistrict = [
+    data.kelurahan && `Kel. ${data.kelurahan}`,
+    data.kecamatan && `Kec. ${data.kecamatan}`,
+  ].filter(Boolean).join(', ')
+  if (subdistrict) parts.push(subdistrict)
+  const cityLine = [data.kota, data.provinsi, data.kode_pos].filter(Boolean).join(', ')
+  if (cityLine) parts.push(cityLine)
+  return parts.join('\n')
+}
+
 export default function CheckoutPage() {
   const { items, totalHarga, kosongkan } = useCart()
   const router = useRouter()
@@ -32,6 +45,32 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false)
   const [sukses, setSukses] = useState<string | null>(null)
   const [error, setError] = useState('')
+  const [autoFilled, setAutoFilled] = useState(false)
+
+  useEffect(() => {
+    async function prefill() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data } = await supabase
+        .from('users')
+        .select('nama, no_hp, jalan, kelurahan, kecamatan, kota, provinsi, kode_pos')
+        .eq('id', user.id)
+        .single()
+
+      if (!data) return
+
+      let filled = false
+      if (data.nama) { setNama(data.nama); filled = true }
+      if (data.no_hp) { setNoHp(data.no_hp); filled = true }
+
+      const alamatStr = buildAlamat(data)
+      if (alamatStr) { setAlamat(alamatStr); filled = true }
+
+      if (filled) setAutoFilled(true)
+    }
+    prefill()
+  }, [])
 
   const ongkir = 0
   const total = totalHarga + ongkir
@@ -138,7 +177,14 @@ export default function CheckoutPage() {
 
         {/* Form data penerima */}
         <div style={{ background: '#fff', borderRadius: '12px', padding: '18px', border: '0.5px solid #c5d9ef', marginBottom: '12px' }}>
-          <div style={{ fontSize: '13px', fontWeight: '600', color: '#0C447C', marginBottom: '14px' }}>📋 Data Penerima</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+            <div style={{ fontSize: '13px', fontWeight: '600', color: '#0C447C' }}>📋 Data Penerima</div>
+            {autoFilled && (
+              <div style={{ fontSize: '11px', color: '#2e7d32', background: '#e8f5e9', padding: '3px 8px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                ✓ Diisi dari profil
+              </div>
+            )}
+          </div>
 
           {[
             { label: 'Nama Lengkap', value: nama, set: setNama, placeholder: 'Nama penerima', type: 'text' },
@@ -157,13 +203,16 @@ export default function CheckoutPage() {
           ))}
 
           <div style={{ marginBottom: '12px' }}>
-            <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '4px' }}>Alamat Lengkap</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+              <label style={{ fontSize: '12px', color: '#5a7da0' }}>Alamat Lengkap</label>
+              <a href="/profil" style={{ fontSize: '11px', color: '#0C447C', textDecoration: 'none' }}>Edit di Profil →</a>
+            </div>
             <textarea
               value={alamat}
               onChange={e => setAlamat(e.target.value)}
-              rows={3}
-              placeholder="Jl. Contoh No. 10, Kel. ..., Kec. ..., Bandung"
-              style={{ width: '100%', padding: '9px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', resize: 'none', boxSizing: 'border-box' }}
+              rows={4}
+              placeholder={'Jl. Contoh No. 10\nKel. ..., Kec. ...\nBandung, Jawa Barat 40xxx'}
+              style={{ width: '100%', padding: '9px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', resize: 'none', boxSizing: 'border-box', fontFamily: 'sans-serif' }}
             />
           </div>
 
