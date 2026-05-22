@@ -100,19 +100,35 @@ export default function DetailProduk() {
     if (!sellerId || currentUserId === sellerId) return
     setStartingChat(true)
 
-    const { data: existing } = await supabase
-      .from('conversations').select('id')
-      .eq('buyer_id', currentUserId).eq('seller_id', sellerId).single()
+    try {
+      // maybeSingle() returns null (not error) when no row found
+      const { data: existing, error: selectErr } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('buyer_id', currentUserId)
+        .eq('seller_id', sellerId)
+        .maybeSingle()
 
-    if (existing) { router.push(`/chat/${existing.id}`); return }
+      if (selectErr) throw new Error(selectErr.message)
 
-    const { data: newConv } = await supabase
-      .from('conversations')
-      .insert({ buyer_id: currentUserId, seller_id: sellerId, produk_id: produk.id })
-      .select('id').single()
+      if (existing) {
+        router.push(`/chat/${existing.id}`)
+        return
+      }
 
-    if (newConv) router.push(`/chat/${newConv.id}`)
-    setStartingChat(false)
+      const { data: newConv, error: insertErr } = await supabase
+        .from('conversations')
+        .insert({ buyer_id: currentUserId, seller_id: sellerId, produk_id: produk.id })
+        .select('id')
+        .single()
+
+      if (insertErr) throw new Error(insertErr.message)
+      if (newConv) router.push(`/chat/${newConv.id}`)
+    } catch (err: any) {
+      showToast('Gagal membuka chat: ' + (err?.message ?? 'Coba lagi'), false)
+    } finally {
+      setStartingChat(false)
+    }
   }
 
   async function handleBeliSekarang() {

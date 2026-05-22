@@ -118,19 +118,34 @@ export default function TokoPage() {
     if (currentUserId === toko.seller_id) return
     setStartingChat(true)
 
-    const { data: existing } = await supabase
-      .from('conversations').select('id')
-      .eq('buyer_id', currentUserId).eq('seller_id', toko.seller_id).single()
+    try {
+      const { data: existing, error: selectErr } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('buyer_id', currentUserId)
+        .eq('seller_id', toko.seller_id)
+        .maybeSingle()
 
-    if (existing) { router.push(`/chat/${existing.id}`); return }
+      if (selectErr) throw new Error(selectErr.message)
 
-    const { data: newConv } = await supabase
-      .from('conversations')
-      .insert({ buyer_id: currentUserId, seller_id: toko.seller_id })
-      .select('id').single()
+      if (existing) {
+        router.push(`/chat/${existing.id}`)
+        return
+      }
 
-    if (newConv) router.push(`/chat/${newConv.id}`)
-    setStartingChat(false)
+      const { data: newConv, error: insertErr } = await supabase
+        .from('conversations')
+        .insert({ buyer_id: currentUserId, seller_id: toko.seller_id })
+        .select('id')
+        .single()
+
+      if (insertErr) throw new Error(insertErr.message)
+      if (newConv) router.push(`/chat/${newConv.id}`)
+    } catch (err: any) {
+      alert('Gagal membuka chat: ' + (err?.message ?? 'Coba lagi'))
+    } finally {
+      setStartingChat(false)
+    }
   }
 
   const isOwner = toko && currentUserId === toko.seller_id
