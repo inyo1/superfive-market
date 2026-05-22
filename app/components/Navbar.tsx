@@ -8,6 +8,7 @@ import SearchOverlay from './SearchOverlay'
 const links = [
   { href: '/', label: 'Beranda' },
   { href: '/produk', label: 'Produk' },
+  { href: '/alumni', label: 'Alumni' },
   { href: '/about', label: 'Tentang Kami' },
 ]
 
