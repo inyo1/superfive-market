@@ -149,6 +149,11 @@ export default function Navbar() {
                 Dashboard
               </a>
             )}
+            {user && (
+              <a href="/toko/saya" style={{ color: '#B5D4F4', fontSize: '12px', textDecoration: 'none', padding: '6px 10px', borderRadius: '6px' }}>
+                🏪 Toko Saya
+              </a>
+            )}
             {isAdmin && (
               <a href="/admin" style={{
                 color: '#fff', fontSize: '12px', marginLeft: '2px', textDecoration: 'none',
@@ -247,6 +252,11 @@ export default function Navbar() {
             {user && (
               <a href="/dashboard" onClick={() => setOpen(false)} style={{ display: 'block', color: '#B5D4F4', fontSize: '14px', textDecoration: 'none', padding: '10px 12px', borderRadius: '8px', marginBottom: '2px' }}>
                 📊 Dashboard Seller
+              </a>
+            )}
+            {user && (
+              <a href="/toko/saya" onClick={() => setOpen(false)} style={{ display: 'block', color: '#B5D4F4', fontSize: '14px', textDecoration: 'none', padding: '10px 12px', borderRadius: '8px', marginBottom: '2px' }}>
+                🏪 Toko Saya
               </a>
             )}
             {user && (

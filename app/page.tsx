@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabase'
 import Navbar from './components/Navbar'
 import FotoProduk from './components/FotoProduk'
@@ -66,13 +67,25 @@ function StatCard({ label, value, icon }: { label: string; value: number; icon: 
 }
 
 export default function Home() {
+  const router = useRouter()
   const [stats, setStats] = useState<Stats>({ produk: 0, toko: 0, alumni: 0 })
   const [latest, setLatest] = useState<Produk[]>([])
   const [loading, setLoading] = useState(true)
+  const [loggedIn, setLoggedIn] = useState(false)
+
+  function handleJualClick(e: React.MouseEvent) {
+    e.preventDefault()
+    if (loggedIn) {
+      router.push('/produk/tambah')
+    } else {
+      router.push('/auth')
+    }
+  }
 
   useEffect(() => {
     async function load() {
-      const [pCount, tCount, uCount, latestRes] = await Promise.all([
+      const [authRes, pCount, tCount, uCount, latestRes] = await Promise.all([
+        supabase.auth.getUser(),
         supabase.from('produk').select('*', { count: 'exact', head: true }),
         supabase.from('toko').select('*', { count: 'exact', head: true }),
         supabase.from('users').select('*', { count: 'exact', head: true }),
@@ -81,6 +94,7 @@ export default function Home() {
           .order('created_at', { ascending: false })
           .limit(6),
       ])
+      setLoggedIn(!!authRes.data.user)
       setStats({
         produk: pCount.count ?? 0,
         toko:   tCount.count ?? 0,
@@ -140,7 +154,7 @@ export default function Home() {
           }}>
             Jelajahi Produk →
           </a>
-          <a href="/produk/tambah" style={{
+          <a href="/produk/tambah" onClick={handleJualClick} style={{
             background: 'rgba(255,255,255,0.14)', color: '#fff',
             padding: '11px 22px', borderRadius: '9px',
             fontSize: '13px', fontWeight: '600', textDecoration: 'none',
@@ -203,7 +217,7 @@ export default function Home() {
                   <div style={{ gridColumn: '1 / -1', background: '#fff', borderRadius: '12px', padding: '36px 20px', textAlign: 'center', border: '0.5px solid #e8f0f8' }}>
                     <div style={{ fontSize: '36px', marginBottom: '10px' }}>📦</div>
                     <div style={{ fontSize: '13px', color: '#5a7da0', marginBottom: '14px' }}>Belum ada produk</div>
-                    <a href="/produk/tambah" style={{ background: '#0C447C', color: '#fff', padding: '9px 20px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none' }}>
+                    <a href="/produk/tambah" onClick={handleJualClick} style={{ background: '#0C447C', color: '#fff', padding: '9px 20px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none' }}>
                       + Tambah Produk Pertama
                     </a>
                   </div>
@@ -262,7 +276,7 @@ export default function Home() {
             Bergabung dan mulai berjualan ke sesama alumni Superfive secara gratis.
           </p>
           <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <a href="/produk/tambah" style={{
+            <a href="/produk/tambah" onClick={handleJualClick} style={{
               background: '#fff', color: '#0C447C', fontWeight: '700',
               padding: '10px 22px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none',
             }}>
