@@ -61,7 +61,7 @@ function StatCard({ label, value, icon }: { label: string; value: number; icon: 
       <div style={{ fontSize: '22px', fontWeight: '800', color: '#fff', lineHeight: 1 }}>
         {count}
       </div>
-      <div style={{ fontSize: '11px', color: '#B5D4F4', marginTop: '4px' }}>{label}</div>
+      <div style={{ fontSize: '11px', color: '#B5D4F4', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.8px' }}>{label}</div>
     </div>
   )
 }
@@ -126,16 +126,16 @@ export default function Home() {
         <div aria-hidden style={{ position: 'absolute', top: '-30px', right: '120px', width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(255,255,255,0.06)', pointerEvents: 'none' }} />
 
         {/* Logo + brand */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '18px' }}>
+        <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
           <img
             src="/logo.png" alt="Superfive Market"
-            style={{ width: '56px', height: '56px', objectFit: 'contain', borderRadius: '12px', flexShrink: 0 }}
+            style={{ width: '120px', height: '120px', objectFit: 'contain', borderRadius: '20px', flexShrink: 0, filter: 'drop-shadow(0 4px 16px rgba(0,0,0,0.28))' }}
           />
           <div>
-            <div style={{ fontSize: '11px', color: '#7eb8f0', letterSpacing: '1.8px', textTransform: 'uppercase', marginBottom: '3px' }}>
+            <div style={{ fontSize: '11px', color: '#7eb8f0', letterSpacing: '1.8px', textTransform: 'uppercase', marginBottom: '5px' }}>
               Alumni SMPN 5 Bandung
             </div>
-            <h1 style={{ fontSize: '22px', fontWeight: '800', color: '#fff', margin: 0, lineHeight: 1.2 }}>
+            <h1 style={{ fontSize: '26px', fontWeight: '800', color: '#fff', margin: 0, lineHeight: 1.2 }}>
               Superfive Market
             </h1>
           </div>
@@ -145,34 +145,82 @@ export default function Home() {
           Platform marketplace eksklusif tempat alumni berbelanja, berjualan, dan berkembang bersama.
         </p>
 
-        {/* CTA buttons */}
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '24px' }}>
-          <a href="/produk" style={{
-            background: '#fff', color: '#0C447C',
-            padding: '11px 22px', borderRadius: '9px',
-            fontSize: '13px', fontWeight: '700', textDecoration: 'none',
-          }}>
-            Jelajahi Produk →
-          </a>
-          <a href="/produk/tambah" onClick={handleJualClick} style={{
-            background: 'rgba(255,255,255,0.14)', color: '#fff',
-            padding: '11px 22px', borderRadius: '9px',
-            fontSize: '13px', fontWeight: '600', textDecoration: 'none',
-            border: '1px solid rgba(255,255,255,0.28)',
-          }}>
-            Mulai Berjualan
-          </a>
-        </div>
+        {/* CTA buttons — guest only */}
+        {!loggedIn && (
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '24px' }}>
+            <a href="/auth" style={{
+              background: '#fff', color: '#0C447C',
+              padding: '11px 22px', borderRadius: '9px',
+              fontSize: '13px', fontWeight: '700', textDecoration: 'none',
+              textTransform: 'uppercase', letterSpacing: '0.5px',
+            }}>
+              MASUK
+            </a>
+            <a href="/auth" style={{
+              background: 'rgba(255,255,255,0.14)', color: '#fff',
+              padding: '11px 22px', borderRadius: '9px',
+              fontSize: '13px', fontWeight: '600', textDecoration: 'none',
+              border: '1px solid rgba(255,255,255,0.28)',
+              textTransform: 'uppercase', letterSpacing: '0.5px',
+            }}>
+              DAFTAR SEKARANG
+            </a>
+          </div>
+        )}
 
         {/* Statistik */}
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '8px', maxWidth: '50%' }}>
           <StatCard label="Produk" value={stats.produk} icon="📦" />
           <StatCard label="Toko"   value={stats.toko}   icon="🏪" />
           <StatCard label="Alumni" value={stats.alumni} icon="🎓" />
         </div>
+
+        {/* Foto gedung SMPN 5 — desktop only, blends with hero gradient */}
+        <div
+          className="hero-building"
+          aria-hidden
+          style={{
+            position: 'absolute', right: 0, top: 0, bottom: 0,
+            width: '50%', pointerEvents: 'none', overflow: 'hidden',
+          }}
+        >
+          <img
+            src="/smpn5-hero.png"
+            alt=""
+            style={{
+              width: '100%', height: '100%',
+              objectFit: 'cover', objectPosition: 'center',
+              mixBlendMode: 'luminosity',
+              opacity: 0.28,
+              WebkitMaskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.6) 30%, black 60%)',
+              maskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.6) 30%, black 60%)',
+            }}
+          />
+        </div>
       </div>
 
       <div style={{ padding: '20px 16px', maxWidth: '700px', margin: '0 auto' }}>
+
+        {/* ── CTA navigasi ── */}
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+          <a href="/produk" style={{
+            flex: 1, background: '#0C447C', color: '#fff',
+            padding: '12px', borderRadius: '9px', textAlign: 'center',
+            fontSize: '13px', fontWeight: '700', textDecoration: 'none',
+            textTransform: 'uppercase', letterSpacing: '0.5px',
+          }}>
+            JELAJAHI PRODUK
+          </a>
+          <a href="/produk/tambah" onClick={handleJualClick} style={{
+            flex: 1, background: '#fff', color: '#0C447C',
+            border: '1.5px solid #0C447C',
+            padding: '12px', borderRadius: '9px', textAlign: 'center',
+            fontSize: '13px', fontWeight: '700', textDecoration: 'none',
+            textTransform: 'uppercase', letterSpacing: '0.5px',
+          }}>
+            MULAI BERJUALAN
+          </a>
+        </div>
 
         {/* ── Kategori Shortcuts ── */}
         <div style={{ marginBottom: '26px' }}>
@@ -297,6 +345,12 @@ export default function Home() {
           Superfive Market · Alumni SMPN 5 Bandung · Angkatan 1988
         </div>
       </div>
+
+      <style>{`
+        @media (max-width: 640px) {
+          .hero-building { display: none !important; }
+        }
+      `}</style>
     </main>
   )
 }

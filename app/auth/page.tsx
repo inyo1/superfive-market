@@ -10,6 +10,7 @@ function AuthContent() {
 
   const rawRedirect = searchParams.get('redirect') ?? ''
   const redirectTo = rawRedirect.startsWith('/') && !rawRedirect.startsWith('//') ? rawRedirect : '/'
+  const msg = searchParams.get('msg')
 
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [nama, setNama] = useState('')
@@ -88,9 +89,9 @@ function AuthContent() {
             <div style={{fontSize:'12px',color:'#5a7da0'}}>Khusus alumni SMPN 5 Bandung</div>
           </div>
 
-          {redirectTo !== '/' && (
+          {(msg || redirectTo !== '/') && (
             <div style={{background:'#E6F1FB',border:'0.5px solid #b3d1ee',borderRadius:'8px',padding:'10px 12px',fontSize:'12px',color:'#0C447C',marginBottom:'14px',textAlign:'center'}}>
-              Login dulu untuk melanjutkan pembelian
+              {msg ?? 'Login dulu untuk melanjutkan pembelian'}
             </div>
           )}
 

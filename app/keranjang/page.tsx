@@ -1,4 +1,7 @@
 'use client'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { supabase } from '../../lib/supabase'
 import { useCart } from '../context/CartContext'
 import Navbar from '../components/Navbar'
 import FotoProduk from '../components/FotoProduk'
@@ -13,9 +16,21 @@ function fmt(n: number) {
 }
 
 export default function KeranjangPage() {
+  const router = useRouter()
   const { items, totalItem, totalHarga, loading, tambah, kurang, hapus, kosongkan } = useCart()
+  const [authChecked, setAuthChecked] = useState(false)
 
-  if (loading) {
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data.user) {
+        router.replace('/auth?redirect=/keranjang&msg=Login+dulu+untuk+melihat+keranjang+belanja')
+      } else {
+        setAuthChecked(true)
+      }
+    })
+  }, [])
+
+  if (!authChecked || loading) {
     return (
       <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
         <Navbar />

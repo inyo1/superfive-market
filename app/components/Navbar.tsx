@@ -140,11 +140,11 @@ export default function Navbar() {
 
       <nav style={{ background: '#0C447C', fontFamily: 'sans-serif', position: 'sticky', top: 0, zIndex: 100 }}>
         {/* Top bar */}
-        <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
 
           {/* Logo */}
           <a href="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', flex: 1, minWidth: 0 }}>
-            <img src="/logo.png" alt="Logo" style={{ width: '36px', height: '36px', objectFit: 'contain', flexShrink: 0 }} />
+            <img src="/logo.png" alt="Logo" style={{ width: '60px', height: '60px', objectFit: 'contain', flexShrink: 0 }} />
             <div style={{ minWidth: 0 }}>
               <div style={{ color: '#fff', fontSize: '15px', fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Superfive Market</div>
               <div style={{ color: '#B5D4F4', fontSize: '10px', letterSpacing: '1px' }}>ALUMNI SMPN 5 BANDUNG</div>
