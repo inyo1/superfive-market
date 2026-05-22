@@ -1,9 +1,16 @@
 'use client'
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 import Navbar from '../components/Navbar'
 
-export default function AuthPage() {
+function AuthContent() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+
+  const rawRedirect = searchParams.get('redirect') ?? ''
+  const redirectTo = rawRedirect.startsWith('/') && !rawRedirect.startsWith('//') ? rawRedirect : '/'
+
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [nama, setNama] = useState('')
   const [email, setEmail] = useState('')
@@ -16,9 +23,12 @@ export default function AuthPage() {
   async function handleLogin() {
     setLoading(true)
     const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) setPesan('Login gagal: ' + error.message)
-    else setPesan('Login berhasil! Selamat datang Superfive!')
-    setLoading(false)
+    if (error) {
+      setPesan('Login gagal: ' + error.message)
+      setLoading(false)
+    } else {
+      router.replace(redirectTo)
+    }
   }
 
   async function handleRegister() {
@@ -78,6 +88,12 @@ export default function AuthPage() {
             <div style={{fontSize:'12px',color:'#5a7da0'}}>Khusus alumni SMPN 5 Bandung</div>
           </div>
 
+          {redirectTo !== '/' && (
+            <div style={{background:'#E6F1FB',border:'0.5px solid #b3d1ee',borderRadius:'8px',padding:'10px 12px',fontSize:'12px',color:'#0C447C',marginBottom:'14px',textAlign:'center'}}>
+              Login dulu untuk melanjutkan pembelian
+            </div>
+          )}
+
           <div style={{display:'flex',background:'#f0f5fb',borderRadius:'8px',padding:'3px',marginBottom:'16px'}}>
             <button onClick={()=>setMode('login')} style={{flex:1,padding:'8px',border:'none',borderRadius:'6px',cursor:'pointer',fontSize:'13px',background:mode==='login'?'#0C447C':'transparent',color:mode==='login'?'#fff':'#5a7da0',fontWeight:mode==='login'?'500':'400'}}>Masuk</button>
             <button onClick={()=>setMode('register')} style={{flex:1,padding:'8px',border:'none',borderRadius:'6px',cursor:'pointer',fontSize:'13px',background:mode==='register'?'#0C447C':'transparent',color:mode==='register'?'#fff':'#5a7da0',fontWeight:mode==='register'?'500':'400'}}>Daftar Alumni</button>
@@ -127,5 +143,13 @@ export default function AuthPage() {
         </div>
       </div>
     </main>
+  )
+}
+
+export default function AuthPage() {
+  return (
+    <Suspense>
+      <AuthContent />
+    </Suspense>
   )
 }

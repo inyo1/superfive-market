@@ -47,6 +47,7 @@ export default function DetailProduk() {
   const [adding, setAdding] = useState(false)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [startingChat, setStartingChat] = useState(false)
+  const [showAuthModal, setShowAuthModal] = useState(false)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id ?? null))
@@ -77,6 +78,7 @@ export default function DetailProduk() {
 
   async function handleKeranjang() {
     if (!produk || adding) return
+    if (!currentUserId) { setShowAuthModal(true); return }
     setAdding(true)
     const result = await tambah({
       id: produk.id,
@@ -133,6 +135,7 @@ export default function DetailProduk() {
 
   async function handleBeliSekarang() {
     if (!produk || adding) return
+    if (!currentUserId) { setShowAuthModal(true); return }
     setAdding(true)
     const result = await tambah({
       id: produk.id,
@@ -325,6 +328,55 @@ export default function DetailProduk() {
           </button>
         </div>
       </div>
+
+      {/* Auth guard modal */}
+      {showAuthModal && (
+        <div
+          onClick={() => setShowAuthModal(false)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 1000, padding: '20px',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: '#fff', borderRadius: '16px', padding: '28px 24px',
+              maxWidth: '320px', width: '100%', textAlign: 'center',
+              boxShadow: '0 8px 32px rgba(12,68,124,0.18)',
+            }}
+          >
+            <div style={{ fontSize: '40px', marginBottom: '12px' }}>🔐</div>
+            <div style={{ fontSize: '16px', fontWeight: '700', color: '#1a1a1a', marginBottom: '8px' }}>
+              Login Dulu
+            </div>
+            <p style={{ fontSize: '13px', color: '#5a7da0', lineHeight: '1.6', margin: '0 0 20px' }}>
+              Login dulu untuk melanjutkan pembelian.
+            </p>
+            <button
+              onClick={() => router.push(`/auth?redirect=/produk/${id}`)}
+              style={{
+                width: '100%', background: '#0C447C', color: '#fff',
+                border: 'none', padding: '11px', borderRadius: '8px',
+                fontSize: '13px', fontWeight: '600', cursor: 'pointer', marginBottom: '8px',
+              }}
+            >
+              Masuk Sekarang
+            </button>
+            <button
+              onClick={() => setShowAuthModal(false)}
+              style={{
+                width: '100%', background: 'none', color: '#5a7da0',
+                border: '0.5px solid #c5d9ef', padding: '10px', borderRadius: '8px',
+                fontSize: '13px', cursor: 'pointer',
+              }}
+            >
+              Nanti Saja
+            </button>
+          </div>
+        </div>
+      )}
     </main>
   )
 }
