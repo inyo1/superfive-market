@@ -77,20 +77,16 @@ export default function KeranjangPage() {
               border: '0.5px solid #e8f0f8', display: 'flex', gap: '12px', alignItems: 'center',
             }}>
               {/* Foto / emoji */}
-              <div style={{ flexShrink: 0, borderRadius: '10px', overflow: 'hidden', width: '56px', height: '56px' }}>
+              <div style={{ flexShrink: 0, borderRadius: '10px', overflow: 'hidden', width: '56px', height: '56px', background: item.foto_url ? '#f5f5f5' : '#E6F1FB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {item.foto_url ? (
                   <img
                     src={item.foto_url}
                     alt={item.nama}
-                    style={{ width: '56px', height: '56px', objectFit: 'cover' }}
+                    style={{ width: '56px', height: '56px', objectFit: 'contain' }}
+                    onError={e => { e.currentTarget.style.display = 'none' }}
                   />
                 ) : (
-                  <div style={{
-                    width: '56px', height: '56px', background: '#E6F1FB',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '26px',
-                  }}>
-                    {emojiKategori[item.kategori] ?? '📦'}
-                  </div>
+                  <span style={{ fontSize: '26px' }}>{emojiKategori[item.kategori] ?? '📦'}</span>
                 )}
               </div>
 

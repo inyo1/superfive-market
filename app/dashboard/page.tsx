@@ -178,7 +178,7 @@ export default function DashboardPage() {
               <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '6px' }}>Foto Produk</label>
               <div style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden', marginBottom: '8px', height: '140px', background: '#E6F1FB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {(editPreview || editData.foto_url) ? (
-                  <img src={editPreview ?? editData.foto_url ?? ''} alt="preview" style={{ width: '100%', height: '140px', objectFit: 'cover', display: 'block' }} />
+                  <img src={editPreview ?? editData.foto_url ?? ''} alt="preview" style={{ width: '100%', height: '140px', objectFit: 'contain', background: '#f5f5f5', display: 'block' }} />
                 ) : (
                   <span style={{ fontSize: '36px' }}>📷</span>
                 )}

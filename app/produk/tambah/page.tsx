@@ -151,7 +151,7 @@ export default function TambahProduk() {
             <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '6px' }}>Foto Produk</label>
             {preview ? (
               <div style={{ position: 'relative', borderRadius: '10px', overflow: 'hidden', marginBottom: '8px' }}>
-                <img src={preview} alt="preview" style={{ width: '100%', height: '200px', objectFit: 'cover', display: 'block' }} />
+                <img src={preview} alt="preview" style={{ width: '100%', height: '200px', objectFit: 'contain', background: '#f5f5f5', display: 'block' }} />
                 <button
                   onClick={hapusFoto}
                   style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(0,0,0,0.5)', color: '#fff', border: 'none', borderRadius: '50%', width: '28px', height: '28px', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}

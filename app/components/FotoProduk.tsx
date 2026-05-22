@@ -44,7 +44,7 @@ export default function FotoProduk({ src, kategori = '', height = 120, fontSize 
         <img
           src={url}
           alt="foto produk"
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', background: '#f5f5f5' }}
           onError={e => { e.currentTarget.style.display = 'none' }}
         />
       )}

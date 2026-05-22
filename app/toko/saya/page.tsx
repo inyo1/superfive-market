@@ -154,9 +154,9 @@ export default function TokoSayaPage() {
 
             {/* Foto edit */}
             <div style={{ marginBottom: '14px' }}>
-              <div style={{ borderRadius: '8px', overflow: 'hidden', height: '140px', background: '#E6F1FB', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '8px' }}>
+              <div style={{ borderRadius: '8px', overflow: 'hidden', height: '140px', background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '8px' }}>
                 {(editPreview || editData.foto_url)
-                  ? <img src={editPreview ?? editData.foto_url ?? ''} alt="preview" style={{ width: '100%', height: '140px', objectFit: 'cover' }} />
+                  ? <img src={editPreview ?? editData.foto_url ?? ''} alt="preview" style={{ width: '100%', height: '140px', objectFit: 'contain', background: '#f5f5f5' }} />
                   : <span style={{ fontSize: '36px' }}>📷</span>}
               </div>
               <input ref={editFotoRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleEditFoto} style={{ display: 'none' }} />
