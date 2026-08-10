@@ -42,3 +42,7 @@ next-env.d.ts
 
 # config lokal Claude Code
 .claude/
+
+# arsip mentah aset, jangan ikut ter-deploy
+public/files.zip
+public/files/

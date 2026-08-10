@@ -155,7 +155,7 @@ export default function Navbar() {
 
           {/* Logo */}
           <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', flex: 1, minWidth: 0 }}>
-            <Image src="/logo.png" alt="Logo" width={60} height={60} priority style={{ objectFit: 'contain', flexShrink: 0 }} />
+            <Image src="/LOGO-512.png" alt="Logo" width={60} height={60} priority style={{ objectFit: 'contain', flexShrink: 0 }} />
             <div style={{ minWidth: 0 }}>
               <div style={{ color: '#fff', fontSize: '15px', fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Superfive Market</div>
               <div style={{ color: '#B5D4F4', fontSize: '10px', letterSpacing: '1px' }}>ALUMNI SMPN 5 BANDUNG</div>

@@ -29,7 +29,7 @@ export default function AboutPage() {
           gap: '24px',
         }}>
           <Image
-            src="/logo.png"
+            src="/LOGO-512.png"
             alt="Logo"
             width={160}
             height={160}

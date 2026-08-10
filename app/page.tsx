@@ -168,7 +168,7 @@ export default function Home() {
         {/* Logo + brand */}
         <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
           <Image
-            src="/logo.png" alt="Superfive Market"
+            src="/LOGO-512.png" alt="Superfive Market"
             width={120} height={120} priority
             style={{ objectFit: 'contain', borderRadius: '20px', flexShrink: 0, filter: 'drop-shadow(0 4px 16px rgba(0,0,0,0.28))' }}
           />

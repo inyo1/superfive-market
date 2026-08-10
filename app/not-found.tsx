@@ -14,7 +14,7 @@ export default function NotFound() {
     }}>
       <div style={{ maxWidth: '420px', width: '100%', textAlign: 'center' }}>
         <Image
-          src="/logo.png"
+          src="/LOGO-512.png"
           alt="Superfive Market"
           width={110}
           height={110}
