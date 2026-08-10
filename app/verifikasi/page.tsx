@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
@@ -130,12 +131,12 @@ export default function VerifikasiPage() {
             Akunmu sudah diakui sebagai alumni SMPN 5 Bandung. Kamu bisa membuka toko dan mulai berjualan.
           </p>
           <div style={{ display: 'flex', gap: '10px' }}>
-            <a href="/produk" style={{ flex: 1, background: '#fff', color: '#0C447C', border: '1px solid #0C447C', padding: '11px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none' }}>
+            <Link href="/produk" style={{ flex: 1, background: '#fff', color: '#0C447C', border: '1px solid #0C447C', padding: '11px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none' }}>
               Belanja
-            </a>
-            <a href="/produk/tambah" style={{ flex: 1, background: '#0C447C', color: '#fff', padding: '11px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none' }}>
+            </Link>
+            <Link href="/produk/tambah" style={{ flex: 1, background: '#0C447C', color: '#fff', padding: '11px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none' }}>
               Mulai Jualan
-            </a>
+            </Link>
           </div>
         </div>
       </div>
@@ -259,9 +260,9 @@ export default function VerifikasiPage() {
           </div>
         )}
 
-        <a href="/" style={{ display: 'block', textAlign: 'center', color: '#5a7da0', fontSize: '13px', textDecoration: 'none', paddingBottom: '24px' }}>
+        <Link href="/" style={{ display: 'block', textAlign: 'center', color: '#5a7da0', fontSize: '13px', textDecoration: 'none', paddingBottom: '24px' }}>
           ← Kembali ke Beranda
-        </a>
+        </Link>
       </div>
     </main>
   )

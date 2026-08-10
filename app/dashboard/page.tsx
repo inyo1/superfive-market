@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
@@ -253,9 +254,9 @@ export default function DashboardPage() {
         <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏪</div>
         <div style={{ fontSize: '16px', fontWeight: '500', color: '#333', marginBottom: '8px' }}>Kamu belum punya toko</div>
         <div style={{ fontSize: '13px', color: '#5a7da0', marginBottom: '24px' }}>Tambah produk pertama untuk membuat toko otomatis</div>
-        <a href="/produk/tambah" style={{ background: '#0C447C', color: '#fff', padding: '12px 24px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none' }}>
+        <Link href="/produk/tambah" style={{ background: '#0C447C', color: '#fff', padding: '12px 24px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none' }}>
           + Tambah Produk Pertama
-        </a>
+        </Link>
       </div>
     </main>
   )
@@ -349,13 +350,13 @@ export default function DashboardPage() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
           <div>
             <div style={{ fontSize: '18px', fontWeight: '700', color: '#1a1a1a' }}>Dashboard Seller</div>
-            <a href={`/toko/${toko!.id}`} style={{ fontSize: '12px', color: '#0C447C', textDecoration: 'none' }}>
+            <Link href={`/toko/${toko!.id}`} style={{ fontSize: '12px', color: '#0C447C', textDecoration: 'none' }}>
               🏪 {toko!.nama_toko} →
-            </a>
+            </Link>
           </div>
-          <a href="/produk/tambah" style={{ background: '#0C447C', color: '#fff', padding: '8px 14px', borderRadius: '8px', fontSize: '12px', textDecoration: 'none' }}>
+          <Link href="/produk/tambah" style={{ background: '#0C447C', color: '#fff', padding: '8px 14px', borderRadius: '8px', fontSize: '12px', textDecoration: 'none' }}>
             + Produk
-          </a>
+          </Link>
         </div>
 
         {/* Notif */}
@@ -470,9 +471,9 @@ export default function DashboardPage() {
               </div>
             ))}
             <div style={{ marginTop: '12px', textAlign: 'center' }}>
-              <a href="/produk/tambah" style={{ background: '#fff', border: '1px dashed #378ADD', color: '#0C447C', padding: '10px 24px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none', display: 'inline-block' }}>
+              <Link href="/produk/tambah" style={{ background: '#fff', border: '1px dashed #378ADD', color: '#0C447C', padding: '10px 24px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none', display: 'inline-block' }}>
                 + Tambah Produk Baru
-              </a>
+              </Link>
             </div>
           </div>
         )}

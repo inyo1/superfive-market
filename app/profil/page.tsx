@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
@@ -294,9 +295,9 @@ export default function ProfilPage() {
         </Tombol>
 
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-          <a href="/dashboard" style={{ fontSize: '13px', color: '#0C447C', textDecoration: 'none' }}>📊 Dashboard</a>
+          <Link href="/dashboard" style={{ fontSize: '13px', color: '#0C447C', textDecoration: 'none' }}>📊 Dashboard</Link>
           <span style={{ color: '#c5d9ef' }}>·</span>
-          <a href="/produk" style={{ fontSize: '13px', color: '#0C447C', textDecoration: 'none' }}>📦 Produk</a>
+          <Link href="/produk" style={{ fontSize: '13px', color: '#0C447C', textDecoration: 'none' }}>📦 Produk</Link>
         </div>
       </div>
     </main>

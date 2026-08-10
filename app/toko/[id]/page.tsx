@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '../../../lib/supabase'
@@ -185,7 +186,7 @@ export default function TokoPage() {
         <div style={{ textAlign: 'center', padding: '60px 20px' }}>
           <div style={{ fontSize: '40px', marginBottom: '12px' }}>🏪</div>
           <div style={{ fontSize: '15px', color: '#333', marginBottom: '8px' }}>Toko tidak ditemukan</div>
-          <a href="/produk" style={{ color: '#0C447C', fontSize: '13px' }}>← Kembali ke Produk</a>
+          <Link href="/produk" style={{ color: '#0C447C', fontSize: '13px' }}>← Kembali ke Produk</Link>
         </div>
       </main>
     )
@@ -294,12 +295,12 @@ export default function TokoPage() {
         {/* Tombol owner */}
         {isOwner && (
           <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-            <a
+            <Link
               href="/produk/tambah"
               style={{ flex: 1, background: '#0C447C', color: '#fff', padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: '500', textDecoration: 'none', textAlign: 'center' }}
             >
               + Tambah Produk
-            </a>
+            </Link>
           </div>
         )}
 
@@ -329,16 +330,16 @@ export default function TokoPage() {
             <div style={{ fontSize: '36px', marginBottom: '10px' }}>📦</div>
             <div style={{ fontSize: '13px', color: '#5a7da0', marginBottom: isOwner ? '14px' : '0' }}>Belum ada produk di toko ini</div>
             {isOwner && (
-              <a href="/produk/tambah" style={{ background: '#0C447C', color: '#fff', padding: '8px 20px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none' }}>
+              <Link href="/produk/tambah" style={{ background: '#0C447C', color: '#fff', padding: '8px 20px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none' }}>
                 Tambah Produk Pertama
-              </a>
+              </Link>
             )}
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '10px', marginBottom: '20px' }}>
             {produk.map(p => (
               <div key={p.id} style={{ background: '#fff', borderRadius: '10px', border: '0.5px solid #e8f0f8', overflow: 'hidden' }}>
-                <a href={`/produk/${p.id}`} style={{ textDecoration: 'none', display: 'block' }}>
+                <Link href={`/produk/${p.id}`} style={{ textDecoration: 'none', display: 'block' }}>
                   <FotoProduk src={p.foto_url} kategori={p.kategori} height={110} fontSize={38} />
                   <div style={{ padding: '10px 10px 6px' }}>
                     <div style={{ fontSize: '12px', fontWeight: '500', color: '#333', marginBottom: '4px', height: '32px', overflow: 'hidden' }}>{p.nama}</div>
@@ -348,7 +349,7 @@ export default function TokoPage() {
                       <span>{p.terjual || 0} terjual</span>
                     </div>
                   </div>
-                </a>
+                </Link>
                 <button
                   onClick={() => handleTambahKeranjang(p)}
                   style={{

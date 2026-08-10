@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../../lib/supabase'
@@ -195,7 +196,7 @@ export default function VerifikasiAdminPage() {
       <div style={{ maxWidth: '660px', margin: '0 auto', padding: '16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
           <h1 style={{ fontSize: '18px', fontWeight: '700', color: '#1a1a1a', margin: 0 }}>Verifikasi Alumni</h1>
-          <a href="/admin" style={{ fontSize: '12px', color: '#0C447C', textDecoration: 'none' }}>← Panel Admin</a>
+          <Link href="/admin" style={{ fontSize: '12px', color: '#0C447C', textDecoration: 'none' }}>← Panel Admin</Link>
         </div>
         <div style={{ fontSize: '12px', color: '#5a7da0', marginBottom: '16px' }}>
           Periksa bukti alumni sebelum menyetujui. Yang belum terverifikasi tidak bisa membuka toko.

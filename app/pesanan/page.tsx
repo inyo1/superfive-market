@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
@@ -228,9 +229,9 @@ export default function PesananPage() {
               <div style={{ padding: '10px 14px', borderBottom: '0.5px solid #e8f0f8' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '7px', flexWrap: 'wrap' }}>
                   {p.toko_id ? (
-                    <a href={`/toko/${p.toko_id}`} style={{ fontSize: '12px', color: '#0C447C', textDecoration: 'none', fontWeight: '500' }}>
+                    <Link href={`/toko/${p.toko_id}`} style={{ fontSize: '12px', color: '#0C447C', textDecoration: 'none', fontWeight: '500' }}>
                       🏪 {p.toko?.nama_toko ?? 'Toko'} →
-                    </a>
+                    </Link>
                   ) : (
                     <span style={{ fontSize: '12px', color: '#5a7da0' }}>🏪 Toko tidak diketahui</span>
                   )}
@@ -251,9 +252,9 @@ export default function PesananPage() {
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       {item.produk_id ? (
-                        <a href={`/produk/${item.produk_id}`} style={{ fontSize: '12px', color: '#1a1a1a', textDecoration: 'none', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <Link href={`/produk/${item.produk_id}`} style={{ fontSize: '12px', color: '#1a1a1a', textDecoration: 'none', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {item.nama_produk}
-                        </a>
+                        </Link>
                       ) : (
                         <div style={{ fontSize: '12px', color: '#1a1a1a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.nama_produk}</div>
                       )}

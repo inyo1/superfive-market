@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
@@ -203,17 +204,17 @@ export default function KeranjangPage() {
           </div>
         </div>
 
-        <a href="/produk" style={{
+        <Link href="/produk" style={{
           display: 'block', textAlign: 'center', color: '#0C447C',
           fontSize: '13px', textDecoration: 'none', marginBottom: '12px',
         }}>
           + Tambah Produk Lagi
-        </a>
+        </Link>
       </div>
 
       {/* Sticky checkout bar */}
       <div className="cta-bottom-bar" style={{ padding: '12px 16px', maxWidth: '560px', margin: '0 auto' }}>
-        <a
+        <Link
           href="/checkout"
           style={{
             display: 'block', width: '100%', background: '#0C447C', color: '#fff',
@@ -223,7 +224,7 @@ export default function KeranjangPage() {
           }}
         >
           Checkout — {fmt(totalHarga)}
-        </a>
+        </Link>
       </div>
     </main>
   )

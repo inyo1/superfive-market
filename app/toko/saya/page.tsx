@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../../lib/supabase'
@@ -137,9 +138,9 @@ export default function TokoSayaPage() {
           <div style={{ fontSize: '13px', color: '#5a7da0', marginBottom: '24px' }}>
             Tambah produk pertama untuk membuat toko otomatis
           </div>
-          <a href="/produk/tambah" style={{ background: '#0C447C', color: '#fff', padding: '12px 28px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', textDecoration: 'none' }}>
+          <Link href="/produk/tambah" style={{ background: '#0C447C', color: '#fff', padding: '12px 28px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', textDecoration: 'none' }}>
             + Tambah Produk Pertama
-          </a>
+          </Link>
         </div>
       </main>
     )
@@ -269,9 +270,9 @@ export default function TokoSayaPage() {
           <div style={{ fontSize: '13px', fontWeight: '700', color: '#1a1a1a' }}>
             Daftar Produk {produk.length > 0 && <span style={{ color: '#5a7da0', fontWeight: '400' }}>({produk.length})</span>}
           </div>
-          <a href="/produk/tambah" style={{ background: '#0C447C', color: '#fff', padding: '8px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: '600', textDecoration: 'none' }}>
+          <Link href="/produk/tambah" style={{ background: '#0C447C', color: '#fff', padding: '8px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: '600', textDecoration: 'none' }}>
             + Tambah Produk
-          </a>
+          </Link>
         </div>
 
         {/* Produk list */}
@@ -279,9 +280,9 @@ export default function TokoSayaPage() {
           <div style={{ background: '#fff', borderRadius: '12px', padding: '48px 20px', textAlign: 'center', border: '0.5px solid #e8f0f8' }}>
             <div style={{ fontSize: '40px', marginBottom: '12px' }}>📦</div>
             <div style={{ fontSize: '14px', color: '#5a7da0', marginBottom: '16px' }}>Belum ada produk di toko kamu</div>
-            <a href="/produk/tambah" style={{ background: '#0C447C', color: '#fff', padding: '10px 24px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none', fontWeight: '600' }}>
+            <Link href="/produk/tambah" style={{ background: '#0C447C', color: '#fff', padding: '10px 24px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none', fontWeight: '600' }}>
               + Tambah Produk Pertama
-            </a>
+            </Link>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -306,12 +307,12 @@ export default function TokoSayaPage() {
                     <span>⭐ {p.rating || '5.0'}</span>
                   </div>
                   <div style={{ display: 'flex', gap: '6px' }}>
-                    <a
+                    <Link
                       href={`/produk/${p.id}`}
                       style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', textDecoration: 'none', background: '#f0f5fb', color: '#0C447C', border: '0.5px solid #c5d9ef' }}
                     >
                       Lihat
-                    </a>
+                    </Link>
                     <button
                       onClick={() => bukaEdit(p)}
                       style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', background: '#E6F1FB', color: '#0C447C', border: '0.5px solid #c5d9ef' }}
@@ -334,9 +335,9 @@ export default function TokoSayaPage() {
         {/* Link ke profil toko publik */}
         {produk.length > 0 && (
           <div style={{ marginTop: '16px', textAlign: 'center' }}>
-            <a href={`/toko/${toko.id}`} style={{ fontSize: '13px', color: '#0C447C', textDecoration: 'none', fontWeight: '600' }}>
+            <Link href={`/toko/${toko.id}`} style={{ fontSize: '13px', color: '#0C447C', textDecoration: 'none', fontWeight: '600' }}>
               Lihat Halaman Toko Publik →
-            </a>
+            </Link>
           </div>
         )}
       </div>

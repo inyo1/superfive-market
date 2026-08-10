@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
@@ -351,12 +352,12 @@ export default function AdminPage() {
                     {p.kategori}
                   </span>
                   <div style={{ display: 'flex', gap: '6px' }}>
-                    <a
+                    <Link
                       href={`/produk/${p.id}`}
                       style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', textDecoration: 'none', background: '#E6F1FB', color: '#0C447C', border: '0.5px solid #c5d9ef' }}
                     >
                       Lihat
-                    </a>
+                    </Link>
                     <button
                       onClick={() => setKonfirmasi({ jenis: 'produk', id: p.id, nama: p.nama })}
                       disabled={busyId === p.id}
@@ -415,12 +416,12 @@ export default function AdminPage() {
                       {t.kategori}
                     </span>
                     <div style={{ display: 'flex', gap: '6px' }}>
-                      <a
+                      <Link
                         href={`/toko/${t.id}`}
                         style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', textDecoration: 'none', background: '#E6F1FB', color: '#0C447C', border: '0.5px solid #c5d9ef' }}
                       >
                         Lihat
-                      </a>
+                      </Link>
                       <button
                         onClick={() => setKonfirmasi({ jenis: 'toko', id: t.id, nama: t.nama_toko })}
                         disabled={busyId === t.id}

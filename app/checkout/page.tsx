@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCart } from '../context/CartContext'
@@ -92,9 +93,9 @@ export default function CheckoutPage() {
         <div style={{ textAlign: 'center', padding: '60px 20px' }}>
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>🛒</div>
           <div style={{ fontSize: '16px', color: '#333', marginBottom: '20px' }}>Keranjang kamu kosong</div>
-          <a href="/produk" style={{ background: '#0C447C', color: '#fff', padding: '12px 24px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none' }}>
+          <Link href="/produk" style={{ background: '#0C447C', color: '#fff', padding: '12px 24px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none' }}>
             Lihat Produk
-          </a>
+          </Link>
         </div>
       </main>
     )
@@ -137,12 +138,12 @@ export default function CheckoutPage() {
             </div>
 
             <div style={{ display: 'flex', gap: '10px' }}>
-              <a href="/produk" style={{ flex: 1, background: '#fff', color: '#0C447C', border: '1px solid #0C447C', padding: '11px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none', textAlign: 'center' }}>
+              <Link href="/produk" style={{ flex: 1, background: '#fff', color: '#0C447C', border: '1px solid #0C447C', padding: '11px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none', textAlign: 'center' }}>
                 Lanjut Belanja
-              </a>
-              <a href="/" style={{ flex: 1, background: '#0C447C', color: '#fff', padding: '11px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none', textAlign: 'center' }}>
+              </Link>
+              <Link href="/" style={{ flex: 1, background: '#0C447C', color: '#fff', padding: '11px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none', textAlign: 'center' }}>
                 Beranda
-              </a>
+              </Link>
             </div>
           </div>
         </div>
@@ -231,7 +232,7 @@ export default function CheckoutPage() {
           <div style={{ marginBottom: '12px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
               <label style={{ fontSize: '12px', color: '#5a7da0' }}>Alamat Lengkap</label>
-              <a href="/profil" style={{ fontSize: '11px', color: '#0C447C', textDecoration: 'none' }}>Edit di Profil →</a>
+              <Link href="/profil" style={{ fontSize: '11px', color: '#0C447C', textDecoration: 'none' }}>Edit di Profil →</Link>
             </div>
             <textarea
               value={alamat}
@@ -331,9 +332,9 @@ export default function CheckoutPage() {
           Pesan Sekarang — {fmt(total)}
         </Tombol>
 
-        <a href="/keranjang" style={{ display: 'block', textAlign: 'center', color: '#5a7da0', fontSize: '13px', textDecoration: 'none', paddingBottom: '24px' }}>
+        <Link href="/keranjang" style={{ display: 'block', textAlign: 'center', color: '#5a7da0', fontSize: '13px', textDecoration: 'none', paddingBottom: '24px' }}>
           ← Kembali ke Keranjang
-        </a>
+        </Link>
       </div>
     </main>
   )
