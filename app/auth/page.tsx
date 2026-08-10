@@ -1,6 +1,6 @@
 'use client'
 import Image from 'next/image'
-import { Suspense, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 import Navbar from '../components/Navbar'
@@ -14,7 +14,10 @@ function AuthContent() {
   const redirectTo = rawRedirect.startsWith('/') && !rawRedirect.startsWith('//') ? rawRedirect : '/'
   const msg = searchParams.get('msg')
 
-  const [mode, setMode] = useState<'login' | 'register'>('login')
+  const [mode, setMode] = useState<'login' | 'register' | 'lupa'>('login')
+  const [emailReset, setEmailReset] = useState('')
+  const [resetTerkirim, setResetTerkirim] = useState(false)
+  const [hitungMundur, setHitungMundur] = useState(0)
   const [nama, setNama] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -32,6 +35,42 @@ function AuthContent() {
     } else {
       router.replace(redirectTo)
     }
+  }
+
+  // Jeda 60 detik antar pengiriman supaya endpoint reset tidak bisa dispam
+  useEffect(() => {
+    if (hitungMundur <= 0) return
+    const t = setTimeout(() => setHitungMundur(n => n - 1), 1000)
+    return () => clearTimeout(t)
+  }, [hitungMundur])
+
+  async function handleKirimReset() {
+    if (!emailReset.trim() || hitungMundur > 0) return
+    setLoading(true)
+
+    // Hasilnya sengaja tidak diperiksa: pesan ke pengguna harus sama persis
+    // baik emailnya terdaftar maupun tidak. Membedakannya akan membocorkan
+    // daftar email alumni ke siapa pun yang mau menebak.
+    await supabase.auth.resetPasswordForEmail(emailReset.trim(), {
+      redirectTo: `${window.location.origin}/auth/reset`,
+    })
+
+    setLoading(false)
+    setResetTerkirim(true)
+    setHitungMundur(60)
+  }
+
+  function bukaLupa() {
+    setEmailReset(email)   // bawa email yang sudah diketik di form Masuk
+    setResetTerkirim(false)
+    setPesan('')
+    setMode('lupa')
+  }
+
+  function kembaliKeMasuk() {
+    setMode('login')
+    setResetTerkirim(false)
+    setPesan('')
   }
 
   async function handleRegister() {
@@ -97,6 +136,91 @@ function AuthContent() {
             </div>
           )}
 
+          {mode==='lupa' ? (
+            resetTerkirim ? (
+              /* ── Konfirmasi terkirim ── */
+              <div style={{textAlign:'center'}}>
+                <div style={{fontSize:'48px',marginBottom:'14px'}}>📨</div>
+                <div style={{fontSize:'16px',fontWeight:'700',color:'#1a1a1a',marginBottom:'10px'}}>
+                  Cek email kamu
+                </div>
+                <p style={{fontSize:'13px',color:'#5a7da0',lineHeight:'1.7',margin:'0 0 20px'}}>
+                  Kalau email tersebut terdaftar, link reset sudah kami kirim.
+                  Cek kotak masuk dan folder spam.
+                </p>
+
+                <button
+                  onClick={handleKirimReset}
+                  disabled={loading || hitungMundur > 0}
+                  style={{
+                    width:'100%',background: hitungMundur>0 ? '#f0f5fb' : '#fff',
+                    color: hitungMundur>0 ? '#9ab4cc' : '#0C447C',
+                    border:`1px solid ${hitungMundur>0 ? '#dde8f4' : '#0C447C'}`,
+                    padding:'12px',borderRadius:'8px',fontSize:'13px',fontWeight:'600',
+                    minHeight:'44px',cursor: hitungMundur>0 ? 'not-allowed' : 'pointer',
+                    marginBottom:'10px',
+                  }}
+                >
+                  {hitungMundur > 0 ? `Kirim ulang dalam ${hitungMundur} detik` : 'Kirim Ulang Link'}
+                </button>
+
+                <button
+                  onClick={kembaliKeMasuk}
+                  style={{width:'100%',background:'#0C447C',color:'#fff',border:'none',padding:'12px',borderRadius:'8px',fontSize:'13px',fontWeight:'600',minHeight:'44px',cursor:'pointer'}}
+                >
+                  Kembali ke Masuk
+                </button>
+              </div>
+            ) : (
+              /* ── Form minta link reset ── */
+              <div>
+                <div style={{fontSize:'16px',fontWeight:'700',color:'#1a1a1a',marginBottom:'6px'}}>
+                  Lupa Kata Sandi
+                </div>
+                <p style={{fontSize:'12px',color:'#5a7da0',lineHeight:'1.7',margin:'0 0 16px'}}>
+                  Masukkan email terdaftar kamu, link untuk mengatur ulang kata sandi akan kami kirim ke sana.
+                </p>
+
+                <div style={{marginBottom:'14px'}}>
+                  <label htmlFor="email-reset" style={{fontSize:'12px',color:'#5a7da0',display:'block',marginBottom:'4px'}}>Email</label>
+                  <input
+                    id="email-reset"
+                    name="email"
+                    value={emailReset}
+                    onChange={e=>setEmailReset(e.target.value)}
+                    type="email"
+                    autoComplete="username"
+                    inputMode="email"
+                    placeholder="email@kamu.com"
+                    style={{width:'100%',padding:'11px 12px',border:'0.5px solid #c5d9ef',borderRadius:'8px',fontSize:'13px',outline:'none',boxSizing:'border-box',minHeight:'44px'}}
+                  />
+                </div>
+
+                <button
+                  onClick={handleKirimReset}
+                  disabled={loading || !emailReset.trim()}
+                  style={{
+                    width:'100%',
+                    background: (loading || !emailReset.trim()) ? '#7fa8c9' : '#0C447C',
+                    color:'#fff',border:'none',padding:'12px',borderRadius:'8px',
+                    fontSize:'13px',fontWeight:'600',minHeight:'44px',
+                    cursor:(loading || !emailReset.trim()) ? 'not-allowed' : 'pointer',
+                    marginBottom:'12px',
+                  }}
+                >
+                  {loading ? 'Mengirim...' : 'Kirim Link Reset'}
+                </button>
+
+                <button
+                  onClick={kembaliKeMasuk}
+                  style={{width:'100%',background:'none',border:'none',color:'#5a7da0',fontSize:'13px',cursor:'pointer',minHeight:'44px'}}
+                >
+                  ← Kembali ke Masuk
+                </button>
+              </div>
+            )
+          ) : (
+          <>
           <div style={{display:'flex',background:'#f0f5fb',borderRadius:'8px',padding:'3px',marginBottom:'16px'}}>
             <button onClick={()=>setMode('login')} style={{flex:1,padding:'8px',border:'none',borderRadius:'6px',cursor:'pointer',fontSize:'13px',background:mode==='login'?'#0C447C':'transparent',color:mode==='login'?'#fff':'#5a7da0',fontWeight:mode==='login'?'500':'400'}}>Masuk</button>
             <button onClick={()=>setMode('register')} style={{flex:1,padding:'8px',border:'none',borderRadius:'6px',cursor:'pointer',fontSize:'13px',background:mode==='register'?'#0C447C':'transparent',color:mode==='register'?'#fff':'#5a7da0',fontWeight:mode==='register'?'500':'400'}}>Daftar Alumni</button>
@@ -135,7 +259,18 @@ function AuthContent() {
           </div>
 
           <div style={{marginBottom:'12px'}}>
-            <label htmlFor="kata-sandi" style={{fontSize:'12px',color:'#5a7da0',display:'block',marginBottom:'4px'}}>Kata Sandi</label>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'8px',marginBottom:'4px'}}>
+              <label htmlFor="kata-sandi" style={{fontSize:'12px',color:'#5a7da0'}}>Kata Sandi</label>
+              {mode==='login' && (
+                <button
+                  type="button"
+                  onClick={bukaLupa}
+                  style={{background:'none',border:'none',color:'#0C447C',fontSize:'12px',fontWeight:'600',cursor:'pointer',padding:'4px 0'}}
+                >
+                  Lupa kata sandi?
+                </button>
+              )}
+            </div>
             <InputPassword
               id="kata-sandi"
               value={password}
@@ -171,6 +306,8 @@ function AuthContent() {
             style={{width:'100%',background:'#0C447C',color:'#fff',border:'none',padding:'11px',borderRadius:'8px',fontSize:'13px',fontWeight:'500',cursor:'pointer'}}>
             {loading ? 'Memproses...' : mode==='login' ? 'Masuk ke Superfive Market' : 'Daftar sebagai Superfive'}
           </button>
+          </>
+          )}
         </div>
       </div>
     </main>
