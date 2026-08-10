@@ -70,6 +70,21 @@ export default function VerifikasiAdminPage() {
   const [buktiUrl, setBuktiUrl] = useState<string | null>(null)
   const [memuatBukti, setMemuatBukti] = useState<string | null>(null)
 
+  function tampilkanPesan(text: string, ok: boolean) {
+    setPesan({ text, ok })
+    setTimeout(() => setPesan(null), 4000)
+  }
+
+  async function muat() {
+    const { data, error } = await supabase
+      .from('users')
+      .select('id, nama, email, angkatan, avatar_url, status_verifikasi, bukti_alumni_url, catatan_pendaftar, alasan_tolak, created_at, diverifikasi_at')
+      .order('created_at', { ascending: false })
+
+    if (error) { tampilkanPesan('Gagal memuat pendaftar: ' + error.message, false); return }
+    setPendaftar((data ?? []) as unknown as Pendaftar[])
+  }
+
   useEffect(() => {
     async function init() {
       const { data: { user } } = await supabase.auth.getUser()
@@ -85,21 +100,6 @@ export default function VerifikasiAdminPage() {
     }
     init()
   }, [])
-
-  async function muat() {
-    const { data, error } = await supabase
-      .from('users')
-      .select('id, nama, email, angkatan, avatar_url, status_verifikasi, bukti_alumni_url, catatan_pendaftar, alasan_tolak, created_at, diverifikasi_at')
-      .order('created_at', { ascending: false })
-
-    if (error) { tampilkanPesan('Gagal memuat pendaftar: ' + error.message, false); return }
-    setPendaftar((data ?? []) as unknown as Pendaftar[])
-  }
-
-  function tampilkanPesan(text: string, ok: boolean) {
-    setPesan({ text, ok })
-    setTimeout(() => setPesan(null), 4000)
-  }
 
   async function putuskan(id: string, setujui: boolean, alasanTolak?: string) {
     setProsesId(id)

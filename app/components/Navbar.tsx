@@ -20,6 +20,7 @@ export default function Navbar() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [userName, setUserName] = useState<string>('')
   const [isAdmin, setIsAdmin] = useState(false)
+  const [menungguVerifikasi, setMenungguVerifikasi] = useState(0)
   const pathname = usePathname()
   const router = useRouter()
   const { totalItem } = useCart()
@@ -35,7 +36,17 @@ export default function Navbar() {
       setUserName(data.nama ?? '')
       setAvatarUrl(data.avatar_url ?? null)
       setIsAdmin(data.role === 'admin')
+      if (data.role === 'admin') hitungMenunggu()
     }
+  }
+
+  // Jumlah pendaftar yang menunggu verifikasi, dipakai jadi badge angka
+  async function hitungMenunggu() {
+    const { count } = await supabase
+      .from('users')
+      .select('id', { count: 'exact', head: true })
+      .eq('status_verifikasi', 'menunggu')
+    setMenungguVerifikasi(count ?? 0)
   }
 
   useEffect(() => {
@@ -46,7 +57,7 @@ export default function Navbar() {
     const { data: listener } = supabase.auth.onAuthStateChange((_e, session) => {
       setUser(session?.user ?? null)
       if (session?.user) fetchProfile(session.user.id)
-      else { setAvatarUrl(null); setUserName(''); setIsAdmin(false) }
+      else { setAvatarUrl(null); setUserName(''); setIsAdmin(false); setMenungguVerifikasi(0) }
     })
     return () => listener.subscription.unsubscribe()
   }, [])
@@ -197,6 +208,25 @@ export default function Navbar() {
                 ⭐ Admin
               </a>
             )}
+            {isAdmin && (
+              <a href="/admin/verifikasi" style={{
+                position: 'relative', color: '#fff', fontSize: '12px', textDecoration: 'none',
+                padding: '5px 10px', borderRadius: '6px',
+                background: 'rgba(230,81,0,0.35)', fontWeight: '600',
+                display: 'flex', alignItems: 'center', gap: '5px',
+              }}>
+                🎓 Verifikasi
+                {menungguVerifikasi > 0 && (
+                  <span style={{
+                    background: '#e53935', color: '#fff', fontSize: '10px', fontWeight: '700',
+                    borderRadius: '10px', minWidth: '18px', height: '18px', padding: '0 5px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
+                  }}>
+                    {menungguVerifikasi > 99 ? '99+' : menungguVerifikasi}
+                  </span>
+                )}
+              </a>
+            )}
 
             {/* Search button — desktop */}
             <button
@@ -322,6 +352,16 @@ export default function Navbar() {
             {isAdmin && (
               <a href="/admin" onClick={() => setOpen(false)} style={{ display: 'block', fontSize: '14px', textDecoration: 'none', padding: '10px 12px', borderRadius: '8px', marginBottom: '2px', background: 'rgba(230,81,0,0.15)', color: '#ffb74d', fontWeight: '600' }}>
                 ⭐ Panel Admin
+              </a>
+            )}
+            {isAdmin && (
+              <a href="/admin/verifikasi" onClick={() => setOpen(false)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '14px', textDecoration: 'none', padding: '10px 12px', borderRadius: '8px', marginBottom: '2px', background: 'rgba(230,81,0,0.15)', color: '#ffb74d', fontWeight: '600' }}>
+                <span>🎓 Verifikasi Alumni</span>
+                {menungguVerifikasi > 0 && (
+                  <span style={{ background: '#e53935', color: '#fff', borderRadius: '10px', minWidth: '20px', height: '20px', padding: '0 6px', fontSize: '11px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {menungguVerifikasi > 99 ? '99+' : menungguVerifikasi}
+                  </span>
+                )}
               </a>
             )}
             {user && (
