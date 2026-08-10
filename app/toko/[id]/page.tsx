@@ -10,6 +10,8 @@ import BadgeVerifikasi from '../../components/BadgeVerifikasi'
 import { useToast } from '../../context/ToastContext'
 import Skeleton, { GridSkeletonProduk } from '../../components/Skeleton'
 import BadgeAngkatan from '../../components/BadgeAngkatan'
+import BadgeOfficial from '../../components/BadgeOfficial'
+import Image from 'next/image'
 import { useTampilSkeleton } from '../../hooks/useSkeleton'
 
 type Toko = {
@@ -18,6 +20,7 @@ type Toko = {
   nama_toko: string
   kategori: string
   deskripsi?: string
+  is_official?: boolean
   users: { nama: string | null; angkatan: number | null; status_verifikasi: string | null } | null
 }
 
@@ -36,6 +39,8 @@ const emojiKategori: Record<string, string> = {
   Teknologi: '💻', Fashion: '👗', Kuliner: '🍱',
   Properti: '🏠', Jasa: '🛠️', UMKM: '🏪',
 }
+
+const EMAS = '#EF9F27'
 
 function fmt(n: number) {
   return 'Rp ' + n.toLocaleString('id-ID')
@@ -166,6 +171,7 @@ export default function TokoPage() {
   }
 
   const isOwner = toko && currentUserId === toko.seller_id
+  const resmi = Boolean(toko?.is_official)
 
   if (tampilSkeleton) {
     return (
@@ -203,14 +209,60 @@ export default function TokoPage() {
 
       <div style={{ maxWidth: '600px', margin: '0 auto', padding: '16px' }}>
 
+        {/* Banner khusus toko resmi — logo INILIMA lebar dengan aksen emas */}
+        {resmi && (
+          <div style={{
+            position: 'relative', overflow: 'hidden',
+            background: 'linear-gradient(135deg, #0a3a6b 0%, #0C447C 55%, #082e57 100%)',
+            border: `1px solid ${EMAS}`,
+            borderRadius: '14px', padding: '22px 20px', marginBottom: '12px',
+            display: 'flex', alignItems: 'center', gap: '18px', flexWrap: 'wrap',
+          }}>
+            <Image
+              src="/LOGO-512.png"
+              alt="INILIMA"
+              width={92}
+              height={92}
+              priority
+              style={{ objectFit: 'contain', flexShrink: 0 }}
+            />
+            <div style={{ flex: 1, minWidth: '180px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '6px' }}>
+                <span style={{
+                  background: EMAS, color: '#3d2600',
+                  fontSize: '9px', fontWeight: '800', letterSpacing: '0.8px',
+                  padding: '3px 9px', borderRadius: '4px', lineHeight: 1.4,
+                }}>
+                  RESMI
+                </span>
+                <span style={{ fontSize: '10px', color: '#7eb8f0', letterSpacing: '1.4px', textTransform: 'uppercase' }}>
+                  Toko Resmi Komunitas
+                </span>
+              </div>
+              <div style={{ fontSize: '19px', fontWeight: '800', color: EMAS, lineHeight: 1.25, marginBottom: '6px' }}>
+                Official Merchandise INILIMA
+              </div>
+              <div style={{ fontSize: '12px', color: '#B5D4F4', lineHeight: 1.6 }}>
+                Merchandise resmi komunitas alumni SMPN 5 Bandung.
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Header toko */}
-        <div style={{ background: '#0C447C', borderRadius: '12px', padding: '20px', color: '#fff', marginBottom: '12px' }}>
+        <div style={{
+          background: '#0C447C', borderRadius: '12px', padding: '20px',
+          color: '#fff', marginBottom: '12px',
+          border: resmi ? `0.5px solid rgba(239,159,39,0.45)` : undefined,
+        }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '14px' }}>
             <div style={{
-              width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(255,255,255,0.15)',
+              width: '60px', height: '60px', borderRadius: '50%',
+              background: resmi ? 'rgba(239,159,39,0.18)' : 'rgba(255,255,255,0.15)',
+              border: resmi ? `1px solid ${EMAS}` : undefined,
               display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', flexShrink: 0,
             }}>
-              {emojiKategori[toko.kategori] ?? '🏪'}
+              {resmi ? '★' : (emojiKategori[toko.kategori] ?? '🏪')}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               {editMode ? (
@@ -222,11 +274,17 @@ export default function TokoPage() {
               ) : (
                 <div style={{ fontSize: '18px', fontWeight: '700', marginBottom: '4px' }}>{toko.nama_toko}</div>
               )}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', fontSize: '12px', color: '#B5D4F4' }}>
-                <span>{toko.users?.nama || 'Alumni'}</span>
-                <BadgeVerifikasi status={toko.users?.status_verifikasi} size={13} />
-                <BadgeAngkatan angkatan={toko.users?.angkatan} />
-              </div>
+              {/* Akun resmi itu institusi — nama pengelola, centang alumni, dan
+                  badge angkatan tidak ditampilkan, diganti lencana OFFICIAL */}
+              {resmi ? (
+                <BadgeOfficial aktif bentuk="lencana" />
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', fontSize: '12px', color: '#B5D4F4' }}>
+                  <span>{toko.users?.nama || 'Alumni'}</span>
+                  <BadgeVerifikasi status={toko.users?.status_verifikasi} size={13} />
+                  <BadgeAngkatan angkatan={toko.users?.angkatan} />
+                </div>
+              )}
             </div>
             {isOwner && !editMode && (
               <button
