@@ -190,6 +190,38 @@ main {
   to   { transform: translateY(0); }
 }
 
+/* ── Official Merchandise ──
+   Desktop grid empat kolom; di mobile berubah jadi carousel geser dengan
+   snap, kartu selebar 70% layar supaya kartu berikutnya terlihat mengintip. */
+.merch-track {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 767px) {
+  .merch-track {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    /* tarik ke tepi layar supaya geserannya terasa penuh, padding dikembalikan
+       lewat scroll-padding agar kartu pertama tetap sejajar konten */
+    margin: 0 -16px;
+    padding: 2px 16px 10px;
+    scroll-padding-left: 16px;
+  }
+
+  .merch-track::-webkit-scrollbar { display: none; }
+
+  .merch-item {
+    flex: 0 0 70%;
+    scroll-snap-align: start;
+  }
+}
+
 /* ── Toast ──
    Mobile: turun dari atas. Desktop: naik dari pojok kanan bawah. */
 .toast-wrap {

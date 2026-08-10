@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase'
 import Navbar from './components/Navbar'
 import FotoProduk from './components/FotoProduk'
 import SkeletonCard from './components/SkeletonCard'
+import SectionOfficial from './components/SectionOfficial'
 
 type Produk = {
   id: string
@@ -240,6 +241,9 @@ export default function Home() {
           />
         </div>
       </div>
+
+      {/* ── Official Merchandise INILIMA ── */}
+      <SectionOfficial />
 
       <div style={{ padding: '20px 16px', maxWidth: '700px', margin: '0 auto' }}>
 
