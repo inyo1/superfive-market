@@ -104,7 +104,7 @@ export default function ProdukPage() {
 
         <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px', marginBottom: '14px' }}>
           {kategoris.map(k => (
-            <button key={k} onClick={() => setKategori(k)} className="filter-chip" style={{ padding: '5px 14px', borderRadius: '20px', border: '0.5px solid', borderColor: kategori === k ? '#0C447C' : '#c5d9ef', background: kategori === k ? '#0C447C' : '#fff', color: kategori === k ? '#fff' : '#5a7da0', fontSize: '12px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            <button key={k} onClick={() => setKategori(k)} className="filter-chip" style={{ padding: '0 16px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', borderRadius: '22px', border: '0.5px solid', borderColor: kategori === k ? '#0C447C' : '#c5d9ef', background: kategori === k ? '#0C447C' : '#fff', color: kategori === k ? '#fff' : '#5a7da0', fontSize: '12px', fontWeight: kategori === k ? '600' : '400', cursor: 'pointer', whiteSpace: 'nowrap' }}>
               {k === 'semua' ? 'Semua' : k}
             </button>
           ))}

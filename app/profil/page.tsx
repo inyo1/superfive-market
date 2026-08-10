@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase'
 import Navbar from '../components/Navbar'
 import BadgeVerifikasi from '../components/BadgeVerifikasi'
 import Skeleton, { SkeletonPanel } from '../components/Skeleton'
+import Tombol from '../components/Tombol'
 
 export default function ProfilPage() {
   const router = useRouter()
@@ -224,7 +225,7 @@ export default function ProfilPage() {
 
           <div style={{ marginBottom: '14px' }}>
             <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '6px' }}>Nomor HP / WhatsApp</label>
-            <input value={noHp} onChange={e => setNoHp(e.target.value)} type="tel" placeholder="08xxxxxxxxxx"
+            <input value={noHp} onChange={e => setNoHp(e.target.value)} type="tel" inputMode="tel" placeholder="08xxxxxxxxxx"
               style={{ width: '100%', padding: '10px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
           </div>
 
@@ -255,7 +256,7 @@ export default function ProfilPage() {
             </div>
             <div>
               <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '6px' }}>Kode Pos</label>
-              <input value={kodePos} onChange={e => setKodePos(e.target.value)} type="tel" placeholder="40xxx"
+              <input value={kodePos} onChange={e => setKodePos(e.target.value.replace(/\D/g, ''))} type="tel" inputMode="numeric" maxLength={5} placeholder="40xxx"
                 style={{ width: '100%', padding: '10px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
             </div>
           </div>
@@ -280,15 +281,15 @@ export default function ProfilPage() {
           </div>
         )}
 
-        <button onClick={handleSave} disabled={saving}
-          style={{
-            width: '100%', background: saving ? '#7fa8c9' : '#0C447C',
-            color: '#fff', border: 'none', padding: '13px',
-            borderRadius: '10px', fontSize: '14px', fontWeight: '600',
-            cursor: saving ? 'not-allowed' : 'pointer', marginBottom: '12px',
-          }}>
-          {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
-        </button>
+        <Tombol
+          onClick={handleSave}
+          loading={saving}
+          teksLoading="Menyimpan..."
+          penuh
+          style={{ padding: '14px', fontSize: '14px', borderRadius: '10px', marginBottom: '12px' }}
+        >
+          Simpan Perubahan
+        </Tombol>
 
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
           <a href="/dashboard" style={{ fontSize: '13px', color: '#0C447C', textDecoration: 'none' }}>📊 Dashboard</a>

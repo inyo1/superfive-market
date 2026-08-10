@@ -8,6 +8,10 @@ import Navbar from '../components/Navbar'
 import FotoProduk from '../components/FotoProduk'
 import Skeleton, { DaftarSkeletonPesanan } from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
+import InputHarga from '../components/InputHarga'
+import DialogKonfirmasi from '../components/DialogKonfirmasi'
+import Tombol from '../components/Tombol'
+import { keAngka } from '../../lib/format'
 
 type Toko = { id: string; nama_toko: string; kategori: string }
 type Produk = { id: string; nama: string; harga: number; kategori: string; stok: number; terjual: number; rating: number; deskripsi: string; foto_url?: string | null }
@@ -64,6 +68,7 @@ export default function DashboardPage() {
 
   // Hapus konfirmasi
   const [hapusId, setHapusId] = useState<string | null>(null)
+  const [menghapus, setMenghapus] = useState(false)
 
   // Form pengiriman — muncul saat penjual mau menandai pesanan "dikirim"
   const [kirimId, setKirimId] = useState<string | null>(null)
@@ -131,13 +136,13 @@ export default function DashboardPage() {
     }
 
     const { error } = await supabase.from('produk').update({
-      nama: editData.nama, harga: Number(editData.harga),
-      kategori: editData.kategori, stok: Number(editData.stok),
+      nama: editData.nama, harga: keAngka(editData.harga),
+      kategori: editData.kategori, stok: keAngka(editData.stok),
       deskripsi: editData.deskripsi, foto_url,
     }).eq('id', editId)
 
     if (!error) {
-      setProduk(prev => prev.map(p => p.id === editId ? { ...p, ...editData, harga: Number(editData.harga), stok: Number(editData.stok), foto_url } as Produk : p))
+      setProduk(prev => prev.map(p => p.id === editId ? { ...p, ...editData, harga: keAngka(editData.harga), stok: keAngka(editData.stok), foto_url } as Produk : p))
       notif('Produk berhasil diperbarui!')
       setEditId(null)
     } else notif('Gagal: ' + error.message)
@@ -145,11 +150,13 @@ export default function DashboardPage() {
   }
 
   async function hapusProduk(id: string) {
+    setMenghapus(true)
     const { error } = await supabase.from('produk').delete().eq('id', id)
     if (!error) {
       setProduk(prev => prev.filter(p => p.id !== id))
       notif('Produk dihapus.')
     } else notif('Gagal hapus: ' + error.message)
+    setMenghapus(false)
     setHapusId(null)
   }
 
@@ -277,21 +284,34 @@ export default function DashboardPage() {
               </button>
             </div>
 
-            {[
-              { label: 'Nama Produk', key: 'nama', type: 'text' },
-              { label: 'Harga (Rp)', key: 'harga', type: 'number' },
-              { label: 'Stok', key: 'stok', type: 'number' },
-            ].map(f => (
-              <div key={f.key} style={{ marginBottom: '10px' }}>
-                <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '4px' }}>{f.label}</label>
-                <input
-                  type={f.type}
-                  value={(editData as any)[f.key] ?? ''}
-                  onChange={e => setEditData(prev => ({ ...prev, [f.key]: e.target.value }))}
-                  style={{ width: '100%', padding: '8px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}
-                />
-              </div>
-            ))}
+            <div style={{ marginBottom: '10px' }}>
+              <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '4px' }}>Nama Produk</label>
+              <input
+                value={editData.nama ?? ''}
+                onChange={e => setEditData(prev => ({ ...prev, nama: e.target.value }))}
+                style={{ width: '100%', padding: '11px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', minHeight: '44px' }}
+              />
+            </div>
+            <div style={{ marginBottom: '10px' }}>
+              <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '4px' }}>Harga</label>
+              <InputHarga
+                nilai={editData.harga ?? ''}
+                onChange={v => setEditData(prev => ({ ...prev, harga: v === '' ? undefined : Number(v) }))}
+              />
+            </div>
+            <div style={{ marginBottom: '10px' }}>
+              <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '4px' }}>Stok</label>
+              <input
+                value={editData.stok ?? ''}
+                onChange={e => {
+                  const v = e.target.value.replace(/\D/g, '')
+                  setEditData(prev => ({ ...prev, stok: v === '' ? undefined : Number(v) }))
+                }}
+                inputMode="numeric"
+                pattern="[0-9]*"
+                style={{ width: '100%', padding: '11px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', minHeight: '44px' }}
+              />
+            </div>
             <div style={{ marginBottom: '10px' }}>
               <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '4px' }}>Kategori</label>
               <select value={editData.kategori ?? ''} onChange={e => setEditData(prev => ({ ...prev, kategori: e.target.value }))}
@@ -305,29 +325,21 @@ export default function DashboardPage() {
                 style={{ width: '100%', padding: '8px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', resize: 'none', boxSizing: 'border-box' }} />
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={() => setEditId(null)} style={{ flex: 1, background: '#f0f5fb', color: '#5a7da0', border: 'none', padding: '10px', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' }}>Batal</button>
-              <button onClick={simpanEdit} disabled={saving} style={{ flex: 2, background: '#0C447C', color: '#fff', border: 'none', padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>
-                {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
-              </button>
+              <Tombol varian="lembut" onClick={() => setEditId(null)} disabled={saving} style={{ flex: 1, background: '#f0f5fb', color: '#5a7da0' }}>Batal</Tombol>
+              <Tombol onClick={simpanEdit} loading={saving} teksLoading="Menyimpan..." style={{ flex: 2 }}>Simpan Perubahan</Tombol>
             </div>
           </div>
         </div>
       )}
 
-      {/* Hapus konfirmasi */}
-      {hapusId && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ background: '#fff', borderRadius: '12px', padding: '24px', width: '100%', maxWidth: '340px', textAlign: 'center' }}>
-            <div style={{ fontSize: '36px', marginBottom: '12px' }}>🗑️</div>
-            <div style={{ fontSize: '15px', fontWeight: '600', color: '#1a1a1a', marginBottom: '8px' }}>Hapus produk ini?</div>
-            <div style={{ fontSize: '13px', color: '#5a7da0', marginBottom: '20px' }}>Tindakan ini tidak bisa dibatalkan.</div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={() => setHapusId(null)} style={{ flex: 1, background: '#f0f5fb', color: '#5a7da0', border: 'none', padding: '10px', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' }}>Batal</button>
-              <button onClick={() => hapusProduk(hapusId)} style={{ flex: 1, background: '#c62828', color: '#fff', border: 'none', padding: '10px', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' }}>Hapus</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <DialogKonfirmasi
+        terbuka={!!hapusId}
+        judul="Hapus produk ini?"
+        pesan="Produk akan hilang dari etalase dan tidak bisa dikembalikan."
+        memproses={menghapus}
+        onBatal={() => setHapusId(null)}
+        onKonfirmasi={() => hapusId && hapusProduk(hapusId)}
+      />
 
       <div style={{ maxWidth: '660px', margin: '0 auto', padding: '16px' }}>
 

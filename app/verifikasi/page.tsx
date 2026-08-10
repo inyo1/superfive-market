@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { uploadBuktiAlumni } from '../../lib/buktiAlumni'
 import Navbar from '../components/Navbar'
 import Skeleton, { SkeletonPanel } from '../components/Skeleton'
+import Tombol from '../components/Tombol'
 
 const MAX_UKURAN = 5 * 1024 * 1024 // 5 MB
 
@@ -240,18 +241,15 @@ export default function VerifikasiPage() {
           </div>
         )}
 
-        <button
+        <Tombol
           onClick={kirim}
-          disabled={mengirim}
-          style={{
-            width: '100%', background: mengirim ? '#7fa8c9' : '#0C447C',
-            color: '#fff', border: 'none', padding: '14px',
-            borderRadius: '10px', fontSize: '14px', fontWeight: '600',
-            cursor: mengirim ? 'not-allowed' : 'pointer', marginBottom: '10px',
-          }}
+          loading={mengirim}
+          teksLoading="Mengirim..."
+          penuh
+          style={{ padding: '15px', fontSize: '14px', borderRadius: '10px', marginBottom: '10px' }}
         >
-          {mengirim ? 'Mengirim...' : ditolak ? 'Kirim Ulang Pengajuan' : 'Kirim Pengajuan'}
-        </button>
+          {ditolak ? 'Kirim Ulang Pengajuan' : 'Kirim Pengajuan'}
+        </Tombol>
 
         {status === 'menunggu' && sudahAdaBukti && (
           <div style={{ background: '#fff8e1', border: '0.5px solid #ffe082', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', color: '#f57f17', textAlign: 'center', marginBottom: '10px' }}>

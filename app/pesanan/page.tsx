@@ -153,7 +153,9 @@ export default function PesananPage() {
                 key={t}
                 onClick={() => setTab(t)}
                 style={{
-                  flexShrink: 0, padding: '7px 14px', borderRadius: '20px',
+                  flexShrink: 0, padding: '0 16px', minHeight: '44px',
+                  display: 'inline-flex', alignItems: 'center',
+                  borderRadius: '22px',
                   border: aktif ? 'none' : '0.5px solid #c5d9ef',
                   background: aktif ? '#0C447C' : '#fff',
                   color: aktif ? '#fff' : '#5a7da0',

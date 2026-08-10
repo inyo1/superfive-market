@@ -139,7 +139,8 @@ export default function Home() {
               </div>
             </div>
             <a href="/verifikasi" style={{
-              background: '#f57f17', color: '#fff', padding: '8px 16px',
+              background: '#f57f17', color: '#fff', padding: '0 18px',
+              minHeight: '44px', display: 'inline-flex', alignItems: 'center',
               borderRadius: '8px', fontSize: '12px', fontWeight: '600',
               textDecoration: 'none', flexShrink: 0,
             }}>
@@ -189,7 +190,7 @@ export default function Home() {
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '24px' }}>
             <a href="/auth" style={{
               background: '#fff', color: '#0C447C',
-              padding: '11px 22px', borderRadius: '9px',
+              padding: '0 22px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', borderRadius: '9px',
               fontSize: '13px', fontWeight: '700', textDecoration: 'none',
               textTransform: 'uppercase', letterSpacing: '0.5px',
             }}>
@@ -197,7 +198,7 @@ export default function Home() {
             </a>
             <a href="/auth" style={{
               background: 'rgba(255,255,255,0.14)', color: '#fff',
-              padding: '11px 22px', borderRadius: '9px',
+              padding: '0 22px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', borderRadius: '9px',
               fontSize: '13px', fontWeight: '600', textDecoration: 'none',
               border: '1px solid rgba(255,255,255,0.28)',
               textTransform: 'uppercase', letterSpacing: '0.5px',
@@ -291,7 +292,7 @@ export default function Home() {
         <div style={{ marginBottom: '28px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <div style={{ fontSize: '13px', fontWeight: '700', color: '#1a1a1a' }}>Produk Terbaru</div>
-            <a href="/produk" style={{ fontSize: '12px', color: '#0C447C', textDecoration: 'none', fontWeight: '600' }}>
+            <a href="/produk" style={{ fontSize: '12px', color: '#0C447C', textDecoration: 'none', fontWeight: '600', minHeight: '44px', display: 'inline-flex', alignItems: 'center', padding: '0 4px' }}>
               Lihat Semua →
             </a>
           </div>
@@ -365,14 +366,14 @@ export default function Home() {
           <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
             <a href="/produk/tambah" onClick={handleJualClick} style={{
               background: '#fff', color: '#0C447C', fontWeight: '700',
-              padding: '10px 22px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none',
+              padding: '0 22px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', borderRadius: '8px', fontSize: '13px', textDecoration: 'none',
             }}>
               + Tambah Produk
             </a>
             <a href="/auth" style={{
               background: 'rgba(255,255,255,0.15)', color: '#fff',
               border: '1px solid rgba(255,255,255,0.3)',
-              padding: '10px 22px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none',
+              padding: '0 22px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', borderRadius: '8px', fontSize: '13px', textDecoration: 'none',
             }}>
               Daftar Sekarang
             </a>

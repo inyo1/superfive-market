@@ -4,6 +4,9 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '../../../lib/supabase'
 import { uploadFotoProduk } from '../../../lib/uploadFoto'
 import Navbar from '../../components/Navbar'
+import InputHarga from '../../components/InputHarga'
+import Tombol from '../../components/Tombol'
+import { keAngka } from '../../../lib/format'
 
 export default function TambahProduk() {
   const router = useRouter()
@@ -83,9 +86,9 @@ export default function TambahProduk() {
 
     const { error } = await supabase.from('produk').insert({
       toko_id: tokoId,
-      nama, harga: parseInt(harga),
+      nama, harga: keAngka(harga),
       deskripsi, kategori,
-      stok: parseInt(stok) || 0,
+      stok: keAngka(stok),
       foto_url,
     })
 
@@ -179,12 +182,12 @@ export default function TambahProduk() {
           {/* Harga & Stok */}
           <div style={{ display: 'flex', gap: '10px', marginBottom: '12px' }}>
             <div style={{ flex: 1 }}>
-              <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '4px' }}>Harga (Rp) *</label>
-              <input value={harga} onChange={e => setHarga(e.target.value)} type="number" placeholder="100000" style={{ width: '100%', padding: '9px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
+              <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '4px' }}>Harga *</label>
+              <InputHarga nilai={harga} onChange={setHarga} placeholder="100.000" />
             </div>
             <div style={{ flex: 1 }}>
               <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '4px' }}>Stok</label>
-              <input value={stok} onChange={e => setStok(e.target.value)} type="number" placeholder="10" style={{ width: '100%', padding: '9px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
+              <input value={stok} onChange={e => setStok(e.target.value.replace(/\D/g, ''))} inputMode="numeric" pattern="[0-9]*" placeholder="10" style={{ width: '100%', padding: '11px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', minHeight: '44px' }} />
             </div>
           </div>
 
@@ -213,9 +216,15 @@ export default function TambahProduk() {
             </div>
           )}
 
-          <button onClick={handleTambah} disabled={loading} style={{ width: '100%', background: loading ? '#7fa8c9' : '#0C447C', color: '#fff', border: 'none', padding: '12px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer' }}>
-            {loading ? (foto ? 'Mengupload foto...' : 'Menyimpan...') : 'Tambah Produk'}
-          </button>
+          <Tombol
+            onClick={handleTambah}
+            loading={loading}
+            teksLoading={foto ? 'Mengupload foto...' : 'Menyimpan...'}
+            penuh
+            style={{ padding: '14px', fontSize: '14px', borderRadius: '10px' }}
+          >
+            Tambah Produk
+          </Tombol>
         </div>
       </div>
     </main>

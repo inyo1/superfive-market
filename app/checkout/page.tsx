@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useCart } from '../context/CartContext'
 import { supabase } from '../../lib/supabase'
 import Navbar from '../components/Navbar'
+import Tombol from '../components/Tombol'
 
 const metodeBayar = [
   { id: 'transfer_bca', label: 'Transfer BCA', icon: '🏦', info: 'BCA 1234567890 a/n Superfive Market' },
@@ -211,8 +212,8 @@ export default function CheckoutPage() {
           </div>
 
           {[
-            { label: 'Nama Lengkap', value: nama, set: setNama, placeholder: 'Nama penerima', type: 'text' },
-            { label: 'Nomor HP / WhatsApp', value: noHp, set: setNoHp, placeholder: '08xxxxxxxxxx', type: 'tel' },
+            { label: 'Nama Lengkap', value: nama, set: setNama, placeholder: 'Nama penerima', type: 'text', mode: 'text' as const },
+            { label: 'Nomor HP / WhatsApp', value: noHp, set: setNoHp, placeholder: '08xxxxxxxxxx', type: 'tel', mode: 'tel' as const },
           ].map(f => (
             <div key={f.label} style={{ marginBottom: '12px' }}>
               <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '4px' }}>{f.label}</label>
@@ -220,8 +221,9 @@ export default function CheckoutPage() {
                 value={f.value}
                 onChange={e => f.set(e.target.value)}
                 type={f.type}
+                inputMode={f.mode}
                 placeholder={f.placeholder}
-                style={{ width: '100%', padding: '9px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '11px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', minHeight: '44px' }}
               />
             </div>
           ))}
@@ -319,18 +321,15 @@ export default function CheckoutPage() {
         )}
 
         {/* Tombol checkout */}
-        <button
+        <Tombol
           onClick={handleCheckout}
-          disabled={loading}
-          style={{
-            width: '100%', background: loading ? '#7fa8c9' : '#0C447C',
-            color: '#fff', border: 'none', padding: '14px',
-            borderRadius: '10px', fontSize: '14px', fontWeight: '600',
-            cursor: loading ? 'not-allowed' : 'pointer', marginBottom: '10px',
-          }}
+          loading={loading}
+          teksLoading="Membuat pesanan..."
+          penuh
+          style={{ padding: '15px', fontSize: '14px', borderRadius: '10px', marginBottom: '10px' }}
         >
-          {loading ? 'Memproses...' : `Pesan Sekarang — ${fmt(total)}`}
-        </button>
+          Pesan Sekarang — {fmt(total)}
+        </Tombol>
 
         <a href="/keranjang" style={{ display: 'block', textAlign: 'center', color: '#5a7da0', fontSize: '13px', textDecoration: 'none', paddingBottom: '24px' }}>
           ← Kembali ke Keranjang
