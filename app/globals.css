@@ -191,12 +191,16 @@ main {
 }
 
 /* ── Official Merchandise ──
-   Desktop grid empat kolom; di mobile berubah jadi carousel geser dengan
-   snap, kartu selebar 70% layar supaya kartu berikutnya terlihat mengintip. */
+   Dipakai untuk skeleton dan untuk mode mobile. Geseran desktop/tablet
+   ditangani transform di SectionOfficial, bukan di sini. */
 .merch-track {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 12px;
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .merch-track { grid-template-columns: repeat(3, 1fr); }
 }
 
 @media (max-width: 767px) {
@@ -217,7 +221,7 @@ main {
   .merch-track::-webkit-scrollbar { display: none; }
 
   .merch-item {
-    flex: 0 0 70%;
+    flex: 0 0 72%;
     scroll-snap-align: start;
   }
 }
