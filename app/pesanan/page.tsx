@@ -58,6 +58,7 @@ export default function PesananPage() {
   const [tab, setTab] = useState<Tab>('semua')
   const [loading, setLoading] = useState(true)
   const [pesan, setPesan] = useState('')
+  const [prosesId, setProsesId] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -80,6 +81,29 @@ export default function PesananPage() {
     }
     load()
   }, [])
+
+  // Pembeli menutup pesanan yang sudah sampai. Kolom terjual dan selesai_at
+  // diisi trigger database, jadi cukup kirim status-nya saja.
+  async function terimaPesanan(id: string) {
+    setProsesId(id)
+    try {
+      const { data, error } = await supabase.from('pesanan')
+        .update({ status: 'selesai' })
+        .eq('id', id)
+        .select('id, status')
+        .single()
+
+      if (error) throw new Error(error.message)
+      if (!data) throw new Error('Pesanan tidak ditemukan')
+
+      setPesanan(prev => prev.map(p => p.id === id ? { ...p, status: data.status } : p))
+      setPesan('Terima kasih! Pesanan ditandai selesai.')
+    } catch (e) {
+      setPesan('Gagal menyelesaikan pesanan: ' + (e instanceof Error ? e.message : 'coba lagi'))
+    } finally {
+      setProsesId(null)
+    }
+  }
 
   const terlihat = tab === 'semua' ? pesanan : pesanan.filter(p => p.status === tab)
 
@@ -225,6 +249,27 @@ export default function PesananPage() {
                   <div style={{ fontSize: '15px', fontWeight: '700', color: '#0C447C' }}>{fmt(p.total ?? 0)}</div>
                 </div>
               </div>
+
+              {/* Konfirmasi barang sampai — hanya saat pesanan dalam pengiriman */}
+              {p.status === 'dikirim' && (
+                <div style={{ padding: '0 14px 14px' }}>
+                  <button
+                    onClick={() => terimaPesanan(p.id)}
+                    disabled={prosesId === p.id}
+                    style={{
+                      width: '100%', background: prosesId === p.id ? '#a5d6a7' : '#2e7d32',
+                      color: '#fff', border: 'none', padding: '11px',
+                      borderRadius: '8px', fontSize: '13px', fontWeight: '600',
+                      cursor: prosesId === p.id ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {prosesId === p.id ? 'Menyimpan...' : '✓ Pesanan Diterima'}
+                  </button>
+                  <div style={{ fontSize: '11px', color: '#5a7da0', textAlign: 'center', marginTop: '6px' }}>
+                    Klik kalau barang sudah sampai di tanganmu.
+                  </div>
+                </div>
+              )}
             </div>
           )
         })}
