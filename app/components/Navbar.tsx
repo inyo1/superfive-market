@@ -1,5 +1,6 @@
 'use client'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
@@ -88,7 +89,7 @@ export default function Navbar() {
       aria-label="Profil"
     >
       {avatarUrl ? (
-        <img src={avatarUrl} alt="Profil" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        <Image src={avatarUrl} alt="Profil" width={size} height={size} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       ) : (
         <span style={{ fontSize: `${Math.round(size * 0.4)}px`, fontWeight: '700', color: '#fff', lineHeight: 1 }}>
           {initials}
@@ -154,7 +155,7 @@ export default function Navbar() {
 
           {/* Logo */}
           <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', flex: 1, minWidth: 0 }}>
-            <img src="/logo.png" alt="Logo" style={{ width: '60px', height: '60px', objectFit: 'contain', flexShrink: 0 }} />
+            <Image src="/logo.png" alt="Logo" width={60} height={60} priority style={{ objectFit: 'contain', flexShrink: 0 }} />
             <div style={{ minWidth: 0 }}>
               <div style={{ color: '#fff', fontSize: '15px', fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Superfive Market</div>
               <div style={{ color: '#B5D4F4', fontSize: '10px', letterSpacing: '1px' }}>ALUMNI SMPN 5 BANDUNG</div>

@@ -1,4 +1,5 @@
 'use client'
+import Image from 'next/image'
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '../../../lib/supabase'
@@ -33,7 +34,7 @@ function AvatarCircle({ nama, avatar, size = 30 }: { nama: string | null; avatar
       display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
     }}>
       {avatar
-        ? <img src={avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        ? <Image src={avatar} alt="" width={size} height={size} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         : <span style={{ fontSize: `${Math.round(size * 0.38)}px`, fontWeight: '700', color: '#fff' }}>{initials}</span>
       }
     </div>

@@ -1,4 +1,5 @@
 'use client'
+import Image from 'next/image'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -47,7 +48,7 @@ function Avatar({ nama, url, size = 48 }: { nama: string | null; url: string | n
       flexShrink: 0,
     }}>
       {url ? (
-        <img src={url} alt={nama ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        <Image src={url} alt={nama ?? ''} width={size} height={size} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       ) : (
         <span style={{ fontSize: `${Math.round(size * 0.38)}px`, fontWeight: '700', color: '#fff', lineHeight: 1 }}>
           {initials}

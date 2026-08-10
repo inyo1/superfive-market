@@ -1,4 +1,5 @@
 'use client'
+import Image from 'next/image'
 import { Suspense, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
@@ -84,7 +85,7 @@ function AuthContent() {
       <div style={{maxWidth:'380px',margin:'30px auto',padding:'0 16px'}}>
         <div style={{background:'#fff',borderRadius:'12px',padding:'24px',border:'0.5px solid #c5d9ef'}}>
           <div style={{textAlign:'center',marginBottom:'20px'}}>
-            <img src="/logo.png" alt="Logo" style={{width:'60px',height:'60px',objectFit:'contain',marginBottom:'8px'}} />
+            <Image src="/logo.png" alt="Logo" width={60} height={60} priority style={{objectFit:"contain",marginBottom:"8px"}} />
             <div style={{fontSize:'16px',fontWeight:'500',color:'#0C447C'}}>Superfive Market</div>
             <div style={{fontSize:'12px',color:'#5a7da0'}}>Khusus alumni SMPN 5 Bandung</div>
           </div>

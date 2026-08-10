@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import Navbar from '../components/Navbar'
 
 export default function AboutPage() {
@@ -27,10 +28,13 @@ export default function AboutPage() {
           alignItems: 'center',
           gap: '24px',
         }}>
-          <img
+          <Image
             src="/logo.png"
             alt="Logo"
-            style={{ width: '160px', height: '160px', objectFit: 'contain', flexShrink: 0 }}
+            width={160}
+            height={160}
+            priority
+            style={{ objectFit: 'contain', flexShrink: 0 }}
           />
           <div>
             <h1 style={{

@@ -1,5 +1,6 @@
 'use client'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabase'
@@ -166,9 +167,10 @@ export default function Home() {
 
         {/* Logo + brand */}
         <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
-          <img
+          <Image
             src="/logo.png" alt="Superfive Market"
-            style={{ width: '120px', height: '120px', objectFit: 'contain', borderRadius: '20px', flexShrink: 0, filter: 'drop-shadow(0 4px 16px rgba(0,0,0,0.28))' }}
+            width={120} height={120} priority
+            style={{ objectFit: 'contain', borderRadius: '20px', flexShrink: 0, filter: 'drop-shadow(0 4px 16px rgba(0,0,0,0.28))' }}
           />
           <div>
             <div style={{ fontSize: '11px', color: '#7eb8f0', letterSpacing: '1.8px', textTransform: 'uppercase', marginBottom: '5px' }}>
@@ -223,11 +225,12 @@ export default function Home() {
             width: '50%', pointerEvents: 'none', overflow: 'hidden',
           }}
         >
-          <img
+          <Image
             src="/smpn5-hero.png"
             alt=""
+            fill
+            sizes="50vw"
             style={{
-              width: '100%', height: '100%',
               objectFit: 'cover', objectPosition: 'center',
               mixBlendMode: 'luminosity',
               opacity: 0.28,

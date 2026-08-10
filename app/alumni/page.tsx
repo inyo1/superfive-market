@@ -1,4 +1,5 @@
 'use client'
+import Image from 'next/image'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import Navbar from '../components/Navbar'
@@ -34,7 +35,7 @@ function Avatar({ member, size = 56 }: { member: Member; size?: number }) {
       border: '2px solid #e8f0f8', flexShrink: 0, margin: '0 auto',
     }}>
       {member.avatar_url ? (
-        <img src={member.avatar_url} alt={member.nama ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        <Image src={member.avatar_url} alt={member.nama ?? ''} width={size} height={size} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       ) : (
         <span style={{ fontSize: `${Math.round(size * 0.38)}px`, fontWeight: '700', color: '#fff', lineHeight: 1 }}>
           {initials}
