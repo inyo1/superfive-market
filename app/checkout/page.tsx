@@ -20,6 +20,14 @@ const emojiKategori: Record<string, string> = {
   Properti: '🏠', Jasa: '🛠️', UMKM: '🏪',
 }
 
+// Satu elemen per toko, dikembalikan RPC create_pesanan
+type PesananBaru = {
+  pesanan_id: string
+  nomor: string
+  toko_id: string | null
+  total: number
+}
+
 function buildAlamat(data: Record<string, string | null>) {
   const parts: string[] = []
   if (data.jalan) parts.push(data.jalan)
@@ -44,6 +52,7 @@ export default function CheckoutPage() {
   const [metode, setMetode] = useState('transfer_bca')
   const [loading, setLoading] = useState(false)
   const [sukses, setSukses] = useState<string | null>(null)
+  const [totalBayar, setTotalBayar] = useState(0)
   const [error, setError] = useState('')
   const [autoFilled, setAutoFilled] = useState(false)
 
@@ -92,6 +101,7 @@ export default function CheckoutPage() {
 
   if (sukses) {
     const selectedMetode = metodeBayar.find(m => m.id === metode)
+    const nomorList = sukses.split(', ')
     return (
       <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
         <Navbar />
@@ -104,8 +114,15 @@ export default function CheckoutPage() {
             </p>
 
             <div style={{ background: '#f0f5fb', borderRadius: '8px', padding: '12px 16px', marginBottom: '16px', textAlign: 'left' }}>
-              <div style={{ fontSize: '11px', color: '#5a7da0', marginBottom: '4px' }}>ID Pesanan</div>
+              <div style={{ fontSize: '11px', color: '#5a7da0', marginBottom: '4px' }}>
+                {nomorList.length > 1 ? `Nomor Pesanan (${nomorList.length} toko)` : 'Nomor Pesanan'}
+              </div>
               <div style={{ fontSize: '13px', fontWeight: '600', color: '#0C447C', fontFamily: 'monospace' }}>{sukses}</div>
+              {nomorList.length > 1 && (
+                <div style={{ fontSize: '11px', color: '#5a7da0', marginTop: '6px' }}>
+                  Pesananmu dipecah per toko supaya tiap penjual bisa memprosesnya sendiri.
+                </div>
+              )}
             </div>
 
             <div style={{ background: '#E6F1FB', borderRadius: '8px', padding: '12px 16px', marginBottom: '20px', textAlign: 'left' }}>
@@ -114,7 +131,7 @@ export default function CheckoutPage() {
               </div>
               <div style={{ fontSize: '12px', color: '#5a7da0' }}>{selectedMetode?.info}</div>
               <div style={{ fontSize: '14px', fontWeight: '700', color: '#0C447C', marginTop: '8px' }}>
-                Total: {fmt(total)}
+                Total: {fmt(totalBayar)}
               </div>
             </div>
 
@@ -139,33 +156,40 @@ export default function CheckoutPage() {
     setError('')
     setLoading(true)
 
-    const { data: { user } } = await supabase.auth.getUser()
+    try {
+      // Wajib login: RPC menolak kalau auth.uid() null, dan RLS butuh buyer_id = auth.uid()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        router.replace('/auth?redirect=/checkout&msg=Login+dulu+untuk+menyelesaikan+pesanan')
+        return
+      }
 
-    const { data, error: errDb } = await supabase
-      .from('pesanan')
-      .insert({
-        user_id: user?.id ?? null,
-        nama,
-        no_hp: noHp,
-        alamat,
-        catatan,
-        metode_bayar: metode,
-        total,
-        items: items.map(i => ({ id: i.id, nama: i.nama, harga: i.harga, qty: i.qty, kategori: i.kategori })),
-        status: 'menunggu',
+      // Semua dikerjakan server dalam satu transaksi: pecah per toko, satu group_id,
+      // pesanan + pesanan_items sekaligus. Harga diambil dari DB — client cuma
+      // kirim produk_id dan qty supaya harga tidak bisa diutak-atik dari browser.
+      const { data, error: errRpc } = await supabase.rpc('create_pesanan', {
+        p_penerima_nama: nama,
+        p_penerima_hp: noHp,
+        p_alamat: alamat,
+        p_catatan: catatan,
+        p_metode_bayar: metode,
+        p_items: items.map(i => ({ produk_id: i.id, qty: i.qty })),
       })
-      .select('id')
-      .single()
 
-    if (errDb || !data) {
-      setError('Gagal membuat pesanan: ' + (errDb?.message ?? 'Coba lagi'))
+      // Pesan error dari RPC sudah berbahasa Indonesia, tampilkan apa adanya
+      if (errRpc) throw new Error(errRpc.message)
+
+      const hasil = (data ?? []) as PesananBaru[]
+      if (hasil.length === 0) throw new Error('Pesanan gagal dibuat. Coba lagi.')
+
+      setTotalBayar(hasil.reduce((sum, p) => sum + (p.total ?? 0), 0))
+      kosongkan()
+      setSukses(hasil.map(p => p.nomor).filter(Boolean).join(', '))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Terjadi kesalahan. Coba lagi.')
+    } finally {
       setLoading(false)
-      return
     }
-
-    kosongkan()
-    setSukses(data.id)
-    setLoading(false)
   }
 
   return (
