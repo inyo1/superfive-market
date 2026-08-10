@@ -81,7 +81,7 @@ export default function ChatRoom() {
 
       const otherId = conv.buyer_id === user.id ? conv.seller_id : conv.buyer_id
       const { data: profile } = await supabase
-        .from('users').select('nama, avatar_url, status_verifikasi').eq('id', otherId).single()
+        .from('alumni_publik').select('nama, avatar_url, status_verifikasi').eq('id', otherId).single()
 
       setConvInfo({
         otherNama: profile?.nama ?? null,

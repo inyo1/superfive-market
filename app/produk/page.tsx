@@ -40,9 +40,30 @@ export default function ProdukPage() {
   async function fetchProduk() {
     const { data, error } = await supabase
       .from('produk')
-      .select(`*, toko(nama_toko, seller_id, users(angkatan, status_verifikasi))`)
+      .select(`*, toko(nama_toko, seller_id)`)
       .order('created_at', { ascending: false })
-    if (!error && data) setProduk(data as any)
+
+    if (error || !data) { setLoading(false); return }
+
+    // Info penjual diambil terpisah dari alumni_publik lalu digabung di sini,
+    // karena embed foreign key ke users sudah tidak bisa dibaca publik.
+    const sellerIds = [...new Set(
+      data.map((p: any) => p.toko?.seller_id).filter(Boolean)
+    )] as string[]
+
+    let penjualById: Record<string, { angkatan: number | null; status_verifikasi: string | null }> = {}
+    if (sellerIds.length > 0) {
+      const { data: penjual } = await supabase
+        .from('alumni_publik')
+        .select('id, angkatan, status_verifikasi')
+        .in('id', sellerIds)
+      penjualById = Object.fromEntries((penjual ?? []).map(u => [u.id, u]))
+    }
+
+    setProduk(data.map((p: any) => ({
+      ...p,
+      toko: p.toko ? { ...p.toko, users: penjualById[p.toko.seller_id] ?? null } : null,
+    })) as any)
     setLoading(false)
   }
 

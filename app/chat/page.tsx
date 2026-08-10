@@ -64,7 +64,7 @@ export default function ChatListPage() {
 
       const otherIds = rawConvs.map(c => c.buyer_id === user.id ? c.seller_id : c.buyer_id)
       const { data: profiles } = await supabase
-        .from('users')
+        .from('alumni_publik')
         .select('id, nama, avatar_url, status_verifikasi')
         .in('id', [...new Set(otherIds)])
 

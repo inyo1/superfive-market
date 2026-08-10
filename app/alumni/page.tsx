@@ -49,7 +49,9 @@ export default function AlumniPage() {
   useEffect(() => {
     async function load() {
       const [usersRes, tokoRes, produkRes] = await Promise.all([
-        supabase.from('users').select('id, nama, angkatan, avatar_url, status_verifikasi'),
+        // alumni_publik: view aman berisi kolom yang boleh dilihat publik.
+        // Tabel users sekarang hanya bisa dibaca pemiliknya sendiri dan admin.
+        supabase.from('alumni_publik').select('id, nama, angkatan, avatar_url, status_verifikasi'),
         supabase.from('toko').select('id, seller_id'),
         supabase.from('produk').select('toko_id'),
       ])

@@ -81,12 +81,29 @@ export default function SearchOverlay({ open, onClose }: { open: boolean; onClos
         .or(`nama.ilike.%${q}%,deskripsi.ilike.%${q}%`)
         .limit(5),
       supabase.from('toko')
-        .select('id, nama_toko, kategori, users(angkatan)')
+        .select('id, nama_toko, kategori, seller_id')
         .ilike('nama_toko', `%${q}%`)
         .limit(4),
     ])
+
+    // Angkatan penjual digabung dari alumni_publik — users tidak lagi terbaca publik
+    const tokoRows = (tokoRes.data ?? []) as { id: string; nama_toko: string; kategori: string; seller_id: string | null }[]
+    const sellerIds = [...new Set(tokoRows.map(t => t.seller_id).filter(Boolean))] as string[]
+
+    let angkatanById: Record<string, number | null> = {}
+    if (sellerIds.length > 0) {
+      const { data: penjual } = await supabase
+        .from('alumni_publik')
+        .select('id, angkatan')
+        .in('id', sellerIds)
+      angkatanById = Object.fromEntries((penjual ?? []).map(u => [u.id, u.angkatan]))
+    }
+
     setProduk((produkRes.data ?? []) as unknown as ProdukResult[])
-    setToko((tokoRes.data ?? []) as unknown as TokoResult[])
+    setToko(tokoRows.map(t => ({
+      ...t,
+      users: t.seller_id ? { angkatan: angkatanById[t.seller_id] ?? null } : null,
+    })) as unknown as TokoResult[])
     setLoading(false)
   }
 

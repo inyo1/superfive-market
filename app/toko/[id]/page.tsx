@@ -13,7 +13,7 @@ type Toko = {
   nama_toko: string
   kategori: string
   deskripsi?: string
-  users: { nama: string; angkatan: number; status_verifikasi: string | null }
+  users: { nama: string | null; angkatan: number | null; status_verifikasi: string | null } | null
 }
 
 type Produk = {
@@ -67,12 +67,21 @@ export default function TokoPage() {
     async function fetch() {
       const { data: tokoData, error } = await supabase
         .from('toko')
-        .select('*, users(nama, angkatan, status_verifikasi)')
+        .select('*')
         .eq('id', id)
         .single()
 
       if (error || !tokoData) { setNotFound(true); setLoading(false); return }
-      setToko(tokoData as any)
+
+      // Data penjual diambil terpisah dari view alumni_publik — embed lewat
+      // foreign key ke users tidak lagi bisa dipakai sejak users ditutup.
+      const { data: penjual } = await supabase
+        .from('alumni_publik')
+        .select('nama, angkatan, status_verifikasi')
+        .eq('id', tokoData.seller_id)
+        .single()
+
+      setToko({ ...tokoData, users: penjual ?? null } as any)
       setNamaBaru(tokoData.nama_toko)
       setDeskripsiBaru(tokoData.deskripsi ?? '')
 

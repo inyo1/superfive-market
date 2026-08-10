@@ -89,7 +89,9 @@ export default function Home() {
         supabase.auth.getUser(),
         supabase.from('produk').select('*', { count: 'exact', head: true }),
         supabase.from('toko').select('*', { count: 'exact', head: true }),
-        supabase.from('users').select('*', { count: 'exact', head: true }),
+        // Hitung dari view publik — tabel users tidak lagi bisa dibaca umum,
+        // kalau tetap dari sana angkanya jadi 0 untuk pengunjung
+        supabase.from('alumni_publik').select('*', { count: 'exact', head: true }),
         supabase.from('produk')
           .select('id, nama, harga, kategori, foto_url, terjual, rating, toko(nama_toko)')
           .order('created_at', { ascending: false })

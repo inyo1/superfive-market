@@ -57,14 +57,26 @@ export default function DetailProduk() {
     async function fetchProduk() {
       const { data, error } = await supabase
         .from('produk')
-        .select('*, toko(id, nama_toko, seller_id, users(angkatan))')
+        .select('*, toko(id, nama_toko, seller_id)')
         .eq('id', id)
         .single()
 
       if (error || !data) {
         setNotFound(true)
       } else {
-        setProduk(data as any)
+        // Angkatan penjual diambil dari alumni_publik, bukan embed ke users
+        const sellerId = (data as any).toko?.seller_id
+        let penjual: { angkatan: number | null; status_verifikasi: string | null } | null = null
+        if (sellerId) {
+          const { data: u } = await supabase
+            .from('alumni_publik')
+            .select('angkatan, status_verifikasi')
+            .eq('id', sellerId)
+            .single()
+          penjual = u ?? null
+        }
+        const toko = (data as any).toko
+        setProduk({ ...data, toko: toko ? { ...toko, users: penjual } : null } as any)
       }
       setLoading(false)
     }
