@@ -4,6 +4,7 @@ import { Suspense, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 import Navbar from '../components/Navbar'
+import InputPassword from '../components/InputPassword'
 
 function AuthContent() {
   const searchParams = useSearchParams()
@@ -103,19 +104,47 @@ function AuthContent() {
 
           {mode==='register' && (
             <div style={{marginBottom:'12px'}}>
-              <label style={{fontSize:'12px',color:'#5a7da0',display:'block',marginBottom:'4px'}}>Nama Lengkap</label>
-              <input value={nama} onChange={e=>setNama(e.target.value)} placeholder="Nama kamu" style={{width:'100%',padding:'9px 12px',border:'0.5px solid #c5d9ef',borderRadius:'8px',fontSize:'13px',outline:'none'}} />
+              <label htmlFor="nama" style={{fontSize:'12px',color:'#5a7da0',display:'block',marginBottom:'4px'}}>Nama Lengkap</label>
+              <input
+                id="nama"
+                name="name"
+                value={nama}
+                onChange={e=>setNama(e.target.value)}
+                autoComplete="name"
+                placeholder="Nama kamu"
+                style={{width:'100%',padding:'11px 12px',border:'0.5px solid #c5d9ef',borderRadius:'8px',fontSize:'13px',outline:'none',boxSizing:'border-box',minHeight:'44px'}}
+              />
             </div>
           )}
 
           <div style={{marginBottom:'12px'}}>
-            <label style={{fontSize:'12px',color:'#5a7da0',display:'block',marginBottom:'4px'}}>Email</label>
-            <input value={email} onChange={e=>setEmail(e.target.value)} type="email" placeholder="email@kamu.com" style={{width:'100%',padding:'9px 12px',border:'0.5px solid #c5d9ef',borderRadius:'8px',fontSize:'13px',outline:'none'}} />
+            <label htmlFor="email" style={{fontSize:'12px',color:'#5a7da0',display:'block',marginBottom:'4px'}}>Email</label>
+            <input
+              id="email"
+              name="email"
+              value={email}
+              onChange={e=>setEmail(e.target.value)}
+              type="email"
+              // username, bukan email — ini yang dikenali password manager
+              // sebagai pasangan dari field kata sandi
+              autoComplete="username"
+              inputMode="email"
+              placeholder="email@kamu.com"
+              style={{width:'100%',padding:'11px 12px',border:'0.5px solid #c5d9ef',borderRadius:'8px',fontSize:'13px',outline:'none',boxSizing:'border-box',minHeight:'44px'}}
+            />
           </div>
 
           <div style={{marginBottom:'12px'}}>
-            <label style={{fontSize:'12px',color:'#5a7da0',display:'block',marginBottom:'4px'}}>Kata Sandi</label>
-            <input value={password} onChange={e=>setPassword(e.target.value)} type="password" placeholder="Min 6 karakter" style={{width:'100%',padding:'9px 12px',border:'0.5px solid #c5d9ef',borderRadius:'8px',fontSize:'13px',outline:'none'}} />
+            <label htmlFor="kata-sandi" style={{fontSize:'12px',color:'#5a7da0',display:'block',marginBottom:'4px'}}>Kata Sandi</label>
+            <InputPassword
+              id="kata-sandi"
+              value={password}
+              onChange={setPassword}
+              placeholder="Min 6 karakter"
+              // Daftar memakai new-password supaya password manager menawarkan
+              // membuat dan menyimpan sandi baru, bukan mengisi yang lama
+              autoComplete={mode==='register' ? 'new-password' : 'current-password'}
+            />
           </div>
 
           {mode==='register' && (
