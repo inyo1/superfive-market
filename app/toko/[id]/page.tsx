@@ -7,6 +7,7 @@ import { useCart } from '../../context/CartContext'
 import FotoProduk from '../../components/FotoProduk'
 import BadgeVerifikasi from '../../components/BadgeVerifikasi'
 import { useToast } from '../../context/ToastContext'
+import Skeleton, { GridSkeletonProduk } from '../../components/Skeleton'
 
 type Toko = {
   id: string
@@ -166,7 +167,10 @@ export default function TokoPage() {
     return (
       <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
         <Navbar />
-        <div style={{ textAlign: 'center', padding: '60px 20px', color: '#5a7da0' }}>Memuat profil toko...</div>
+        <div style={{ maxWidth: '660px', margin: '0 auto', padding: '16px' }}>
+          <Skeleton tinggi={110} radius={12} style={{ marginBottom: '16px' }} />
+          <GridSkeletonProduk jumlah={4} />
+        </div>
       </main>
     )
   }

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import Navbar from '../components/Navbar'
 import BadgeVerifikasi from '../components/BadgeVerifikasi'
+import Skeleton, { GridSkeletonAlumni } from '../components/Skeleton'
 
 type Member = {
   id: string
@@ -125,8 +126,10 @@ export default function AlumniPage() {
           <h1 style={{ fontSize: '22px', fontWeight: '800', color: '#fff', margin: '0 0 6px' }}>
             Alumni Superfive
           </h1>
-          <div style={{ fontSize: '13px', color: '#B5D4F4', marginBottom: '18px' }}>
-            {loading ? 'Memuat...' : `${total} alumni terdaftar`}
+          <div style={{ fontSize: '13px', color: '#B5D4F4', marginBottom: '18px', minHeight: '18px' }}>
+            {loading
+              ? <span className="skeleton" style={{ display: 'inline-block', width: '130px', height: '12px', borderRadius: '6px', opacity: 0.35 }} />
+              : `${total} alumni terdaftar`}
           </div>
 
           {/* Search */}
@@ -150,9 +153,14 @@ export default function AlumniPage() {
       <div style={{ maxWidth: '700px', margin: '0 auto', padding: '16px 16px 40px' }}>
 
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '60px 20px', color: '#5a7da0' }}>
-            Memuat data alumni...
-          </div>
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+              <Skeleton tinggi={24} lebar={128} radius={20} />
+              <Skeleton tinggi={11} lebar={60} />
+              <div style={{ flex: 1, height: '1px', background: '#dde8f4' }} />
+            </div>
+            <GridSkeletonAlumni jumlah={8} />
+          </>
         ) : filtered.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 20px' }}>
             <div style={{ fontSize: '36px', marginBottom: '10px' }}>🎓</div>

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 import { uploadBuktiAlumni } from '../../lib/buktiAlumni'
 import Navbar from '../components/Navbar'
+import Skeleton, { SkeletonPanel } from '../components/Skeleton'
 
 const MAX_UKURAN = 5 * 1024 * 1024 // 5 MB
 
@@ -103,7 +104,12 @@ export default function VerifikasiPage() {
   if (loading) return (
     <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
       <Navbar />
-      <div style={{ textAlign: 'center', padding: '60px', color: '#5a7da0' }}>Memuat...</div>
+      <div style={{ maxWidth: '520px', margin: '0 auto', padding: '16px' }}>
+        <Skeleton tinggi={18} lebar="45%" style={{ marginBottom: '6px' }} />
+        <Skeleton tinggi={11} lebar="60%" style={{ marginBottom: '18px' }} />
+        <SkeletonPanel baris={1} />
+        <SkeletonPanel baris={2} />
+      </div>
     </main>
   )
 

@@ -6,6 +6,7 @@ import Navbar from '../../components/Navbar'
 import { useCart } from '../../context/CartContext'
 import FotoProduk from '../../components/FotoProduk'
 import ReviewSection from '../../components/ReviewSection'
+import Skeleton from '../../components/Skeleton'
 
 type Produk = {
   id: string
@@ -168,8 +169,14 @@ export default function DetailProduk() {
     return (
       <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
         <Navbar />
-        <div style={{ textAlign: 'center', padding: '60px 20px', color: '#5a7da0' }}>
-          Memuat produk...
+        <div style={{ maxWidth: '560px', margin: '0 auto', padding: '16px' }}>
+          <Skeleton tinggi={240} radius={12} style={{ marginBottom: '14px' }} />
+          <Skeleton tinggi={18} lebar="75%" style={{ marginBottom: '10px' }} />
+          <Skeleton tinggi={22} lebar="45%" style={{ marginBottom: '16px' }} />
+          <Skeleton tinggi={12} style={{ marginBottom: '8px' }} />
+          <Skeleton tinggi={12} style={{ marginBottom: '8px' }} />
+          <Skeleton tinggi={12} lebar="60%" style={{ marginBottom: '20px' }} />
+          <Skeleton tinggi={46} radius={10} />
         </div>
       </main>
     )

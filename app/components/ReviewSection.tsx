@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import Skeleton from './Skeleton'
 
 type Review = {
   id: string
@@ -270,7 +271,18 @@ export default function ReviewSection({ produkId }: { produkId: string }) {
 
       {/* Daftar semua review */}
       {loading ? (
-        <div style={{ padding: '20px', textAlign: 'center', fontSize: '13px', color: '#5a7da0' }}>Memuat ulasan...</div>
+        <div style={{ padding: '16px 0' }}>
+          {[0, 1].map(i => (
+            <div key={i} style={{ display: 'flex', gap: '10px', marginBottom: '14px' }}>
+              <Skeleton tinggi={34} lebar={34} radius="50%" />
+              <div style={{ flex: 1 }}>
+                <Skeleton tinggi={11} lebar="38%" style={{ marginBottom: '6px' }} />
+                <Skeleton tinggi={10} lebar="26%" style={{ marginBottom: '8px' }} />
+                <Skeleton tinggi={10} lebar="85%" />
+              </div>
+            </div>
+          ))}
+        </div>
       ) : reviews.filter(r => r.user_id !== currentUserId).length > 0 ? (
         <div>
           {reviews.filter(r => r.user_id !== currentUserId).map((r, i, arr) => (

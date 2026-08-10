@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { STATUS_PESANAN, warnaStatus, labelStatus, warnaPembayaran, labelPembayaran } from '../../lib/statusPesanan'
 import Navbar from '../components/Navbar'
 import FotoProduk from '../components/FotoProduk'
+import Skeleton, { DaftarSkeletonPesanan } from '../components/Skeleton'
 
 type PesananItem = {
   id: string
@@ -114,7 +115,14 @@ export default function PesananPage() {
   if (loading) return (
     <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
       <Navbar />
-      <div style={{ textAlign: 'center', padding: '60px', color: '#5a7da0' }}>Memuat pesanan...</div>
+      <div style={{ maxWidth: '660px', margin: '0 auto', padding: '16px' }}>
+        <Skeleton tinggi={18} lebar="40%" style={{ marginBottom: '6px' }} />
+        <Skeleton tinggi={11} lebar="65%" style={{ marginBottom: '18px' }} />
+        <div style={{ display: 'flex', gap: '6px', marginBottom: '14px' }}>
+          {[62, 78, 70, 74].map((w, i) => <Skeleton key={i} tinggi={30} lebar={w} radius={20} />)}
+        </div>
+        <DaftarSkeletonPesanan jumlah={3} />
+      </div>
     </main>
   )
 

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 import Navbar from '../components/Navbar'
 import BadgeVerifikasi from '../components/BadgeVerifikasi'
+import Skeleton, { SkeletonPanel } from '../components/Skeleton'
 
 export default function ProfilPage() {
   const router = useRouter()
@@ -122,7 +123,15 @@ export default function ProfilPage() {
     return (
       <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
         <Navbar />
-        <div style={{ textAlign: 'center', padding: '60px 20px', color: '#5a7da0' }}>Memuat profil...</div>
+        <div style={{ maxWidth: '520px', margin: '0 auto', padding: '16px' }}>
+          <Skeleton tinggi={17} lebar="35%" style={{ marginBottom: '20px' }} />
+          <div style={{ background: '#fff', borderRadius: '12px', border: '0.5px solid #e8f0f8', padding: '18px', marginBottom: '12px', textAlign: 'center' }}>
+            <Skeleton tinggi={96} lebar={96} radius="50%" style={{ margin: '0 auto 12px' }} />
+            <Skeleton tinggi={13} lebar="45%" style={{ margin: '0 auto 6px' }} />
+            <Skeleton tinggi={11} lebar="60%" style={{ margin: '0 auto' }} />
+          </div>
+          <SkeletonPanel baris={4} />
+        </div>
       </main>
     )
   }

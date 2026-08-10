@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 import Navbar from '../components/Navbar'
 import BadgeVerifikasi from '../components/BadgeVerifikasi'
+import { DaftarSkeletonChat } from '../components/Skeleton'
 
 type ConvDisplay = {
   id: string
@@ -111,7 +112,7 @@ export default function ChatListPage() {
         </h1>
 
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '60px 20px', color: '#5a7da0' }}>Memuat...</div>
+          <DaftarSkeletonChat jumlah={4} />
         ) : convs.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 20px', background: '#fff', borderRadius: '12px', border: '0.5px solid #e8f0f8' }}>
             <div style={{ fontSize: '40px', marginBottom: '12px' }}>💬</div>

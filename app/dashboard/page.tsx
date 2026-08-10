@@ -6,6 +6,7 @@ import { uploadFotoProduk } from '../../lib/uploadFoto'
 import { statusBerikutnya, bisaDibatalkan, warnaStatus, labelStatus, warnaPembayaran, labelPembayaran, AKSI_STATUS } from '../../lib/statusPesanan'
 import Navbar from '../components/Navbar'
 import FotoProduk from '../components/FotoProduk'
+import Skeleton, { DaftarSkeletonPesanan } from '../components/Skeleton'
 
 type Toko = { id: string; nama_toko: string; kategori: string }
 type Produk = { id: string; nama: string; harga: number; kategori: string; stok: number; terjual: number; rating: number; deskripsi: string; foto_url?: string | null }
@@ -224,7 +225,14 @@ export default function DashboardPage() {
   if (loading) return (
     <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
       <Navbar />
-      <div style={{ textAlign: 'center', padding: '60px', color: '#5a7da0' }}>Memuat dashboard...</div>
+      <div style={{ maxWidth: '660px', margin: '0 auto', padding: '16px' }}>
+        <Skeleton tinggi={18} lebar="45%" style={{ marginBottom: '16px' }} />
+        <Skeleton tinggi={44} radius={10} style={{ marginBottom: '16px' }} />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
+          {[0, 1, 2, 3].map(i => <Skeleton key={i} tinggi={92} radius={10} />)}
+        </div>
+        <DaftarSkeletonPesanan jumlah={2} />
+      </div>
     </main>
   )
 

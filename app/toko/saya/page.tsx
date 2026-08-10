@@ -5,6 +5,7 @@ import { supabase } from '../../../lib/supabase'
 import { uploadFotoProduk } from '../../../lib/uploadFoto'
 import Navbar from '../../components/Navbar'
 import FotoProduk from '../../components/FotoProduk'
+import Skeleton, { GridSkeletonProduk } from '../../components/Skeleton'
 
 type Toko = { id: string; nama_toko: string; kategori: string }
 type Produk = {
@@ -115,7 +116,10 @@ export default function TokoSayaPage() {
     return (
       <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
         <Navbar />
-        <div style={{ textAlign: 'center', padding: '60px', color: '#5a7da0' }}>Memuat toko...</div>
+        <div style={{ maxWidth: '660px', margin: '0 auto', padding: '16px' }}>
+          <Skeleton tinggi={120} radius={12} style={{ marginBottom: '16px' }} />
+          <GridSkeletonProduk jumlah={4} />
+        </div>
       </main>
     )
   }

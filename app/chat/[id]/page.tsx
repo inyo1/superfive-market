@@ -4,6 +4,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '../../../lib/supabase'
 import Navbar from '../../components/Navbar'
 import BadgeVerifikasi from '../../components/BadgeVerifikasi'
+import Skeleton from '../../components/Skeleton'
 
 type Message = {
   id: string
@@ -171,7 +172,16 @@ export default function ChatRoom() {
     return (
       <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
         <Navbar />
-        <div style={{ textAlign: 'center', padding: '60px 20px', color: '#5a7da0' }}>Memuat chat...</div>
+        <div style={{ maxWidth: '600px', margin: '0 auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {[
+            { kiri: true, lebar: '62%' }, { kiri: false, lebar: '48%' },
+            { kiri: true, lebar: '70%' }, { kiri: false, lebar: '40%' },
+          ].map((b, i) => (
+            <div key={i} style={{ display: 'flex', justifyContent: b.kiri ? 'flex-start' : 'flex-end' }}>
+              <Skeleton tinggi={38} lebar={b.lebar} radius={12} />
+            </div>
+          ))}
+        </div>
       </main>
     )
   }
