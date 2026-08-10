@@ -1,21 +1,8 @@
+import { normalizeFotoUrl } from '../../lib/foto'
+
 const emojiKategori: Record<string, string> = {
   Teknologi: '💻', Fashion: '👗', Kuliner: '🍱',
   Properti: '🏠', Jasa: '🛠️', UMKM: '🏪',
-}
-
-// Handles all formats foto_url might come from Supabase:
-// - string[]  → text[] column  → ["https://..."]
-// - string    → text column    → "https://..."
-// - string    → text[] stored wrongly → "{https://...}" (PostgreSQL array literal)
-function normalizeFotoUrl(src: string | string[] | null | undefined): string | null {
-  if (!src) return null
-  if (Array.isArray(src)) return src[0] ?? null
-  if (src.startsWith('{') && src.endsWith('}')) {
-    // PostgreSQL array literal, e.g. {https://example.com/file.jpg}
-    const inner = src.slice(1, -1).replace(/^"(.*)"$/, '$1').trim()
-    return inner || null
-  }
-  return src
 }
 
 type Props = {
