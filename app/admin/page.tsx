@@ -4,6 +4,9 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 import Navbar from '../components/Navbar'
 import FotoProduk from '../components/FotoProduk'
+import DialogKonfirmasi from '../components/DialogKonfirmasi'
+
+type Konfirmasi = { jenis: 'produk' | 'toko'; id: string; nama: string }
 
 type UserRow = {
   id: string
@@ -43,6 +46,7 @@ export default function AdminPage() {
 
   const [pesan, setPesan] = useState<{ text: string; ok: boolean } | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [konfirmasi, setKonfirmasi] = useState<Konfirmasi | null>(null)
 
   useEffect(() => {
     async function init() {
@@ -103,8 +107,7 @@ export default function AdminPage() {
     setBusyId(null)
   }
 
-  async function hapusProduk(id: string, nama: string) {
-    if (!confirm(`Hapus produk "${nama}"?`)) return
+  async function hapusProduk(id: string) {
     setBusyId(id)
     const { error } = await supabase.from('produk').delete().eq('id', id)
     if (error) {
@@ -114,10 +117,10 @@ export default function AdminPage() {
       showPesan('Produk dihapus', true)
     }
     setBusyId(null)
+    setKonfirmasi(null)
   }
 
-  async function hapusToko(id: string, nama: string) {
-    if (!confirm(`Hapus toko "${nama}"? Semua produk toko ini ikut terhapus.`)) return
+  async function hapusToko(id: string) {
     setBusyId(id)
     // delete products first
     await supabase.from('produk').delete().eq('toko_id', id)
@@ -130,6 +133,7 @@ export default function AdminPage() {
       showPesan('Toko dihapus', true)
     }
     setBusyId(null)
+    setKonfirmasi(null)
   }
 
   if (!ready) {
@@ -152,6 +156,22 @@ export default function AdminPage() {
   return (
     <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
       <Navbar />
+
+      <DialogKonfirmasi
+        terbuka={!!konfirmasi}
+        judul={konfirmasi?.jenis === 'toko' ? 'Hapus toko ini?' : 'Hapus produk ini?'}
+        pesan={konfirmasi?.jenis === 'toko'
+          ? `"${konfirmasi?.nama}" akan dihapus beserta SEMUA produk di dalamnya. Tindakan ini tidak bisa dibatalkan.`
+          : `"${konfirmasi?.nama}" akan dihapus permanen. Tindakan ini tidak bisa dibatalkan.`}
+        ikon={konfirmasi?.jenis === 'toko' ? '🏪' : '🗑️'}
+        memproses={!!konfirmasi && busyId === konfirmasi.id}
+        onBatal={() => setKonfirmasi(null)}
+        onKonfirmasi={() => {
+          if (!konfirmasi) return
+          if (konfirmasi.jenis === 'toko') hapusToko(konfirmasi.id)
+          else hapusProduk(konfirmasi.id)
+        }}
+      />
 
       {/* Header */}
       <div style={{
@@ -338,7 +358,7 @@ export default function AdminPage() {
                       Lihat
                     </a>
                     <button
-                      onClick={() => hapusProduk(p.id, p.nama)}
+                      onClick={() => setKonfirmasi({ jenis: 'produk', id: p.id, nama: p.nama })}
                       disabled={busyId === p.id}
                       style={{
                         fontSize: '11px', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer',
@@ -402,7 +422,7 @@ export default function AdminPage() {
                         Lihat
                       </a>
                       <button
-                        onClick={() => hapusToko(t.id, t.nama_toko)}
+                        onClick={() => setKonfirmasi({ jenis: 'toko', id: t.id, nama: t.nama_toko })}
                         disabled={busyId === t.id}
                         style={{
                           fontSize: '11px', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer',

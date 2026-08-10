@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "./context/CartContext";
 import { ChatProvider } from "./context/ChatContext";
+import { ToastProvider } from "./context/ToastContext";
 import BottomNav from "./components/BottomNav";
 
 const geistSans = Geist({
@@ -35,12 +36,14 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <CartProvider>
-          <ChatProvider>
-            {children}
-            <BottomNav />
-          </ChatProvider>
-        </CartProvider>
+        <ToastProvider>
+          <CartProvider>
+            <ChatProvider>
+              {children}
+              <BottomNav />
+            </ChatProvider>
+          </CartProvider>
+        </ToastProvider>
       </body>
     </html>
   );

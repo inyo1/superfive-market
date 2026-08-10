@@ -6,6 +6,7 @@ import Navbar from '../../components/Navbar'
 import { useCart } from '../../context/CartContext'
 import FotoProduk from '../../components/FotoProduk'
 import BadgeVerifikasi from '../../components/BadgeVerifikasi'
+import { useToast } from '../../context/ToastContext'
 
 type Toko = {
   id: string
@@ -40,6 +41,7 @@ export default function TokoPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
   const { tambah } = useCart()
+  const toast = useToast()
 
   const [toko, setToko] = useState<Toko | null>(null)
   const [produk, setProduk] = useState<Produk[]>([])
@@ -152,7 +154,7 @@ export default function TokoPage() {
       if (insertErr) throw new Error(insertErr.message)
       if (newConv) router.push(`/chat/${newConv.id}`)
     } catch (err: any) {
-      alert('Gagal membuka chat: ' + (err?.message ?? 'Coba lagi'))
+      toast.error('Gagal membuka chat: ' + (err?.message ?? 'Coba lagi'))
     } finally {
       setStartingChat(false)
     }

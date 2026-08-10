@@ -5,6 +5,8 @@ import { supabase } from '../../lib/supabase'
 import { useCart } from '../context/CartContext'
 import Navbar from '../components/Navbar'
 import FotoProduk from '../components/FotoProduk'
+import DialogKonfirmasi from '../components/DialogKonfirmasi'
+import { useToast } from '../context/ToastContext'
 
 const emojiKategori: Record<string, string> = {
   Teknologi: '💻', Fashion: '👗', Kuliner: '🍱',
@@ -18,6 +20,8 @@ function fmt(n: number) {
 export default function KeranjangPage() {
   const router = useRouter()
   const { items, totalItem, totalHarga, loading, tambah, kurang, hapus, kosongkan } = useCart()
+  const toast = useToast()
+  const [konfirmasiKosongkan, setKonfirmasiKosongkan] = useState(false)
   const [authChecked, setAuthChecked] = useState(false)
 
   useEffect(() => {
@@ -70,6 +74,20 @@ export default function KeranjangPage() {
     <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
       <Navbar />
 
+      <DialogKonfirmasi
+        terbuka={konfirmasiKosongkan}
+        judul="Kosongkan keranjang?"
+        pesan={`${totalItem} item akan dikeluarkan dari keranjang. Kamu bisa menambahkannya lagi nanti.`}
+        labelKonfirmasi="Kosongkan"
+        ikon="🛒"
+        onBatal={() => setKonfirmasiKosongkan(false)}
+        onKonfirmasi={() => {
+          kosongkan()
+          setKonfirmasiKosongkan(false)
+          toast.sukses('Keranjang dikosongkan.')
+        }}
+      />
+
       <div style={{ maxWidth: '560px', margin: '0 auto', padding: '16px 16px 100px' }}>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
@@ -77,8 +95,8 @@ export default function KeranjangPage() {
             Keranjang <span style={{ color: '#5a7da0', fontWeight: '400' }}>({totalItem} item)</span>
           </h1>
           <button
-            onClick={() => { if (confirm('Kosongkan semua item?')) kosongkan() }}
-            style={{ background: 'none', border: 'none', color: '#c62828', fontSize: '12px', cursor: 'pointer' }}
+            onClick={() => setKonfirmasiKosongkan(true)}
+            style={{ background: 'none', border: 'none', color: '#c62828', fontSize: '12px', cursor: 'pointer', minHeight: '44px', padding: '0 8px' }}
           >
             Kosongkan
           </button>
