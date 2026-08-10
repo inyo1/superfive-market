@@ -9,6 +9,8 @@ export type CartItem = {
   kategori: string
   foto_url?: string | null
   qty: number
+  varian_id?: string | null
+  varian_nama?: string | null
 }
 
 type AddResult = { ok: true } | { ok: false; error: string }
@@ -19,12 +21,22 @@ type CartContextType = {
   totalHarga: number
   loading: boolean
   tambah: (item: Omit<CartItem, 'qty'>) => Promise<AddResult>
-  kurang: (id: string) => void
-  hapus: (id: string) => void
+  kurang: (id: string, varianId?: string | null) => void
+  hapus: (id: string, varianId?: string | null) => void
   kosongkan: () => void
 }
 
 const CartContext = createContext<CartContextType | null>(null)
+
+// Satu produk bisa muncul beberapa kali dengan ukuran berbeda, jadi identitas
+// baris keranjang adalah pasangan produk + varian, bukan produk saja.
+function kunci(produkId: string, varianId?: string | null) {
+  return `${produkId}|${varianId ?? ''}`
+}
+
+function samaItem(a: CartItem, produkId: string, varianId?: string | null) {
+  return a.id === produkId && (a.varian_id ?? null) === (varianId ?? null)
+}
 
 function rowToItem(r: any): CartItem {
   return {
@@ -34,8 +46,12 @@ function rowToItem(r: any): CartItem {
     kategori: r.kategori,
     foto_url: r.foto_url ?? null,
     qty: r.qty,
+    varian_id: r.varian_id ?? null,
+    varian_nama: r.varian_nama ?? null,
   }
 }
+
+const KOLOM = 'produk_id, nama, harga, kategori, foto_url, qty, varian_id, varian_nama'
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([])
@@ -52,7 +68,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         userIdRef.current = user.id
         const { data, error } = await supabase
           .from('keranjang')
-          .select('produk_id, nama, harga, kategori, foto_url, qty')
+          .select(KOLOM)
           .eq('user_id', user.id)
         if (!error && data) setItems(data.map(rowToItem))
       } else {
@@ -75,25 +91,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           if (stored) localItems = JSON.parse(stored)
         } catch {}
 
-        if (localItems.length > 0) {
-          await supabase.from('keranjang').upsert(
-            localItems.map(i => ({
-              user_id: session.user.id,
-              produk_id: i.id,
-              nama: i.nama,
-              harga: i.harga,
-              kategori: i.kategori,
-              foto_url: i.foto_url ?? null,
-              qty: i.qty,
-            })),
-            { onConflict: 'user_id,produk_id' }
-          )
-          localStorage.removeItem('keranjang')
+        for (const i of localItems) {
+          await simpanBaris(session.user.id, i, i.qty)
         }
+        if (localItems.length > 0) localStorage.removeItem('keranjang')
 
         const { data } = await supabase
           .from('keranjang')
-          .select('produk_id, nama, harga, kategori, foto_url, qty')
+          .select(KOLOM)
           .eq('user_id', session.user.id)
         if (data) setItems(data.map(rowToItem))
       } else if (event === 'SIGNED_OUT') {
@@ -110,17 +115,48 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [items, loading])
 
+  // Indeks unik keranjang memakai COALESCE(varian_id, ...) — sebuah expression
+  // index, yang tidak bisa jadi target ON CONFLICT. Jadi upsert() tidak dipakai;
+  // barisnya dicari dulu, lalu di-update atau di-insert.
+  async function simpanBaris(uid: string, item: CartItem, qtyBaru: number) {
+    const varianId = item.varian_id ?? null
+
+    let cari = supabase.from('keranjang').select('id, qty')
+      .eq('user_id', uid).eq('produk_id', item.id)
+    cari = varianId ? cari.eq('varian_id', varianId) : cari.is('varian_id', null)
+
+    const { data: adaBaris } = await cari.maybeSingle()
+
+    if (adaBaris) {
+      return supabase.from('keranjang').update({ qty: qtyBaru }).eq('id', adaBaris.id)
+    }
+
+    return supabase.from('keranjang').insert({
+      user_id: uid,
+      produk_id: item.id,
+      nama: item.nama ?? '',
+      harga: Number(item.harga) || 0,
+      kategori: item.kategori ?? '',
+      foto_url: item.foto_url ?? null,
+      qty: qtyBaru,
+      varian_id: varianId,
+      varian_nama: item.varian_nama ?? null,
+    })
+  }
+
   async function tambah(item: Omit<CartItem, 'qty'>): Promise<AddResult> {
     const uid = userIdRef.current
     const cur = itemsRef.current
-    const existing = cur.find(i => i.id === item.id)
+    const existing = cur.find(i => samaItem(i, item.id, item.varian_id))
 
-    // Sanitize — DB columns are NOT NULL, coerce any null/undefined to safe defaults
+    // Kolom di DB NOT NULL, jadi nilai kosong diamankan lebih dulu
     const safeItem = {
       ...item,
       harga: Number(item.harga) || 0,
       nama: item.nama ?? '',
       kategori: item.kategori ?? '',
+      varian_id: item.varian_id ?? null,
+      varian_nama: item.varian_nama ?? null,
     }
 
     let nextItem: CartItem
@@ -128,65 +164,53 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
     if (existing) {
       nextItem = { ...existing, qty: existing.qty + 1 }
-      next = cur.map(i => i.id === item.id ? nextItem : i)
+      next = cur.map(i => samaItem(i, item.id, item.varian_id) ? nextItem : i)
     } else {
       nextItem = { ...safeItem, qty: 1 }
       next = [...cur, nextItem]
     }
 
-    // Optimistic update
     setItems(next)
 
-    // Guest user — saved to localStorage via useEffect
+    // Tamu — disimpan ke localStorage lewat useEffect, varian ikut terbawa
     if (!uid) return { ok: true }
 
-    const { error } = await supabase.from('keranjang').upsert(
-      {
-        user_id: uid,
-        produk_id: nextItem.id,
-        nama: nextItem.nama ?? '',
-        harga: Number(nextItem.harga) || 0,
-        kategori: nextItem.kategori ?? '',
-        foto_url: nextItem.foto_url ?? null,
-        qty: nextItem.qty,
-      },
-      { onConflict: 'user_id,produk_id' }
-    )
+    const { error } = await simpanBaris(uid, nextItem, nextItem.qty)
 
     if (error) {
-      // Rollback optimistic update
-      setItems(cur)
+      setItems(cur)   // batalkan pembaruan optimistis
       return { ok: false, error: error.message }
     }
 
     return { ok: true }
   }
 
-  function kurang(id: string) {
+  function kurang(id: string, varianId?: string | null) {
     const uid = userIdRef.current
     const cur = itemsRef.current
-    const existing = cur.find(i => i.id === id)
+    const existing = cur.find(i => samaItem(i, id, varianId))
     if (!existing) return
 
     if (existing.qty <= 1) {
-      setItems(cur.filter(i => i.id !== id))
-      if (uid) supabase.from('keranjang').delete()
-        .eq('user_id', uid).eq('produk_id', id).then()
+      setItems(cur.filter(i => !samaItem(i, id, varianId)))
+      if (uid) hapusBaris(uid, id, varianId)
     } else {
       const updated = { ...existing, qty: existing.qty - 1 }
-      setItems(cur.map(i => i.id === id ? updated : i))
-      if (uid) supabase.from('keranjang').upsert(
-        { user_id: uid, produk_id: updated.id, nama: updated.nama, harga: updated.harga, kategori: updated.kategori, foto_url: updated.foto_url ?? null, qty: updated.qty },
-        { onConflict: 'user_id,produk_id' }
-      ).then()
+      setItems(cur.map(i => samaItem(i, id, varianId) ? updated : i))
+      if (uid) simpanBaris(uid, updated, updated.qty)
     }
   }
 
-  function hapus(id: string) {
+  function hapus(id: string, varianId?: string | null) {
     const uid = userIdRef.current
-    setItems(itemsRef.current.filter(i => i.id !== id))
-    if (uid) supabase.from('keranjang').delete()
-      .eq('user_id', uid).eq('produk_id', id).then()
+    setItems(itemsRef.current.filter(i => !samaItem(i, id, varianId)))
+    if (uid) hapusBaris(uid, id, varianId)
+  }
+
+  function hapusBaris(uid: string, produkId: string, varianId?: string | null) {
+    let q = supabase.from('keranjang').delete().eq('user_id', uid).eq('produk_id', produkId)
+    q = varianId ? q.eq('varian_id', varianId) : q.is('varian_id', null)
+    q.then()
   }
 
   function kosongkan() {
@@ -211,3 +235,5 @@ export function useCart() {
   if (!ctx) throw new Error('useCart harus dipakai di dalam CartProvider')
   return ctx
 }
+
+export { kunci as kunciItem }

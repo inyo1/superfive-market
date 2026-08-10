@@ -175,7 +175,7 @@ export default function CheckoutPage() {
         p_alamat: alamat,
         p_catatan: catatan,
         p_metode_bayar: metode,
-        p_items: items.map(i => ({ produk_id: i.id, qty: i.qty })),
+        p_items: items.map(i => ({ produk_id: i.id, varian_id: i.varian_id ?? null, qty: i.qty })),
       })
 
       // Pesan error dari RPC sudah berbahasa Indonesia, tampilkan apa adanya
@@ -289,12 +289,15 @@ export default function CheckoutPage() {
         <div style={{ background: '#fff', borderRadius: '12px', padding: '18px', border: '0.5px solid #c5d9ef', marginBottom: '12px' }}>
           <div style={{ fontSize: '13px', fontWeight: '600', color: '#0C447C', marginBottom: '12px' }}>🧾 Ringkasan Pesanan</div>
           {items.map(item => (
-            <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+            <div key={`${item.id}|${item.varian_id ?? ''}`} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
               <div style={{ width: '36px', height: '36px', background: '#E6F1FB', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>
                 {emojiKategori[item.kategori] ?? '📦'}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: '12px', color: '#1a1a1a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.nama}</div>
+                {item.varian_nama && (
+                  <div style={{ fontSize: '11px', color: '#0C447C', fontWeight: '500' }}>Ukuran {item.varian_nama}</div>
+                )}
                 <div style={{ fontSize: '11px', color: '#5a7da0' }}>x{item.qty}</div>
               </div>
               <div style={{ fontSize: '13px', fontWeight: '500', color: '#0C447C', flexShrink: 0 }}>{fmt(item.harga * item.qty)}</div>
