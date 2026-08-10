@@ -8,6 +8,7 @@ import { useCart } from '../../context/CartContext'
 import FotoProduk from '../../components/FotoProduk'
 import ReviewSection from '../../components/ReviewSection'
 import Skeleton from '../../components/Skeleton'
+import BadgeOfficial from '../../components/BadgeOfficial'
 import { useTampilSkeleton } from '../../hooks/useSkeleton'
 
 type Produk = {
@@ -21,7 +22,7 @@ type Produk = {
   rating: number
   foto_url?: string | null
   created_at: string
-  toko: { nama_toko: string; seller_id: string }
+  toko: { nama_toko: string; seller_id: string; is_official?: boolean }
   users?: { angkatan: number }
 }
 
@@ -61,7 +62,7 @@ export default function DetailProduk() {
     async function fetchProduk() {
       const { data, error } = await supabase
         .from('produk')
-        .select('*, toko(id, nama_toko, seller_id)')
+        .select('*, toko(id, nama_toko, seller_id, is_official)')
         .eq('id', id)
         .single()
 
@@ -200,6 +201,7 @@ export default function DetailProduk() {
 
   const emoji = emojiKategori[produk.kategori] ?? '📦'
   const angkatan = (produk.toko as any)?.users?.angkatan
+  const resmi = Boolean((produk.toko as any)?.is_official)
 
   return (
     <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
@@ -265,11 +267,15 @@ export default function DetailProduk() {
             }}>
               🏪
             </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: '14px', fontWeight: '500', color: '#1a1a1a' }}>
-                {produk.toko?.nama_toko || 'Toko Alumni'}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '14px', fontWeight: '500', color: '#1a1a1a' }}>
+                  {produk.toko?.nama_toko || 'Toko Alumni'}
+                </span>
+                <BadgeOfficial aktif={resmi} />
               </div>
-              {angkatan && (
+              {/* Toko resmi akun institusi — angkatan tidak relevan di sini */}
+              {!resmi && angkatan && (
                 <div style={{ fontSize: '12px', color: '#5a7da0' }}>Alumni Angkatan {angkatan}</div>
               )}
             </div>

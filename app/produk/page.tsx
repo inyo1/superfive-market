@@ -8,6 +8,7 @@ import SkeletonCard from '../components/SkeletonCard'
 import BadgeVerifikasi from '../components/BadgeVerifikasi'
 import EmptyState from '../components/EmptyState'
 import BadgeAngkatan from '../components/BadgeAngkatan'
+import BadgeOfficial from '../components/BadgeOfficial'
 import { useTampilSkeleton } from '../hooks/useSkeleton'
 
 type Produk = {
@@ -19,7 +20,7 @@ type Produk = {
   terjual: number
   rating: number
   foto_url?: string | null
-  toko: { nama_toko: string; users: { angkatan: number; status_verifikasi: string | null } | null } | null
+  toko: { nama_toko: string; is_official: boolean; users: { angkatan: number; status_verifikasi: string | null } | null } | null
   users: { angkatan: number }
 }
 
@@ -45,7 +46,7 @@ export default function ProdukPage() {
   async function fetchProduk() {
     const { data, error } = await supabase
       .from('produk')
-      .select(`*, toko(nama_toko, seller_id)`)
+      .select(`*, toko(nama_toko, seller_id, is_official)`)
       .order('created_at', { ascending: false })
 
     if (error || !data) { setLoading(false); return }
@@ -143,7 +144,10 @@ export default function ProdukPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
             {filtered.map((p, i) => (
               <Link key={p.id} href={`/produk/${p.id}`} className="prod-card" style={{ background: '#fff', borderRadius: '10px', border: '0.5px solid #e8f0f8', overflow: 'hidden', textDecoration: 'none', display: 'block', animation: `fadeInUp 0.28s ease both`, animationDelay: `${Math.min(i * 40, 300)}ms` }}>
-                <FotoProduk src={p.foto_url} kategori={p.kategori} height={120} fontSize={40} />
+                <div style={{ position: 'relative' }}>
+                  <BadgeOfficial aktif={p.toko?.is_official} bentuk="pita" />
+                  <FotoProduk src={p.foto_url} kategori={p.kategori} height={120} fontSize={40} />
+                </div>
                 <div style={{ padding: '10px' }}>
                   <div style={{ fontSize: '12px', fontWeight: '500', color: '#333', marginBottom: '4px', height: '32px', overflow: 'hidden' }}>{p.nama}</div>
                   <div style={{ fontSize: '14px', fontWeight: '500', color: '#0C447C', marginBottom: '4px' }}>{fmt(p.harga)}</div>
@@ -160,10 +164,16 @@ export default function ProdukPage() {
                         <span style={{ fontSize: '10px', color: '#5a7da0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           🏪 {p.toko.nama_toko}
                         </span>
-                        <BadgeVerifikasi status={p.toko.users?.status_verifikasi} size={11} />
+                        {!p.toko.is_official && (
+                          <BadgeVerifikasi status={p.toko.users?.status_verifikasi} size={11} />
+                        )}
                       </div>
                       <div style={{ marginTop: '4px' }}>
-                        <BadgeAngkatan angkatan={p.toko.users?.angkatan} kecil />
+                        {/* Toko resmi itu akun institusi, bukan alumni perorangan,
+                            jadi angkatan diganti lencana OFFICIAL */}
+                        {p.toko.is_official
+                          ? <BadgeOfficial aktif kecil />
+                          : <BadgeAngkatan angkatan={p.toko.users?.angkatan} kecil />}
                       </div>
                     </div>
                   )}

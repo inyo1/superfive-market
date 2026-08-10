@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
+import BadgeOfficial from './BadgeOfficial'
 
 type ProdukResult = {
   id: string
@@ -9,7 +10,7 @@ type ProdukResult = {
   harga: number
   kategori: string
   foto_url?: string | null
-  toko: { nama_toko: string } | null
+  toko: { nama_toko: string; is_official?: boolean } | null
 }
 
 type TokoResult = {
@@ -17,6 +18,7 @@ type TokoResult = {
   nama_toko: string
   kategori: string
   users: { angkatan: number } | null
+  is_official?: boolean
 }
 
 const emojiKategori: Record<string, string> = {
@@ -77,17 +79,17 @@ export default function SearchOverlay({ open, onClose }: { open: boolean; onClos
   async function runSearch(q: string) {
     const [produkRes, tokoRes] = await Promise.all([
       supabase.from('produk')
-        .select('id, nama, harga, kategori, foto_url, toko(nama_toko)')
+        .select('id, nama, harga, kategori, foto_url, toko(nama_toko, is_official)')
         .or(`nama.ilike.%${q}%,deskripsi.ilike.%${q}%`)
         .limit(5),
       supabase.from('toko')
-        .select('id, nama_toko, kategori, seller_id')
+        .select('id, nama_toko, kategori, seller_id, is_official')
         .ilike('nama_toko', `%${q}%`)
         .limit(4),
     ])
 
     // Angkatan penjual digabung dari alumni_publik — users tidak lagi terbaca publik
-    const tokoRows = (tokoRes.data ?? []) as { id: string; nama_toko: string; kategori: string; seller_id: string | null }[]
+    const tokoRows = (tokoRes.data ?? []) as { id: string; nama_toko: string; kategori: string; seller_id: string | null; is_official: boolean }[]
     const sellerIds = [...new Set(tokoRows.map(t => t.seller_id).filter(Boolean))] as string[]
 
     let angkatanById: Record<string, number | null> = {}
@@ -256,12 +258,14 @@ export default function SearchOverlay({ open, onClose }: { open: boolean; onClos
                     {emojiKategori[p.kategori] ?? '📦'}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{
-                      fontSize: '13px', fontWeight: '500', color: '#1a1a1a',
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                      marginBottom: '2px',
-                    }}>
-                      {p.nama}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, marginBottom: '2px' }}>
+                      <span style={{
+                        fontSize: '13px', fontWeight: '500', color: '#1a1a1a',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>
+                        {p.nama}
+                      </span>
+                      <BadgeOfficial aktif={p.toko?.is_official} kecil />
                     </div>
                     <div style={{ fontSize: '13px', fontWeight: '600', color: '#0C447C' }}>
                       {fmt(p.harga)}
@@ -313,14 +317,17 @@ export default function SearchOverlay({ open, onClose }: { open: boolean; onClos
                     {emojiKategori[t.kategori] ?? '🏪'}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{
-                      fontSize: '13px', fontWeight: '500', color: '#1a1a1a',
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                      marginBottom: '2px',
-                    }}>
-                      {t.nama_toko}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, marginBottom: '2px' }}>
+                      <span style={{
+                        fontSize: '13px', fontWeight: '500', color: '#1a1a1a',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>
+                        {t.nama_toko}
+                      </span>
+                      <BadgeOfficial aktif={t.is_official} kecil />
                     </div>
-                    {t.users && (
+                    {/* Toko resmi akun institusi, angkatan tidak ditampilkan */}
+                    {!t.is_official && t.users && (
                       <div style={{ fontSize: '11px', color: '#5a7da0' }}>
                         Alumni Angkatan {(t.users as any).angkatan}
                       </div>
