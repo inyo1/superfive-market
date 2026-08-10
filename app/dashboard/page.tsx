@@ -14,6 +14,7 @@ import DialogKonfirmasi from '../components/DialogKonfirmasi'
 import Tombol from '../components/Tombol'
 import { useTampilSkeleton } from '../hooks/useSkeleton'
 import { keAngka } from '../../lib/format'
+import EditorVarian, { muatVarian, simpanVarian, totalStok, type BarisVarian } from '../components/EditorVarian'
 
 type Toko = { id: string; nama_toko: string; kategori: string; is_official: boolean }
 type Produk = { id: string; nama: string; harga: number; kategori: string; stok: number; terjual: number; rating: number; deskripsi: string; urutan: number | null; foto_url?: string | null }
@@ -70,6 +71,10 @@ export default function DashboardPage() {
   const editFotoRef = useRef<HTMLInputElement>(null)
   const [saving, setSaving] = useState(false)
 
+  // Varian produk yang sedang diedit
+  const [varian, setVarian] = useState<BarisVarian[]>([])
+  const [varianIdAwal, setVarianIdAwal] = useState<string[]>([])
+
   // Hapus konfirmasi
   const [hapusId, setHapusId] = useState<string | null>(null)
   const [menghapus, setMenghapus] = useState(false)
@@ -119,11 +124,19 @@ export default function DashboardPage() {
 
   function notif(msg: string) { setPesan(msg); setTimeout(() => setPesan(''), 4000) }
 
-  function bukaEdit(p: Produk) {
+  // Stok induk jadi read-only begitu produk punya ukuran, karena angkanya
+  // diturunkan dari jumlah stok varian
+  const produkPunyaVarian = varian.some(v => v.nama.trim() !== '')
+
+  async function bukaEdit(p: Produk) {
     setEditId(p.id)
     setEditData({ nama: p.nama, harga: p.harga, kategori: p.kategori, stok: p.stok, deskripsi: p.deskripsi, urutan: p.urutan, foto_url: p.foto_url })
     setEditFoto(null)
     setEditPreview(null)
+
+    const v = await muatVarian(p.id)
+    setVarian(v)
+    setVarianIdAwal(v.map(x => x.id).filter(Boolean) as string[])
   }
 
   function handleEditFoto(e: React.ChangeEvent<HTMLInputElement>) {
@@ -146,14 +159,24 @@ export default function DashboardPage() {
 
     const urutanBaru = keAngka(editData.urutan)
 
+    // Varian disimpan lebih dulu supaya stok induk bisa dihitung dari hasilnya
+    const adaVarian = varian.some(v => v.nama.trim() !== '')
+    if (varian.length > 0 || varianIdAwal.length > 0) {
+      const errVarian = await simpanVarian(editId, varian, varianIdAwal)
+      if (errVarian) { notif('Gagal simpan varian: ' + errVarian); setSaving(false); return }
+    }
+
+    // Produk bervarian: stok induk selalu ikut jumlah stok varian aktif
+    const stokBaru = adaVarian ? totalStok(varian) : keAngka(editData.stok)
+
     const { error } = await supabase.from('produk').update({
       nama: editData.nama, harga: keAngka(editData.harga),
-      kategori: editData.kategori, stok: keAngka(editData.stok),
+      kategori: editData.kategori, stok: stokBaru,
       deskripsi: editData.deskripsi, urutan: urutanBaru, foto_url,
     }).eq('id', editId)
 
     if (!error) {
-      setProduk(prev => prev.map(p => p.id === editId ? { ...p, ...editData, harga: keAngka(editData.harga), stok: keAngka(editData.stok), urutan: urutanBaru, foto_url } as Produk : p))
+      setProduk(prev => prev.map(p => p.id === editId ? { ...p, ...editData, harga: keAngka(editData.harga), stok: stokBaru, urutan: urutanBaru, foto_url } as Produk : p))
       notif('Produk berhasil diperbarui!')
       setEditId(null)
     } else notif('Gagal: ' + error.message)
@@ -313,16 +336,31 @@ export default function DashboardPage() {
             <div style={{ marginBottom: '10px' }}>
               <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '4px' }}>Stok</label>
               <input
-                value={editData.stok ?? ''}
+                value={produkPunyaVarian ? totalStok(varian) : (editData.stok ?? '')}
                 onChange={e => {
                   const v = e.target.value.replace(/\D/g, '')
                   setEditData(prev => ({ ...prev, stok: v === '' ? undefined : Number(v) }))
                 }}
+                readOnly={produkPunyaVarian}
                 inputMode="numeric"
                 pattern="[0-9]*"
-                style={{ width: '100%', padding: '11px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', minHeight: '44px' }}
+                style={{
+                  width: '100%', padding: '11px 12px', border: '0.5px solid #c5d9ef',
+                  borderRadius: '8px', fontSize: '13px', outline: 'none',
+                  boxSizing: 'border-box', minHeight: '44px',
+                  background: produkPunyaVarian ? '#f0f5fb' : '#fff',
+                  color: produkPunyaVarian ? '#5a7da0' : '#1a1a1a',
+                  cursor: produkPunyaVarian ? 'not-allowed' : 'text',
+                }}
               />
+              {produkPunyaVarian && (
+                <div style={{ fontSize: '11px', color: '#9ab4cc', marginTop: '4px' }}>
+                  Dihitung otomatis dari stok ukuran. Ubah di tabel ukuran di bawah.
+                </div>
+              )}
             </div>
+
+            <EditorVarian baris={varian} onChange={setVarian} />
             {/* Urutan hanya relevan untuk toko resmi, karena produknya yang
                 tampil di section merchandise beranda */}
             {toko?.is_official && (

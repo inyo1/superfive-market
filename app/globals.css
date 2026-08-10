@@ -226,6 +226,17 @@ main {
   }
 }
 
+/* ── Tabel varian di form produk ──
+   Di layar sempit kolomnya dipadatkan supaya lima kolom tetap muat tanpa
+   menggeser modal ke samping. */
+@media (max-width: 480px) {
+  .varian-kepala,
+  .varian-baris {
+    grid-template-columns: 54px 1fr 1fr 40px 26px !important;
+    gap: 5px !important;
+  }
+}
+
 /* ── Toast ──
    Mobile: turun dari atas. Desktop: naik dari pojok kanan bawah. */
 .toast-wrap {
