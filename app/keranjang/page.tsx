@@ -103,7 +103,7 @@ export default function KeranjangPage() {
         {/* Daftar item */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
           {items.map(item => (
-            <div key={item.id} style={{
+            <div key={`${item.id}|${item.varian_id ?? ''}`} style={{
               background: '#fff', borderRadius: '12px', padding: '12px',
               border: '0.5px solid #e8f0f8', display: 'flex', gap: '12px', alignItems: 'center',
             }}>
@@ -125,6 +125,11 @@ export default function KeranjangPage() {
                 <div style={{ fontSize: '13px', fontWeight: '500', color: '#1a1a1a', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {item.nama}
                 </div>
+                {item.varian_nama && (
+                  <div style={{ fontSize: '11px', color: '#0C447C', fontWeight: '600', marginBottom: '3px' }}>
+                    Ukuran {item.varian_nama}
+                  </div>
+                )}
                 <div style={{ fontSize: '14px', fontWeight: '700', color: '#0C447C' }}>
                   {fmt(item.harga * item.qty)}
                 </div>
@@ -139,7 +144,7 @@ export default function KeranjangPage() {
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <button
-                    onClick={() => kurang(item.id)}
+                    onClick={() => kurang(item.id, item.varian_id)}
                     style={{
                       width: '30px', height: '30px', borderRadius: '50%',
                       border: '1px solid #c5d9ef', background: '#fff',
@@ -153,7 +158,7 @@ export default function KeranjangPage() {
                     {item.qty}
                   </span>
                   <button
-                    onClick={() => tambah({ id: item.id, nama: item.nama, harga: item.harga, kategori: item.kategori, foto_url: item.foto_url })}
+                    onClick={() => tambah({ id: item.id, nama: item.nama, harga: item.harga, kategori: item.kategori, foto_url: item.foto_url, varian_id: item.varian_id, varian_nama: item.varian_nama })}
                     style={{
                       width: '30px', height: '30px', borderRadius: '50%',
                       border: 'none', background: '#0C447C',
@@ -165,7 +170,7 @@ export default function KeranjangPage() {
                   </button>
                 </div>
                 <button
-                  onClick={() => hapus(item.id)}
+                  onClick={() => hapus(item.id, item.varian_id)}
                   style={{ background: 'none', border: 'none', color: '#9ab4cc', fontSize: '11px', cursor: 'pointer' }}
                 >
                   Hapus
