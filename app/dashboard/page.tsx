@@ -26,6 +26,7 @@ type PesananItem = {
   qty: number
   subtotal: number
   foto_url: string | null
+  varian_nama: string | null
 }
 
 type Pesanan = {
@@ -105,7 +106,7 @@ export default function DashboardPage() {
       // Pesanan milik toko ini, beserta itemnya. Satu baris pesanan = satu toko,
       // jadi cukup filter toko_id — tidak perlu menyaring per produk lagi.
       const { data: pesananData, error: errPesanan } = await supabase.from('pesanan')
-        .select('id, nomor_pesanan, penerima_nama, penerima_hp, alamat_kirim, metode_bayar, total, status, payment_status, no_resi, kurir, created_at, dikirim_at, paid_at, pesanan_items(id, produk_id, nama_produk, harga, qty, subtotal, foto_url)')
+        .select('id, nomor_pesanan, penerima_nama, penerima_hp, alamat_kirim, metode_bayar, total, status, payment_status, no_resi, kurir, created_at, dikirim_at, paid_at, pesanan_items(id, produk_id, nama_produk, harga, qty, subtotal, foto_url, varian_nama)')
         .eq('toko_id', tokoData.id)
         .order('created_at', { ascending: false })
 
@@ -557,9 +558,23 @@ export default function DashboardPage() {
                     {p.pesanan_items.length === 0 ? (
                       <div style={{ fontSize: '12px', color: '#c62828' }}>⚠️ Pesanan ini tidak punya item</div>
                     ) : p.pesanan_items.map(item => (
-                      <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', fontSize: '12px', color: '#444', marginBottom: '4px' }}>
-                        <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {item.nama_produk} x{item.qty}
+                      <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', fontSize: '12px', color: '#444', marginBottom: '6px' }}>
+                        <span style={{ minWidth: 0 }}>
+                          <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {item.nama_produk} x{item.qty}
+                          </span>
+                          {/* Ukuran wajib terlihat penjual — ini yang menentukan
+                              barang mana yang harus dikemas */}
+                          {item.varian_nama && (
+                            <span style={{
+                              display: 'inline-block', marginTop: '2px',
+                              background: '#E6F1FB', color: '#0C447C',
+                              fontSize: '10px', fontWeight: '700',
+                              padding: '2px 7px', borderRadius: '4px',
+                            }}>
+                              Ukuran {item.varian_nama}
+                            </span>
+                          )}
                         </span>
                         <span style={{ color: '#0C447C', fontWeight: '500', flexShrink: 0 }}>{fmt(item.subtotal)}</span>
                       </div>

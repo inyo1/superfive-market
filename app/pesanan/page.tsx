@@ -19,6 +19,7 @@ type PesananItem = {
   qty: number
   subtotal: number
   foto_url: string | null
+  varian_nama: string | null
 }
 
 type Pesanan = {
@@ -78,7 +79,7 @@ export default function PesananPage() {
       // RLS sudah membatasi ke pesanan milik sendiri, eq buyer_id dipasang
       // supaya niatnya eksplisit dan query tetap benar kalau policy berubah.
       const { data, error } = await supabase.from('pesanan')
-        .select('id, nomor_pesanan, toko_id, total, ongkir, status, payment_status, metode_bayar, no_resi, kurir, alamat_kirim, created_at, dikirim_at, toko(nama_toko, seller_id), pesanan_items(id, produk_id, nama_produk, harga, qty, subtotal, foto_url)')
+        .select('id, nomor_pesanan, toko_id, total, ongkir, status, payment_status, metode_bayar, no_resi, kurir, alamat_kirim, created_at, dikirim_at, toko(nama_toko, seller_id), pesanan_items(id, produk_id, nama_produk, harga, qty, subtotal, foto_url, varian_nama)')
         .eq('buyer_id', user.id)
         .order('created_at', { ascending: false })
 
@@ -257,6 +258,11 @@ export default function PesananPage() {
                         </Link>
                       ) : (
                         <div style={{ fontSize: '12px', color: '#1a1a1a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.nama_produk}</div>
+                      )}
+                      {item.varian_nama && (
+                        <div style={{ fontSize: '11px', color: '#0C447C', fontWeight: '600' }}>
+                          Ukuran {item.varian_nama}
+                        </div>
                       )}
                       <div style={{ fontSize: '11px', color: '#5a7da0' }}>{fmt(item.harga)} × {item.qty}</div>
                     </div>
