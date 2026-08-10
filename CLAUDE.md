@@ -73,7 +73,11 @@ Alamat disimpan terpisah per bagian, lalu dirangkai jadi satu string saat checko
 `created_at`
 
 Kategori yang dipakai UI: Teknologi, Fashion, Kuliner, Properti, Jasa, UMKM.
-Perhatikan `toko_id` dan `harga` masih nullable — selalu antisipasi nilai null.
+
+Constraint `chk_produk_valid` menjamin `toko_id IS NOT NULL`, `harga IS NOT NULL`,
+dan `harga > 0`. Sudah tervalidasi penuh, jadi produk yatim tanpa toko atau tanpa
+harga tidak bisa masuk lagi, termasuk lewat form tambah produk. Secara tipe kolom
+keduanya masih `nullable`, tapi datanya dijamin terisi oleh CHECK di atas.
 
 ### `keranjang`
 Keranjang pengguna yang sudah login. Guest disimpan di `localStorage`.
@@ -162,9 +166,18 @@ Dua hal penting:
 1. **Harga diambil dari database, bukan dari client.** Cukup kirim `produk_id`
    dan `qty`. Jangan kirim harga atau nama dari keranjang — itu celah supaya
    orang bisa mengubah harga lewat DevTools.
-2. **Pesan error sudah berbahasa Indonesia** ("Harus login untuk membuat
-   pesanan", "Keranjang kosong", "Ada produk yang sudah tidak tersedia").
-   Tampilkan `error.message` apa adanya, jangan dibungkus lagi.
+2. **Pesan error sudah berbahasa Indonesia.** Tampilkan `error.message` apa
+   adanya, jangan dibungkus lagi. Pesan yang mungkin muncul:
+   - `Harus login untuk membuat pesanan`
+   - `Keranjang kosong`
+   - `Nama, nomor HP, dan alamat wajib diisi`
+   - `Ada produk yang sudah tidak tersedia`
+   - `Produk "X" belum lengkap datanya dan tidak bisa dipesan. Hapus dari
+     keranjang atau hubungi penjual.`
+
+Pemeriksaan produk cacat (tanpa toko, tanpa harga, atau harga ≤ 0) dilakukan
+di awal fungsi sebelum insert apa pun, jadi tidak mungkin ada pesanan yang
+terbentuk tanpa item.
 
 ## Trigger Otomatis
 
@@ -213,6 +226,22 @@ lalu **minta ke Inyo** untuk dijalankan. Inyo yang pegang migrasi.
 
 Membaca skema, menjalankan `SELECT`, dan memeriksa definisi function lewat
 Supabase MCP tetap boleh dan memang dianjurkan sebelum menulis query.
+
+**Semua perubahan skema dikerjakan Inyo di sesi terpisah**, jadi dokumen ini
+bisa saja tertinggal dari kondisi database sebenarnya. Kalau ada info skema di
+sini yang terasa aneh atau tidak cocok dengan gejala yang kamu lihat,
+**verifikasi dulu ke database** — jangan percaya catatan lama:
+
+```sql
+select column_name, data_type, is_nullable, column_default
+from information_schema.columns
+where table_schema = 'public' and table_name = 'pesanan'
+order by ordinal_position;
+```
+
+Untuk constraint pakai `pg_constraint`, untuk policy pakai `pg_policies`, untuk
+function dan trigger pakai `pg_get_functiondef` / `pg_get_triggerdef`. Kalau
+temuannya beda dengan dokumen ini, perbaiki dokumennya sekalian.
 
 ## Konvensi Kode
 
@@ -285,10 +314,13 @@ Kalau butuh memastikan sesuatu di sisi data, pakai Supabase MCP untuk `SELECT`
 
 ## Utang Teknis yang Diketahui
 
-- `create_pesanan` menggabungkan item ke pesanan lewat
-  `JOIN pesanan_baru pb ON pb.toko_id = l.toko_id`. Kalau `toko_id` NULL join
-  itu tidak pernah cocok, jadi pesanan terbentuk tanpa item. Perlu diganti
-  `IS NOT DISTINCT FROM`, atau produk ber-`toko_id` NULL ditolak di awal.
-- Sebagian data `produk` punya `toko_id` dan `harga` bernilai NULL. Produk
-  seperti ini menyulitkan alur pesanan; perlu dibersihkan atau divalidasi.
+- **Migrasi `<a>` ke `<Link>` seluruh project.** `npm run lint` melaporkan
+  sekitar 97 masalah, mayoritas `@next/next/no-html-link-for-pages` karena
+  hampir semua halaman memakai `<a href>` untuk navigasi internal. Jangan
+  dikerjakan sepotong — mengubah satu atau dua halaman saja justru membuat
+  codebase punya dua gaya navigasi. Kerjakan sekaligus dalam satu pekerjaan
+  tersendiri, sekalian menyapu sisa warning `no-explicit-any` dan
+  `no-img-element`.
 - Tabel `ulasan` dan `chat` sudah tidak terpakai tapi belum dihapus.
+- Halaman `/pesanan` dan alur ubah status di dashboard belum diuji manual di
+  browser (per 10 Agustus 2026).
