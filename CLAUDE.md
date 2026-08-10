@@ -58,10 +58,52 @@ Profil alumni. `id` sama dengan `auth.users.id`.
 
 `id`✳ · `nama` · `email` (unik) · `no_hp` · `angkatan` int · `foto_url` ·
 `avatar_url` · `is_seller` bool (default false) · `role`✳ text (default `member`) ·
-`jalan` · `kelurahan` · `kecamatan` · `kota` · `provinsi` · `kode_pos` · `created_at`
+`jalan` · `kelurahan` · `kecamatan` · `kota` · `provinsi` · `kode_pos` ·
+`status_verifikasi`✳ text (default `menunggu`) · `bukti_alumni_url` ·
+`catatan_pendaftar` · `diverifikasi_at` · `diverifikasi_oleh` uuid ·
+`alasan_tolak` · `created_at`
 
 Alamat disimpan terpisah per bagian, lalu dirangkai jadi satu string saat checkout
 (lihat `buildAlamat` di [app/checkout/page.tsx](app/checkout/page.tsx)).
+
+**Tabel ini TIDAK bisa dibaca umum.** Policy `users_select_own` hanya mengizinkan
+`id = auth.uid()`, ditambah `users_admin_all` untuk admin. Jadi:
+
+- baca profil **sendiri** → `users`
+- baca profil **alumni lain** → `alumni_publik` (lihat di bawah)
+- halaman admin → `users` boleh, karena `is_admin()`
+
+`role` bernilai `member` atau `admin`. `status_verifikasi` bernilai
+`menunggu` | `terverifikasi` | `ditolak`.
+
+Trigger `jaga_field_sensitif` mengembalikan diam-diam nilai `role`,
+`status_verifikasi`, `diverifikasi_at`, `diverifikasi_oleh`, dan `alasan_tolak`
+ke nilai lama kalau yang mengubah bukan admin — tidak melempar error, hanya
+tidak berubah. Karena itu client **tidak perlu** dan **tidak boleh** menulis
+kolom-kolom itu; pakai RPC `verifikasi_alumni`.
+
+### `alumni_publik` (VIEW)
+View baca-saja berisi kolom `users` yang aman dilihat siapa pun, termasuk
+pengunjung yang belum login.
+
+`id` · `nama` · `angkatan` · `avatar_url` · `foto_url` · `is_seller` ·
+`status_verifikasi` · `created_at`
+
+Cara pakainya sama seperti tabel biasa:
+`supabase.from('alumni_publik').select('id, nama, angkatan, status_verifikasi')`
+
+Dua hal yang perlu diingat:
+
+- **Embed foreign key ke `users` tidak bisa dipakai lagi** untuk data publik.
+  Pola `toko(nama_toko, users(angkatan))` akan kosong. Gantinya: query `toko`
+  dulu, kumpulkan `seller_id`-nya, ambil sekali ke `alumni_publik` dengan
+  `.in('id', sellerIds)`, lalu gabungkan di JavaScript. Contoh terpakai ada di
+  [app/produk/page.tsx](app/produk/page.tsx) dan
+  [app/toko/[id]/page.tsx](app/toko/[id]/page.tsx).
+- View sengaja dibuat `security_invoker = false` supaya tetap bisa dibaca
+  meski `users` tertutup. Kalau Supabase linter mengeluh soal
+  "SECURITY DEFINER VIEW", itu memang disengaja dan sudah aman karena hak
+  tulisnya dicabut. Jangan diubah ke `true` — view akan mengembalikan 0 baris.
 
 ### `toko`
 `id`✳ · `seller_id` → users.id · `nama_toko` · `deskripsi` · `kategori` ·
@@ -127,6 +169,23 @@ Chat yang dipakai sekarang.
 ### Tabel warisan — jangan dipakai untuk fitur baru
 `ulasan` (digantikan `reviews`) dan `chat` (digantikan `conversations`/`messages`).
 
+## Supabase Storage
+
+| Bucket | Sifat | Isi |
+|---|---|---|
+| `produk-foto` | publik | Foto produk, lewat `uploadFotoProduk()` di [lib/uploadFoto.ts](lib/uploadFoto.ts) |
+| `avatar` | publik | Foto profil |
+| `bukti-alumni` | **privat** | Ijazah/rapor/kartu pelajar, maks 5 MB, hanya jpeg/png/webp |
+
+`bukti-alumni` privat karena isinya dokumen identitas. Aturannya:
+
+- Path **wajib** diawali user id: `${user.id}/namafile.jpg`. Kalau tidak,
+  policy storage menolak upload.
+- Kolom `users.bukti_alumni_url` menyimpan **path**, bukan URL publik.
+- Membacanya lewat signed URL berumur 10 menit — pakai `urlBukti()` di
+  [lib/buktiAlumni.ts](lib/buktiAlumni.ts), jangan bikin URL sendiri.
+- Pemilik bisa unggah/lihat/hapus miliknya sendiri; admin bisa lihat semua.
+
 ## Kosakata Status
 
 Dijaga CHECK constraint di database. Nilai di luar daftar ini **ditolak**.
@@ -182,6 +241,25 @@ pesanan memakai `IS NOT DISTINCT FROM` sehingga `toko_id` NULL pun tetap cocok,
 dan jaring pengaman di akhir yang membandingkan jumlah item tersimpan dengan
 jumlah baris keranjang — kalau tidak sama, seluruh transaksi dibatalkan.
 
+### `verifikasi_alumni` — hanya admin
+
+Menyetujui atau menolak pendaftar. Jangan menulis `status_verifikasi` langsung
+ke tabel — trigger `jaga_field_sensitif` akan mengabaikannya tanpa error.
+
+```ts
+const { data, error } = await supabase.rpc('verifikasi_alumni', {
+  p_user_id: id,
+  p_setujui: true,      // false = tolak
+  p_alasan:  null,      // wajib diisi kalau menolak
+})
+// data: { nama, status }
+```
+
+### `is_admin()` — helper
+
+Mengembalikan boolean, dipakai di dalam policy. Hanya bisa dipanggil pengguna
+yang sudah login. Di client cukup baca `users.role` milik sendiri.
+
 ## Trigger Otomatis
 
 Jangan tulis manual hal-hal di bawah ini dari aplikasi — sudah ditangani database.
@@ -196,8 +274,13 @@ Jangan tulis manual hal-hal di bawah ini dari aplikasi — sudah ditangani datab
 
 ## Ringkasan RLS
 
+- `users` — SELECT/UPDATE hanya pemilik (`id = auth.uid()`), plus akses penuh
+  untuk admin lewat `users_admin_all`. **Tidak ada akses publik.** Data alumni
+  lain diambil dari view `alumni_publik`
 - `produk`, `toko` — SELECT terbuka untuk publik; INSERT/UPDATE/DELETE hanya
-  pemilik toko (`toko.seller_id = auth.uid()`)
+  pemilik toko (`toko.seller_id = auth.uid()`). `toko_insert_own` juga menolak
+  pengguna yang `status_verifikasi`-nya belum `terverifikasi`, jadi yang belum
+  lolos verifikasi tidak bisa membuka toko
 - `keranjang` — pengguna hanya bisa menyentuh barisnya sendiri
 - `pesanan` — INSERT wajib `buyer_id = auth.uid()`. SELECT/UPDATE untuk pembeli
   (`buyer_id = auth.uid()`) **atau** penjual pemilik toko
@@ -217,6 +300,35 @@ if (!user) {
   return
 }
 ```
+
+## ATURAN: Hak Tulis VIEW dan TABEL Baru
+
+Setiap kali membuat **VIEW atau TABEL baru di schema `public`**, hak tulis untuk
+`anon` dan `authenticated` **WAJIB dicabut secara eksplisit**. Supabase
+memberikannya otomatis lewat default privileges.
+
+```sql
+revoke insert, update, delete, truncate on public.nama_objek from anon, authenticated;
+```
+
+Ini bukan teori. View `alumni_publik` sempat bisa ditulis pengunjung yang belum
+login — nama alumni bisa ditimpa dan baris `users` bisa dihapus lewat view,
+melewati RLS sepenuhnya, karena view auto-updatable + `security_invoker=false`
++ grant bawaan. `GRANT SELECT` tidak membatasi apa pun; ia hanya menambah.
+
+Default privileges di project ini sudah dikunci, tapi tetap **verifikasi tiap
+kali** membuat objek baru:
+
+```sql
+select grantee, privilege_type from information_schema.role_table_grants
+where table_schema='public' and table_name='nama_objek'
+  and grantee in ('anon','authenticated');
+```
+
+Hal yang sama berlaku untuk fungsi: fungsi trigger tidak perlu bisa dipanggil
+lewat REST. `EXECUTE` untuk enam fungsi trigger di project ini sudah dicabut
+dari `anon` dan `authenticated`; hanya `create_pesanan`, `verifikasi_alumni`,
+dan `is_admin` yang boleh dipanggil pengguna login.
 
 ## ATURAN: Perubahan Skema Database
 
@@ -325,5 +437,6 @@ Kalau butuh memastikan sesuatu di sisi data, pakai Supabase MCP untuk `SELECT`
   tersendiri, sekalian menyapu sisa warning `no-explicit-any` dan
   `no-img-element`.
 - Tabel `ulasan` dan `chat` sudah tidak terpakai tapi belum dihapus.
-- Halaman `/pesanan` dan alur ubah status di dashboard belum diuji manual di
-  browser (per 10 Agustus 2026).
+- Seluruh fitur verifikasi alumni (halaman admin, /verifikasi, badge, banner)
+  dan konfirmasi pembayaran manual belum diuji manual di browser
+  (per 10 Agustus 2026).
