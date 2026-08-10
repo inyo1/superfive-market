@@ -8,6 +8,7 @@ import FotoProduk from '../../components/FotoProduk'
 import BadgeVerifikasi from '../../components/BadgeVerifikasi'
 import { useToast } from '../../context/ToastContext'
 import Skeleton, { GridSkeletonProduk } from '../../components/Skeleton'
+import BadgeAngkatan from '../../components/BadgeAngkatan'
 
 type Toko = {
   id: string
@@ -218,10 +219,10 @@ export default function TokoPage() {
               ) : (
                 <div style={{ fontSize: '18px', fontWeight: '700', marginBottom: '4px' }}>{toko.nama_toko}</div>
               )}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: '#B5D4F4' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', fontSize: '12px', color: '#B5D4F4' }}>
                 <span>{toko.users?.nama || 'Alumni'}</span>
                 <BadgeVerifikasi status={toko.users?.status_verifikasi} size={13} />
-                <span>· Angkatan {toko.users?.angkatan}</span>
+                <BadgeAngkatan angkatan={toko.users?.angkatan} />
               </div>
             </div>
             {isOwner && !editMode && (

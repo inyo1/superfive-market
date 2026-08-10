@@ -6,6 +6,7 @@ import Navbar from '../components/Navbar'
 import BadgeVerifikasi from '../components/BadgeVerifikasi'
 import { DaftarSkeletonChat } from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
+import BadgeAngkatan from '../components/BadgeAngkatan'
 
 type ConvDisplay = {
   id: string
@@ -13,6 +14,7 @@ type ConvDisplay = {
   otherNama: string | null
   otherAvatar: string | null
   otherVerifikasi: string | null
+  otherAngkatan: number | null
   lastMessage: string | null
   lastMessageAt: string | null
   unread: number
@@ -67,7 +69,7 @@ export default function ChatListPage() {
       const otherIds = rawConvs.map(c => c.buyer_id === user.id ? c.seller_id : c.buyer_id)
       const { data: profiles } = await supabase
         .from('alumni_publik')
-        .select('id, nama, avatar_url, status_verifikasi')
+        .select('id, nama, avatar_url, status_verifikasi, angkatan')
         .in('id', [...new Set(otherIds)])
 
       const profileMap = Object.fromEntries((profiles ?? []).map(p => [p.id, p]))
@@ -93,6 +95,7 @@ export default function ChatListPage() {
           otherNama: p?.nama ?? null,
           otherAvatar: p?.avatar_url ?? null,
           otherVerifikasi: p?.status_verifikasi ?? null,
+          otherAngkatan: p?.angkatan ?? null,
           lastMessage: c.last_message,
           lastMessageAt: c.last_message_at,
           unread: unreadByConv[c.id] ?? 0,
@@ -145,6 +148,7 @@ export default function ChatListPage() {
                         {c.otherNama || 'Alumni'}
                       </span>
                       <BadgeVerifikasi status={c.otherVerifikasi} size={13} />
+                      <BadgeAngkatan angkatan={c.otherAngkatan} kecil />
                     </div>
                     <div style={{ fontSize: '11px', color: '#9ab4cc', flexShrink: 0, marginLeft: '8px' }}>
                       {timeAgo(c.lastMessageAt)}

@@ -6,6 +6,7 @@ import FotoProduk from '../components/FotoProduk'
 import SkeletonCard from '../components/SkeletonCard'
 import BadgeVerifikasi from '../components/BadgeVerifikasi'
 import EmptyState from '../components/EmptyState'
+import BadgeAngkatan from '../components/BadgeAngkatan'
 
 type Produk = {
   id: string
@@ -151,11 +152,16 @@ export default function ProdukPage() {
                     {p.kategori}
                   </div>
                   {p.toko?.nama_toko && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginTop: '6px' }}>
-                      <span style={{ fontSize: '10px', color: '#5a7da0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        🏪 {p.toko.nama_toko}
-                      </span>
-                      <BadgeVerifikasi status={p.toko.users?.status_verifikasi} size={11} />
+                    <div style={{ marginTop: '6px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                        <span style={{ fontSize: '10px', color: '#5a7da0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          🏪 {p.toko.nama_toko}
+                        </span>
+                        <BadgeVerifikasi status={p.toko.users?.status_verifikasi} size={11} />
+                      </div>
+                      <div style={{ marginTop: '4px' }}>
+                        <BadgeAngkatan angkatan={p.toko.users?.angkatan} kecil />
+                      </div>
                     </div>
                   )}
                 </div>

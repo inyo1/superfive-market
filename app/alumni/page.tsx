@@ -5,6 +5,7 @@ import Navbar from '../components/Navbar'
 import BadgeVerifikasi from '../components/BadgeVerifikasi'
 import Skeleton, { GridSkeletonAlumni } from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
+import BadgeAngkatan from '../components/BadgeAngkatan'
 
 type Member = {
   id: string
@@ -47,6 +48,7 @@ export default function AlumniPage() {
   const [loading, setLoading] = useState(true)
   const [total, setTotal] = useState(0)
   const [search, setSearch] = useState('')
+  const [filterAngkatan, setFilterAngkatan] = useState<number | 'semua'>('semua')
 
   useEffect(() => {
     async function load() {
@@ -101,15 +103,25 @@ export default function AlumniPage() {
   }, [])
 
   const query = search.trim().toLowerCase()
+
+  // Daftar angkatan untuk chip filter, terbaru dulu
+  const daftarAngkatan = groups
+    .map(g => g.angkatan)
+    .filter((a): a is number => a !== null)
+
+  const terfilterAngkatan: Group[] = filterAngkatan === 'semua'
+    ? groups
+    : groups.filter(g => g.angkatan === filterAngkatan)
+
   const filtered: Group[] = query
-    ? groups.map(g => ({
+    ? terfilterAngkatan.map(g => ({
         ...g,
         members: g.members.filter(m =>
           (m.nama ?? '').toLowerCase().includes(query) ||
           String(m.angkatan ?? '').includes(query)
         ),
       })).filter(g => g.members.length > 0)
-    : groups
+    : terfilterAngkatan
 
   return (
     <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
@@ -153,6 +165,35 @@ export default function AlumniPage() {
 
       <div style={{ maxWidth: '700px', margin: '0 auto', padding: '16px 16px 40px' }}>
 
+        {/* Filter angkatan */}
+        {!loading && daftarAngkatan.length > 0 && (
+          <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '12px', marginBottom: '4px' }}>
+            {(['semua', ...daftarAngkatan] as const).map(a => {
+              const aktif = filterAngkatan === a
+              return (
+                <button
+                  key={String(a)}
+                  onClick={() => setFilterAngkatan(a as number | 'semua')}
+                  className="filter-chip"
+                  style={{
+                    flexShrink: 0, padding: '0 16px', minHeight: '44px',
+                    display: 'inline-flex', alignItems: 'center',
+                    borderRadius: '22px',
+                    border: aktif ? 'none' : '0.5px solid #c5d9ef',
+                    background: aktif ? '#0C447C' : '#fff',
+                    color: aktif ? '#fff' : '#5a7da0',
+                    fontSize: '12px', fontWeight: aktif ? '600' : '400',
+                    cursor: 'pointer', whiteSpace: 'nowrap',
+                  }}
+                >
+                  {a === 'semua' ? 'Semua Angkatan' : a}
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+
         {loading ? (
           <>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
@@ -169,7 +210,7 @@ export default function AlumniPage() {
             judul="Alumni tidak ditemukan"
             pesan="Tidak ada nama atau angkatan yang cocok dengan pencarianmu. Coba kata kunci lain."
             aksiLabel="Tampilkan Semua"
-            onAksi={() => setSearch('')}
+            onAksi={() => { setSearch(''); setFilterAngkatan('semua') }}
           />
         ) : (
           filtered.map(g => (
@@ -215,8 +256,8 @@ export default function AlumniPage() {
                       </span>
                       <BadgeVerifikasi status={m.status_verifikasi} size={13} />
                     </div>
-                    <div style={{ fontSize: '11px', color: '#5a7da0', marginBottom: '8px' }}>
-                      {m.angkatan ? `Angkatan ${m.angkatan}` : '—'}
+                    <div style={{ marginBottom: '8px', display: 'flex', justifyContent: 'center' }}>
+                      <BadgeAngkatan angkatan={m.angkatan} sembunyikanKosong={false} kecil />
                     </div>
                     {m.jumlahProduk > 0 ? (
                       <div style={{

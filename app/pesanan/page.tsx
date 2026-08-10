@@ -7,6 +7,7 @@ import Navbar from '../components/Navbar'
 import FotoProduk from '../components/FotoProduk'
 import Skeleton, { DaftarSkeletonPesanan } from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
+import BadgeAngkatan from '../components/BadgeAngkatan'
 
 type PesananItem = {
   id: string
@@ -32,7 +33,7 @@ type Pesanan = {
   alamat_kirim: string | null
   created_at: string
   dikirim_at: string | null
-  toko: { nama_toko: string | null } | null
+  toko: { nama_toko: string | null; seller_id: string | null } | null
   pesanan_items: PesananItem[]
 }
 
@@ -61,6 +62,7 @@ export default function PesananPage() {
   const [loading, setLoading] = useState(true)
   const [pesan, setPesan] = useState('')
   const [prosesId, setProsesId] = useState<string | null>(null)
+  const [angkatanPenjual, setAngkatanPenjual] = useState<Record<string, number | null>>({})
 
   useEffect(() => {
     async function load() {
@@ -73,12 +75,21 @@ export default function PesananPage() {
       // RLS sudah membatasi ke pesanan milik sendiri, eq buyer_id dipasang
       // supaya niatnya eksplisit dan query tetap benar kalau policy berubah.
       const { data, error } = await supabase.from('pesanan')
-        .select('id, nomor_pesanan, toko_id, total, ongkir, status, payment_status, metode_bayar, no_resi, kurir, alamat_kirim, created_at, dikirim_at, toko(nama_toko), pesanan_items(id, produk_id, nama_produk, harga, qty, subtotal, foto_url)')
+        .select('id, nomor_pesanan, toko_id, total, ongkir, status, payment_status, metode_bayar, no_resi, kurir, alamat_kirim, created_at, dikirim_at, toko(nama_toko, seller_id), pesanan_items(id, produk_id, nama_produk, harga, qty, subtotal, foto_url)')
         .eq('buyer_id', user.id)
         .order('created_at', { ascending: false })
 
       if (error) setPesan('Gagal memuat pesanan: ' + error.message)
-      setPesanan((data ?? []) as unknown as Pesanan[])
+      const baris = (data ?? []) as unknown as Pesanan[]
+      setPesanan(baris)
+
+      // Angkatan penjual untuk badge, diambil dari view publik
+      const sellerIds = [...new Set(baris.map(p => p.toko?.seller_id).filter(Boolean))] as string[]
+      if (sellerIds.length > 0) {
+        const { data: penjual } = await supabase
+          .from('alumni_publik').select('id, angkatan').in('id', sellerIds)
+        setAngkatanPenjual(Object.fromEntries((penjual ?? []).map(u => [u.id, u.angkatan])))
+      }
       setLoading(false)
     }
     load()
@@ -213,13 +224,18 @@ export default function PesananPage() {
 
               {/* Toko */}
               <div style={{ padding: '10px 14px', borderBottom: '0.5px solid #e8f0f8' }}>
-                {p.toko_id ? (
-                  <a href={`/toko/${p.toko_id}`} style={{ fontSize: '12px', color: '#0C447C', textDecoration: 'none', fontWeight: '500' }}>
-                    🏪 {p.toko?.nama_toko ?? 'Toko'} →
-                  </a>
-                ) : (
-                  <span style={{ fontSize: '12px', color: '#5a7da0' }}>🏪 Toko tidak diketahui</span>
-                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '7px', flexWrap: 'wrap' }}>
+                  {p.toko_id ? (
+                    <a href={`/toko/${p.toko_id}`} style={{ fontSize: '12px', color: '#0C447C', textDecoration: 'none', fontWeight: '500' }}>
+                      🏪 {p.toko?.nama_toko ?? 'Toko'} →
+                    </a>
+                  ) : (
+                    <span style={{ fontSize: '12px', color: '#5a7da0' }}>🏪 Toko tidak diketahui</span>
+                  )}
+                  {p.toko?.seller_id && (
+                    <BadgeAngkatan angkatan={angkatanPenjual[p.toko.seller_id]} kecil />
+                  )}
+                </div>
               </div>
 
               {/* Daftar item */}

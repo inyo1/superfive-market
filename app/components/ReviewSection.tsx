@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import Skeleton from './Skeleton'
+import BadgeAngkatan from './BadgeAngkatan'
 
 type Review = {
   id: string
@@ -51,6 +52,7 @@ function fmtTgl(s: string) {
 
 export default function ReviewSection({ produkId }: { produkId: string }) {
   const [reviews, setReviews] = useState<Review[]>([])
+  const [angkatanPengulas, setAngkatanPengulas] = useState<Record<string, number | null>>({})
   const [loading, setLoading] = useState(true)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [myReview, setMyReview] = useState<Review | null>(null)
@@ -79,6 +81,15 @@ export default function ReviewSection({ produkId }: { produkId: string }) {
 
     if (!error && data) {
       setReviews(data as Review[])
+
+      // Angkatan pengulas diambil terpisah dari view publik — reviews sendiri
+      // hanya menyimpan nama, bukan angkatan
+      const ids = [...new Set(data.map(r => r.user_id).filter(Boolean))]
+      if (ids.length > 0) {
+        const { data: profil } = await supabase
+          .from('alumni_publik').select('id, angkatan').in('id', ids)
+        setAngkatanPengulas(Object.fromEntries((profil ?? []).map(p => [p.id, p.angkatan])))
+      }
     }
     setLoading(false)
   }
@@ -293,7 +304,10 @@ export default function ReviewSection({ produkId }: { produkId: string }) {
                     {r.nama_reviewer?.charAt(0)?.toUpperCase() ?? '?'}
                   </div>
                   <div>
-                    <div style={{ fontSize: '12px', fontWeight: '500', color: '#1a1a1a' }}>{r.nama_reviewer}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '12px', fontWeight: '500', color: '#1a1a1a' }}>{r.nama_reviewer}</span>
+                      <BadgeAngkatan angkatan={angkatanPengulas[r.user_id]} kecil />
+                    </div>
                     <div style={{ fontSize: '10px', color: '#5a7da0' }}>{fmtTgl(r.created_at)}</div>
                   </div>
                 </div>
