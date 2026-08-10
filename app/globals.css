@@ -166,12 +166,44 @@ main {
   min-height: 44px;
 }
 
-/* ── Bottom navigation (mobile) ──
-   Hanya tampil di bawah 768px. Body diberi ruang di bawah supaya konten
-   terakhir tidak tertutup bar, sudah termasuk home indicator iPhone. */
+/* ── Navbar dua baris ──
+   Baris menu hanya muncul di >= 1024px. Di bawah itu navigasi ditangani
+   bottom nav, jadi navbar cukup satu baris berisi identitas dan utilitas. */
+.nav-utilitas { display: flex; }
+.nav-ringkas { display: none; }
+.nav-baris-menu { display: none; }
+
+@media (max-width: 1023px) {
+  .nav-utilitas { display: none !important; }
+  .nav-ringkas { display: flex !important; }
+}
+
+@media (min-width: 1024px) {
+  .nav-baris-menu {
+    display: block;
+    /* sedikit lebih gelap dari baris atas supaya terbaca berjenjang */
+    background: #093a6b;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+}
+
+.nav-menu-geser {
+  display: flex;
+  align-items: stretch;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.nav-menu-geser::-webkit-scrollbar { display: none; }
+
+/* ── Bottom navigation ──
+   Tampil di bawah 1024px, sepasang dengan navbar satu baris di lebar itu.
+   Body diberi ruang di bawah supaya konten terakhir tidak tertutup bar,
+   sudah termasuk home indicator iPhone. */
 .bottomnav-only { display: none; }
 
-@media (max-width: 767px) {
+@media (max-width: 1023px) {
   .bottomnav-only { display: block; }
 
   body {

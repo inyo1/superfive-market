@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 import { useCart } from '../context/CartContext'
@@ -15,6 +15,37 @@ const links = [
   { href: '/about', label: 'Tentang Kami' },
 ]
 
+const EMAS = '#EF9F27'
+
+// Ikon utilitas digambar inline. Emoji tampil beda-beda antar perangkat dan
+// tinggi barisnya ikut berubah, yang bikin baris navbar tidak rata.
+function IkonCari() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+      <circle cx="10.5" cy="10.5" r="6.5" />
+      <path d="M15.5 15.5L21 21" />
+    </svg>
+  )
+}
+
+function IkonKeranjang() {
+  return (
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 4h2l2.4 11.2a2 2 0 002 1.6h7.5a2 2 0 002-1.6L21 8H6" />
+      <circle cx="10" cy="20" r="1.4" />
+      <circle cx="18" cy="20" r="1.4" />
+    </svg>
+  )
+}
+
+function IkonChat() {
+  return (
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21 12a8 8 0 01-8 8H4l2-3a8 8 0 1115-5z" />
+    </svg>
+  )
+}
+
 export default function Navbar() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [user, setUser] = useState<any>(null)
@@ -22,6 +53,7 @@ export default function Navbar() {
   const [userName, setUserName] = useState<string>('')
   const [isAdmin, setIsAdmin] = useState(false)
   const [menungguVerifikasi, setMenungguVerifikasi] = useState(0)
+  const navRef = useRef<HTMLElement>(null)
   const pathname = usePathname()
   const router = useRouter()
   const { totalItem } = useCart()
@@ -63,6 +95,24 @@ export default function Navbar() {
     return () => listener.subscription.unsubscribe()
   }, [])
 
+  // Tinggi navbar berubah-ubah: satu baris di bawah 1024px, dua baris di atasnya,
+  // dan barisnya bisa berganti isi saat login. Diukur lalu diumumkan sebagai
+  // --tinggi-navbar supaya elemen sticky lain menempel pas, tanpa angka tetap.
+  useEffect(() => {
+    const el = navRef.current
+    if (!el) return
+
+    function umumkan() {
+      const t = el!.getBoundingClientRect().height
+      document.documentElement.style.setProperty('--tinggi-navbar', `${Math.round(t)}px`)
+    }
+
+    umumkan()
+    const ro = new ResizeObserver(umumkan)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [user, isAdmin])
+
   async function handleLogout() {
     await supabase.auth.signOut()
     router.push('/')
@@ -71,6 +121,16 @@ export default function Navbar() {
   function isActive(href: string) {
     return href === '/' ? pathname === '/' : pathname.startsWith(href)
   }
+
+  // Menu baris bawah. Item khusus pengguna login ikut menyusul di belakang.
+  const menuNavigasi = user
+    ? [
+        ...links,
+        { href: '/pesanan', label: 'Pesanan Saya' },
+        { href: '/dashboard', label: 'Dashboard' },
+        { href: '/toko/saya', label: 'Toko Saya' },
+      ]
+    : links
 
   const initials = userName
     ? userName.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase()
@@ -98,13 +158,13 @@ export default function Navbar() {
     </Link>
   )
 
-  const ChatBadge = ({ size = 20 }: { size?: number }) => (
+  const ChatBadge = () => (
     <Link
       href="/chat"
-      style={{ position: 'relative', color: '#fff', textDecoration: 'none', fontSize: `${size}px`, lineHeight: 1, padding: '4px 2px', display: 'flex', alignItems: 'center' }}
+      style={{ position: 'relative', color: '#fff', textDecoration: 'none', lineHeight: 1, minWidth: '40px', minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
       aria-label="Chat"
     >
-      💬
+      <IkonChat />
       {unreadCount > 0 && (
         <span style={{
           position: 'absolute', top: '-2px', right: '-6px',
@@ -119,17 +179,17 @@ export default function Navbar() {
     </Link>
   )
 
-  const CartBadge = ({ size = 20 }: { size?: number }) => (
+  const CartBadge = () => (
     <Link
       href="/keranjang"
       style={{
         position: 'relative', color: '#fff', textDecoration: 'none',
-        fontSize: `${size}px`, lineHeight: 1, padding: '4px 2px',
-        display: 'flex', alignItems: 'center',
+        lineHeight: 1, minWidth: '40px', minHeight: '40px',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}
       aria-label="Keranjang"
     >
-      🛒
+      <IkonKeranjang />
       {totalItem > 0 && (
         <span style={{
           position: 'absolute', top: '-2px', right: '-6px',
@@ -149,143 +209,82 @@ export default function Navbar() {
     <>
       <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
 
-      <nav style={{ background: '#0C447C', fontFamily: 'sans-serif', position: 'sticky', top: 0, zIndex: 100 }}>
-        {/* Top bar */}
-        <div style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <nav ref={navRef} style={{ background: '#0C447C', fontFamily: 'sans-serif', position: 'sticky', top: 0, zIndex: 100 }}>
 
-          {/* Logo */}
-          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', flex: 1, minWidth: 0 }}>
-            <Image src="/LOGO-512.png" alt="Logo" width={60} height={60} priority style={{ objectFit: 'contain', flexShrink: 0 }} />
-            <div style={{ minWidth: 0 }}>
-              <div style={{ color: '#fff', fontSize: '15px', fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Superfive Market</div>
-              <div style={{ color: '#B5D4F4', fontSize: '10px', letterSpacing: '1px' }}>ALUMNI SMPN 5 BANDUNG</div>
+        {/* ── Baris atas: identitas + utilitas ── */}
+        <div style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+
+          {/* Brand tidak pernah menyusut, jadi namanya tidak mungkin terpotong */}
+          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', flexShrink: 0 }}>
+            <Image src="/LOGO-512.png" alt="Logo" width={56} height={56} priority style={{ objectFit: 'contain', flexShrink: 0 }} />
+            <div>
+              <div style={{ color: '#fff', fontSize: '15px', fontWeight: '600', whiteSpace: 'nowrap', lineHeight: 1.3 }}>
+                Superfive Market
+              </div>
+              <div style={{ color: '#B5D4F4', fontSize: '10px', letterSpacing: '1px', whiteSpace: 'nowrap' }}>
+                ALUMNI SMPN 5 BANDUNG
+              </div>
             </div>
           </Link>
 
-          {/* ── Desktop links ── */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }} className="nav-desktop">
-            {links.map(l => (
-              <Link
-                key={l.href}
-                href={l.href}
-                style={{
-                  color: isActive(l.href) ? '#fff' : '#B5D4F4',
-                  fontSize: '13px', textDecoration: 'none',
-                  padding: '6px 12px', borderRadius: '6px',
-                  background: isActive(l.href) ? 'rgba(255,255,255,0.15)' : 'transparent',
-                  fontWeight: isActive(l.href) ? '500' : '400',
-                }}
-              >
-                {l.label}
-              </Link>
-            ))}
-            {user && (
-              <Link href="/pesanan" style={{
-                color: isActive('/pesanan') ? '#fff' : '#B5D4F4',
-                fontSize: '12px', marginLeft: '4px', textDecoration: 'none',
-                padding: '6px 10px', borderRadius: '6px',
-                background: isActive('/pesanan') ? 'rgba(255,255,255,0.15)' : 'transparent',
-              }}>
-                🧾 Pesanan Saya
-              </Link>
-            )}
-            {user && (
-              <Link href="/dashboard" style={{ color: '#B5D4F4', fontSize: '12px', textDecoration: 'none', padding: '6px 10px', borderRadius: '6px' }}>
-                Dashboard
-              </Link>
-            )}
-            {user && (
-              <Link href="/toko/saya" style={{ color: '#B5D4F4', fontSize: '12px', textDecoration: 'none', padding: '6px 10px', borderRadius: '6px' }}>
-                🏪 Toko Saya
-              </Link>
-            )}
-            {isAdmin && (
-              <Link href="/admin" style={{
-                color: '#fff', fontSize: '12px', marginLeft: '2px', textDecoration: 'none',
-                padding: '5px 10px', borderRadius: '6px',
-                background: '#e65100', fontWeight: '600',
-              }}>
-                ⭐ Admin
-              </Link>
-            )}
-            {isAdmin && (
-              <Link href="/admin/verifikasi" style={{
-                position: 'relative', color: '#fff', fontSize: '12px', textDecoration: 'none',
-                padding: '5px 10px', borderRadius: '6px',
-                background: 'rgba(230,81,0,0.35)', fontWeight: '600',
-                display: 'flex', alignItems: 'center', gap: '5px',
-              }}>
-                🎓 Verifikasi
-                {menungguVerifikasi > 0 && (
-                  <span style={{
-                    background: '#e53935', color: '#fff', fontSize: '10px', fontWeight: '700',
-                    borderRadius: '10px', minWidth: '18px', height: '18px', padding: '0 5px',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
-                  }}>
-                    {menungguVerifikasi > 99 ? '99+' : menungguVerifikasi}
-                  </span>
-                )}
-              </Link>
-            )}
+          <div style={{ flex: 1, minWidth: '8px' }} />
 
-            {/* Search button — desktop */}
+          {/* Utilitas desktop */}
+          <div className="nav-utilitas" style={{ alignItems: 'center', gap: '6px', flexShrink: 0 }}>
             <button
               onClick={() => setSearchOpen(true)}
               style={{
-                display: 'flex', alignItems: 'center', gap: '6px',
+                display: 'flex', alignItems: 'center', gap: '7px',
                 background: 'rgba(255,255,255,0.12)', border: 'none',
-                color: '#fff', padding: '6px 12px', borderRadius: '6px',
-                fontSize: '13px', cursor: 'pointer', marginLeft: '6px',
-                transition: 'background 0.15s',
+                color: '#fff', padding: '0 14px', minHeight: '40px', borderRadius: '8px',
+                fontSize: '13px', cursor: 'pointer', transition: 'background 0.15s',
               }}
               onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.2)')}
               onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.12)')}
               aria-label="Cari"
             >
-              🔍 <span>Cari</span>
+              <IkonCari /> <span>Cari</span>
             </button>
 
-            <CartBadge size={20} />
-            {user && <ChatBadge size={20} />}
-            {/* Auth */}
+            <CartBadge />
+            {user && <ChatBadge />}
+
             {user ? (
               <>
-                <AvatarCircle size={32} />
+                <AvatarCircle size={34} />
                 <button
                   onClick={handleLogout}
-                  style={{ color: '#fff', fontSize: '12px', background: '#a53018', border: 'none', padding: '6px 14px', borderRadius: '6px', marginLeft: '2px', cursor: 'pointer' }}
+                  style={{ color: '#fff', fontSize: '12px', background: '#a53018', border: 'none', padding: '0 16px', minHeight: '40px', borderRadius: '8px', cursor: 'pointer' }}
                 >
                   Keluar
                 </button>
               </>
             ) : (
-              <Link href="/auth" style={{ color: '#fff', fontSize: '12px', textDecoration: 'none', background: '#185FA5', padding: '6px 14px', borderRadius: '6px', marginLeft: '6px' }}>
+              <Link href="/auth" style={{ color: '#fff', fontSize: '12px', textDecoration: 'none', background: '#185FA5', padding: '0 18px', minHeight: '40px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center' }}>
                 Masuk
               </Link>
             )}
           </div>
 
-          {/* ── Kontrol mobile: cari + notifikasi ──
-              Navigasi utama sudah pindah ke bottom nav, jadi hamburger dihapus
-              supaya menunya tidak dobel. Sisa menu ada di sheet Akun. */}
-          <div className="nav-hamburger" style={{ display: 'none', alignItems: 'center', gap: '4px' }}>
+          {/* Kontrol ringkas di bawah 1024px — sisanya ditangani bottom nav */}
+          <div className="nav-ringkas" style={{ alignItems: 'center', gap: '4px', flexShrink: 0 }}>
             <button
               onClick={() => setSearchOpen(true)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#fff', fontSize: '20px', lineHeight: 1, borderRadius: '8px', minWidth: '44px', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#fff', borderRadius: '8px', minWidth: '44px', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               aria-label="Cari"
             >
-              🔍
+              <IkonCari />
             </button>
             {user && (
               <Link
                 href="/chat"
-                style={{ position: 'relative', color: '#fff', textDecoration: 'none', fontSize: '20px', lineHeight: 1, borderRadius: '8px', minWidth: '44px', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                aria-label="Notifikasi pesan"
+                style={{ position: 'relative', color: '#fff', textDecoration: 'none', borderRadius: '8px', minWidth: '44px', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                aria-label="Pesan"
               >
-                🔔
+                <IkonChat />
                 {unreadCount > 0 && (
                   <span style={{
-                    position: 'absolute', top: '6px', right: '6px',
+                    position: 'absolute', top: '6px', right: '4px',
                     background: '#e53935', color: '#fff',
                     fontSize: '10px', fontWeight: '700', lineHeight: 1,
                     borderRadius: '10px', minWidth: '16px', height: '16px', padding: '0 4px',
@@ -299,14 +298,74 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* Ambang 767px disamakan dengan bottom nav, supaya tidak ada lebar
-            layar yang menampilkan navbar desktop dan bottom nav sekaligus */}
-        <style>{`
-          @media (max-width: 767px) {
-            .nav-desktop { display: none !important; }
-            .nav-hamburger { display: flex !important; }
-          }
-        `}</style>
+        {/* ── Baris bawah: menu navigasi, hanya >= 1024px ── */}
+        <div className="nav-baris-menu">
+          <div className="nav-menu-geser" style={{ padding: '0 16px' }}>
+            {menuNavigasi.map(m => {
+              const aktif = isActive(m.href)
+              return (
+                <Link
+                  key={m.href}
+                  href={m.href}
+                  aria-current={aktif ? 'page' : undefined}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center',
+                    height: '44px', padding: '0 14px', flexShrink: 0,
+                    fontSize: '13px', textDecoration: 'none', whiteSpace: 'nowrap',
+                    color: aktif ? '#fff' : '#B5D4F4',
+                    fontWeight: aktif ? '600' : '400',
+                    // Garis bawah emas, bukan kotak berisi — lebih tenang
+                    // untuk deretan menu yang panjang
+                    borderBottom: `3px solid ${aktif ? EMAS : 'transparent'}`,
+                  }}
+                >
+                  {m.label}
+                </Link>
+              )
+            })}
+
+            {isAdmin && (
+              <>
+                <span aria-hidden style={{ alignSelf: 'center', width: '1px', height: '20px', background: 'rgba(255,255,255,0.18)', margin: '0 6px', flexShrink: 0 }} />
+                <Link
+                  href="/admin"
+                  aria-current={isActive('/admin') && !pathname.startsWith('/admin/verifikasi') ? 'page' : undefined}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center',
+                    height: '44px', padding: '0 14px', flexShrink: 0,
+                    fontSize: '13px', textDecoration: 'none', whiteSpace: 'nowrap',
+                    color: '#ffb74d', fontWeight: '600',
+                    borderBottom: `3px solid ${isActive('/admin') && !pathname.startsWith('/admin/verifikasi') ? EMAS : 'transparent'}`,
+                  }}
+                >
+                  Admin
+                </Link>
+                <Link
+                  href="/admin/verifikasi"
+                  aria-current={pathname.startsWith('/admin/verifikasi') ? 'page' : undefined}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '7px',
+                    height: '44px', padding: '0 14px', flexShrink: 0,
+                    fontSize: '13px', textDecoration: 'none', whiteSpace: 'nowrap',
+                    color: '#ffb74d', fontWeight: '600',
+                    borderBottom: `3px solid ${pathname.startsWith('/admin/verifikasi') ? EMAS : 'transparent'}`,
+                  }}
+                >
+                  Verifikasi Alumni
+                  {menungguVerifikasi > 0 && (
+                    <span style={{
+                      background: '#e53935', color: '#fff', fontSize: '10px', fontWeight: '700',
+                      borderRadius: '10px', minWidth: '18px', height: '18px', padding: '0 5px',
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
+                    }}>
+                      {menungguVerifikasi > 99 ? '99+' : menungguVerifikasi}
+                    </span>
+                  )}
+                </Link>
+              </>
+            )}
+          </div>
+        </div>
       </nav>
     </>
   )

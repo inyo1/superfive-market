@@ -200,7 +200,9 @@ export default function ChatRoom() {
       <div style={{
         background: '#fff', borderBottom: '0.5px solid #c5d9ef',
         padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '10px',
-        position: 'sticky', top: '61px', zIndex: 10,
+        // Menempel tepat di bawah navbar; tingginya diumumkan Navbar lewat
+        // --tinggi-navbar karena berubah antara satu dan dua baris
+        position: 'sticky', top: 'var(--tinggi-navbar, 76px)', zIndex: 10,
       }}>
         <button onClick={() => router.push('/chat')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#0C447C', fontSize: '20px', padding: '2px 8px 2px 0', lineHeight: 1 }}>←</button>
         <AvatarCircle nama={convInfo?.otherNama ?? null} avatar={convInfo?.otherAvatar ?? null} size={38} />
