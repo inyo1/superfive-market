@@ -301,6 +301,29 @@ if (!user) {
 }
 ```
 
+## ATURAN: Jangan `git add -A`
+
+**Jangan pernah memakai `git add -A` atau `git add .`.** Selalu jalankan
+`git status` lebih dulu, lihat apa saja yang muncul, lalu `git add` file yang
+memang dimaksud satu per satu.
+
+```bash
+git status --short
+```
+
+```bash
+git add app/components/Navbar.tsx app/page.tsx
+```
+
+Alasannya bukan teori. Pada commit `2b0e4fe`, `git add -A` menyapu
+`public/files.zip` — arsip aset 2,7 MB yang kebetulan ada di folder `public/`
+dan sama sekali tidak berhubungan dengan commit itu. Arsipnya ikut ter-push,
+ter-deploy, dan bisa diunduh siapa saja di `/files.zip` selama beberapa jam
+sampai ketahuan.
+
+`public/` sangat rawan untuk ini, karena apa pun di dalamnya otomatis
+tersaji ke publik.
+
 ## ATURAN: Hak Tulis VIEW dan TABEL Baru
 
 Setiap kali membuat **VIEW atau TABEL baru di schema `public`**, hak tulis untuk
