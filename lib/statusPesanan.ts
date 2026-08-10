@@ -37,6 +37,39 @@ export function warnaStatus(status: string) {
   return WARNA[status] ?? { bg: '#f0f5fb', color: '#5a7da0' }
 }
 
+// ── Status pembayaran ────────────────────────────────────────────────────
+// Juga dijaga CHECK constraint (chk_payment_status) di database.
+
+export const PAYMENT_STATUS = [
+  'menunggu', 'lunas', 'gagal', 'kadaluarsa', 'refund',
+] as const
+
+export type PaymentStatus = (typeof PAYMENT_STATUS)[number]
+
+const WARNA_BAYAR: Record<string, { bg: string; color: string }> = {
+  menunggu:   { bg: '#eceff1', color: '#607d8b' },
+  lunas:      { bg: '#e8f5e9', color: '#2e7d32' },
+  gagal:      { bg: '#fce4e4', color: '#c62828' },
+  kadaluarsa: { bg: '#eceff1', color: '#455a64' },
+  refund:     { bg: '#ede7f6', color: '#5e35b1' },
+}
+
+const LABEL_BAYAR: Record<string, string> = {
+  menunggu:   'Belum Dibayar',
+  lunas:      'Lunas',
+  gagal:      'Pembayaran Gagal',
+  kadaluarsa: 'Kadaluarsa',
+  refund:     'Dana Dikembalikan',
+}
+
+export function warnaPembayaran(status: string | null) {
+  return WARNA_BAYAR[status ?? ''] ?? { bg: '#eceff1', color: '#607d8b' }
+}
+
+export function labelPembayaran(status: string | null) {
+  return LABEL_BAYAR[status ?? ''] ?? 'Belum Dibayar'
+}
+
 // Label panjang untuk badge di halaman pembeli
 export const LABEL_STATUS: Record<string, string> = {
   menunggu:   'Menunggu Pembayaran',

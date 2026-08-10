@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
-import { STATUS_PESANAN, warnaStatus, labelStatus } from '../../lib/statusPesanan'
+import { STATUS_PESANAN, warnaStatus, labelStatus, warnaPembayaran, labelPembayaran } from '../../lib/statusPesanan'
 import Navbar from '../components/Navbar'
 import FotoProduk from '../components/FotoProduk'
 
@@ -186,9 +186,14 @@ export default function PesananPage() {
                   </div>
                   <div style={{ fontSize: '11px', color: '#5a7da0', marginTop: '2px' }}>{fmtTgl(p.created_at)}</div>
                 </div>
-                <span style={{ fontSize: '11px', fontWeight: '600', padding: '4px 11px', borderRadius: '20px', flexShrink: 0, background: warna.bg, color: warna.color }}>
-                  {labelStatus(p.status)}
-                </span>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px', flexShrink: 0 }}>
+                  <span style={{ fontSize: '11px', fontWeight: '600', padding: '4px 11px', borderRadius: '20px', background: warna.bg, color: warna.color }}>
+                    {labelStatus(p.status)}
+                  </span>
+                  <span style={{ fontSize: '10px', fontWeight: '600', padding: '3px 10px', borderRadius: '20px', ...warnaPembayaran(p.payment_status) }}>
+                    {labelPembayaran(p.payment_status)}
+                  </span>
+                </div>
               </div>
 
               {/* Toko */}
@@ -242,7 +247,7 @@ export default function PesananPage() {
               {/* Total & pembayaran */}
               <div style={{ padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
                 <div style={{ fontSize: '11px', color: '#5a7da0', minWidth: 0 }}>
-                  {(p.metode_bayar ?? '-').replace(/_/g, ' ')} · {p.payment_status ?? '-'}
+                  💳 {(p.metode_bayar ?? '-').replace(/_/g, ' ')}
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
                   <div style={{ fontSize: '10px', color: '#5a7da0' }}>Total</div>

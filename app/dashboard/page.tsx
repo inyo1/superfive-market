@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 import { uploadFotoProduk } from '../../lib/uploadFoto'
-import { statusBerikutnya, bisaDibatalkan, warnaStatus, labelStatus, AKSI_STATUS } from '../../lib/statusPesanan'
+import { statusBerikutnya, bisaDibatalkan, warnaStatus, labelStatus, warnaPembayaran, labelPembayaran, AKSI_STATUS } from '../../lib/statusPesanan'
 import Navbar from '../components/Navbar'
 import FotoProduk from '../components/FotoProduk'
 
@@ -34,6 +34,7 @@ type Pesanan = {
   kurir: string | null
   created_at: string
   dikirim_at: string | null
+  paid_at: string | null
   pesanan_items: PesananItem[]
 }
 
@@ -89,7 +90,7 @@ export default function DashboardPage() {
       // Pesanan milik toko ini, beserta itemnya. Satu baris pesanan = satu toko,
       // jadi cukup filter toko_id — tidak perlu menyaring per produk lagi.
       const { data: pesananData, error: errPesanan } = await supabase.from('pesanan')
-        .select('id, nomor_pesanan, penerima_nama, penerima_hp, alamat_kirim, metode_bayar, total, status, payment_status, no_resi, kurir, created_at, dikirim_at, pesanan_items(id, produk_id, nama_produk, harga, qty, subtotal, foto_url)')
+        .select('id, nomor_pesanan, penerima_nama, penerima_hp, alamat_kirim, metode_bayar, total, status, payment_status, no_resi, kurir, created_at, dikirim_at, paid_at, pesanan_items(id, produk_id, nama_produk, harga, qty, subtotal, foto_url)')
         .eq('toko_id', tokoData.id)
         .order('created_at', { ascending: false })
 
@@ -171,6 +172,29 @@ export default function DashboardPage() {
       setNoResi('')
     } catch (e) {
       notif('Gagal ubah status: ' + (e instanceof Error ? e.message : 'coba lagi'))
+    } finally {
+      setProsesId(null)
+    }
+  }
+
+  // Pembayaran masih transfer manual, jadi penjual yang mengonfirmasi sendiri
+  // setelah dana masuk. Terpisah dari status pengiriman.
+  async function tandaiLunas(id: string) {
+    setProsesId(id)
+    try {
+      const { data, error } = await supabase.from('pesanan')
+        .update({ payment_status: 'lunas', paid_at: new Date().toISOString() })
+        .eq('id', id)
+        .select('id, payment_status, paid_at')
+        .single()
+
+      if (error) throw new Error(error.message)
+      if (!data) throw new Error('Pesanan tidak ditemukan atau kamu tidak punya akses')
+
+      setPesanan(prev => prev.map(p => p.id === id ? { ...p, ...data } : p))
+      notif('Pembayaran ditandai lunas.')
+    } catch (e) {
+      notif('Gagal tandai lunas: ' + (e instanceof Error ? e.message : 'coba lagi'))
     } finally {
       setProsesId(null)
     }
@@ -450,9 +474,14 @@ export default function DashboardPage() {
                         {p.penerima_hp ?? '-'} · {fmtTgl(p.created_at)}
                       </div>
                     </div>
-                    <span style={{ fontSize: '11px', fontWeight: '600', padding: '3px 10px', borderRadius: '20px', flexShrink: 0, ...warnaStatus(p.status) }}>
-                      {p.status}
-                    </span>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px', flexShrink: 0 }}>
+                      <span style={{ fontSize: '11px', fontWeight: '600', padding: '3px 10px', borderRadius: '20px', ...warnaStatus(p.status) }}>
+                        {p.status}
+                      </span>
+                      <span style={{ fontSize: '10px', fontWeight: '600', padding: '2px 9px', borderRadius: '20px', ...warnaPembayaran(p.payment_status) }}>
+                        {labelPembayaran(p.payment_status)}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Item pesanan */}
@@ -479,8 +508,25 @@ export default function DashboardPage() {
                       📍 {p.alamat_kirim ?? '-'}
                     </div>
                     <div style={{ fontSize: '11px', color: '#5a7da0' }}>
-                      💳 {(p.metode_bayar ?? '-').replace(/_/g, ' ')} · pembayaran {p.payment_status ?? '-'}
+                      💳 {(p.metode_bayar ?? '-').replace(/_/g, ' ')}
+                      {p.paid_at && ` · dibayar ${fmtTgl(p.paid_at)}`}
                     </div>
+
+                    {/* Konfirmasi pembayaran manual, terpisah dari alur pengiriman */}
+                    {p.payment_status === 'menunggu' && p.status !== 'dibatalkan' && (
+                      <button
+                        onClick={() => tandaiLunas(p.id)}
+                        disabled={sedangProses}
+                        style={{
+                          width: '100%', background: '#e8f5e9', color: '#2e7d32',
+                          border: '0.5px solid #a5d6a7', padding: '9px',
+                          borderRadius: '6px', fontSize: '12px', fontWeight: '600',
+                          cursor: sedangProses ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        {sedangProses ? 'Menyimpan...' : '💰 Tandai Sudah Dibayar'}
+                      </button>
+                    )}
                     {p.no_resi && (
                       <div style={{ fontSize: '11px', color: '#e65100', background: '#fff3e0', padding: '6px 10px', borderRadius: '6px' }}>
                         🚚 {p.kurir ?? 'Kurir'} · Resi <strong>{p.no_resi}</strong>
