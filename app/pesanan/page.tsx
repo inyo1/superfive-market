@@ -1,0 +1,234 @@
+'use client'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { supabase } from '../../lib/supabase'
+import { STATUS_PESANAN, warnaStatus, labelStatus } from '../../lib/statusPesanan'
+import Navbar from '../components/Navbar'
+import FotoProduk from '../components/FotoProduk'
+
+type PesananItem = {
+  id: string
+  produk_id: string | null
+  nama_produk: string
+  harga: number
+  qty: number
+  subtotal: number
+  foto_url: string | null
+}
+
+type Pesanan = {
+  id: string
+  nomor_pesanan: string | null
+  toko_id: string | null
+  total: number | null
+  ongkir: number | null
+  status: string
+  payment_status: string | null
+  metode_bayar: string | null
+  no_resi: string | null
+  kurir: string | null
+  alamat_kirim: string | null
+  created_at: string
+  dikirim_at: string | null
+  toko: { nama_toko: string | null } | null
+  pesanan_items: PesananItem[]
+}
+
+const TABS = ['semua', ...STATUS_PESANAN] as const
+type Tab = (typeof TABS)[number]
+
+const LABEL_TAB: Record<Tab, string> = {
+  semua: 'Semua',
+  menunggu: 'Menunggu',
+  dibayar: 'Dibayar',
+  diproses: 'Diproses',
+  dikirim: 'Dikirim',
+  selesai: 'Selesai',
+  dibatalkan: 'Dibatalkan',
+}
+
+function fmt(n: number) { return 'Rp ' + (n || 0).toLocaleString('id-ID') }
+function fmtTgl(s: string) {
+  return new Date(s).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+export default function PesananPage() {
+  const router = useRouter()
+  const [pesanan, setPesanan] = useState<Pesanan[]>([])
+  const [tab, setTab] = useState<Tab>('semua')
+  const [loading, setLoading] = useState(true)
+  const [pesan, setPesan] = useState('')
+
+  useEffect(() => {
+    async function load() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        router.replace('/auth?redirect=/pesanan&msg=Login+dulu+untuk+melihat+pesananmu')
+        return
+      }
+
+      // RLS sudah membatasi ke pesanan milik sendiri, eq buyer_id dipasang
+      // supaya niatnya eksplisit dan query tetap benar kalau policy berubah.
+      const { data, error } = await supabase.from('pesanan')
+        .select('id, nomor_pesanan, toko_id, total, ongkir, status, payment_status, metode_bayar, no_resi, kurir, alamat_kirim, created_at, dikirim_at, toko(nama_toko), pesanan_items(id, produk_id, nama_produk, harga, qty, subtotal, foto_url)')
+        .eq('buyer_id', user.id)
+        .order('created_at', { ascending: false })
+
+      if (error) setPesan('Gagal memuat pesanan: ' + error.message)
+      setPesanan((data ?? []) as unknown as Pesanan[])
+      setLoading(false)
+    }
+    load()
+  }, [])
+
+  const terlihat = tab === 'semua' ? pesanan : pesanan.filter(p => p.status === tab)
+
+  function jumlahTab(t: Tab) {
+    return t === 'semua' ? pesanan.length : pesanan.filter(p => p.status === t).length
+  }
+
+  if (loading) return (
+    <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
+      <Navbar />
+      <div style={{ textAlign: 'center', padding: '60px', color: '#5a7da0' }}>Memuat pesanan...</div>
+    </main>
+  )
+
+  return (
+    <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
+      <Navbar />
+
+      <div style={{ maxWidth: '660px', margin: '0 auto', padding: '16px' }}>
+        <h1 style={{ fontSize: '18px', fontWeight: '700', color: '#1a1a1a', marginBottom: '4px' }}>Pesanan Saya</h1>
+        <div style={{ fontSize: '12px', color: '#5a7da0', marginBottom: '16px' }}>
+          Riwayat semua pesananmu di Superfive Market
+        </div>
+
+        {pesan && (
+          <div style={{ background: pesan.includes('Gagal') ? '#fce4e4' : '#e8f5e9', border: `0.5px solid ${pesan.includes('Gagal') ? '#f09595' : '#a5d6a7'}`, borderRadius: '8px', padding: '10px 14px', fontSize: '12px', color: pesan.includes('Gagal') ? '#c62828' : '#2e7d32', marginBottom: '12px' }}>
+            {pesan}
+          </div>
+        )}
+
+        {/* Tab filter status — bisa digeser di layar sempit */}
+        <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '10px', marginBottom: '6px' }}>
+          {TABS.map(t => {
+            const aktif = tab === t
+            const jumlah = jumlahTab(t)
+            return (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                style={{
+                  flexShrink: 0, padding: '7px 14px', borderRadius: '20px',
+                  border: aktif ? 'none' : '0.5px solid #c5d9ef',
+                  background: aktif ? '#0C447C' : '#fff',
+                  color: aktif ? '#fff' : '#5a7da0',
+                  fontSize: '12px', fontWeight: aktif ? '600' : '400',
+                  cursor: 'pointer', whiteSpace: 'nowrap',
+                }}
+              >
+                {LABEL_TAB[t]}{jumlah > 0 && ` (${jumlah})`}
+              </button>
+            )
+          })}
+        </div>
+
+        {terlihat.length === 0 ? (
+          <div style={{ background: '#fff', borderRadius: '12px', padding: '48px 20px', border: '0.5px solid #c5d9ef', textAlign: 'center' }}>
+            <div style={{ fontSize: '44px', marginBottom: '12px' }}>🧾</div>
+            <div style={{ fontSize: '14px', color: '#1a1a1a', marginBottom: '6px' }}>
+              {tab === 'semua' ? 'Belum ada pesanan' : `Tidak ada pesanan berstatus "${LABEL_TAB[tab]}"`}
+            </div>
+            <div style={{ fontSize: '12px', color: '#5a7da0', marginBottom: '20px' }}>
+              {tab === 'semua' ? 'Yuk mulai belanja produk alumni.' : 'Coba pilih tab lain.'}
+            </div>
+            {tab === 'semua' && (
+              <a href="/produk" style={{ background: '#0C447C', color: '#fff', padding: '11px 22px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none' }}>
+                Lihat Produk
+              </a>
+            )}
+          </div>
+        ) : terlihat.map(p => {
+          const warna = warnaStatus(p.status)
+          return (
+            <div key={p.id} style={{ background: '#fff', borderRadius: '12px', border: '0.5px solid #c5d9ef', marginBottom: '10px', overflow: 'hidden' }}>
+
+              {/* Header: nomor pesanan + badge status */}
+              <div style={{ padding: '12px 14px', borderBottom: '0.5px solid #e8f0f8', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: '12px', fontWeight: '600', color: '#0C447C', fontFamily: 'monospace' }}>
+                    {p.nomor_pesanan ?? '—'}
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#5a7da0', marginTop: '2px' }}>{fmtTgl(p.created_at)}</div>
+                </div>
+                <span style={{ fontSize: '11px', fontWeight: '600', padding: '4px 11px', borderRadius: '20px', flexShrink: 0, background: warna.bg, color: warna.color }}>
+                  {labelStatus(p.status)}
+                </span>
+              </div>
+
+              {/* Toko */}
+              <div style={{ padding: '10px 14px', borderBottom: '0.5px solid #e8f0f8' }}>
+                {p.toko_id ? (
+                  <a href={`/toko/${p.toko_id}`} style={{ fontSize: '12px', color: '#0C447C', textDecoration: 'none', fontWeight: '500' }}>
+                    🏪 {p.toko?.nama_toko ?? 'Toko'} →
+                  </a>
+                ) : (
+                  <span style={{ fontSize: '12px', color: '#5a7da0' }}>🏪 Toko tidak diketahui</span>
+                )}
+              </div>
+
+              {/* Daftar item */}
+              <div style={{ padding: '10px 14px', borderBottom: '0.5px solid #e8f0f8' }}>
+                {p.pesanan_items.length === 0 ? (
+                  <div style={{ fontSize: '12px', color: '#c62828' }}>⚠️ Pesanan ini tidak punya item</div>
+                ) : p.pesanan_items.map(item => (
+                  <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                    <div style={{ width: '44px', height: '44px', borderRadius: '8px', overflow: 'hidden', flexShrink: 0 }}>
+                      <FotoProduk src={item.foto_url} height={44} fontSize={20} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      {item.produk_id ? (
+                        <a href={`/produk/${item.produk_id}`} style={{ fontSize: '12px', color: '#1a1a1a', textDecoration: 'none', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {item.nama_produk}
+                        </a>
+                      ) : (
+                        <div style={{ fontSize: '12px', color: '#1a1a1a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.nama_produk}</div>
+                      )}
+                      <div style={{ fontSize: '11px', color: '#5a7da0' }}>{fmt(item.harga)} × {item.qty}</div>
+                    </div>
+                    <div style={{ fontSize: '12px', fontWeight: '500', color: '#0C447C', flexShrink: 0 }}>{fmt(item.subtotal)}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Resi, hanya kalau sudah dikirim */}
+              {p.no_resi && (
+                <div style={{ margin: '10px 14px 0', background: '#fff3e0', borderRadius: '8px', padding: '10px 12px' }}>
+                  <div style={{ fontSize: '11px', color: '#e65100', marginBottom: '2px' }}>
+                    🚚 Dikirim lewat {p.kurir ?? 'kurir'}
+                    {p.dikirim_at && ` · ${fmtTgl(p.dikirim_at)}`}
+                  </div>
+                  <div style={{ fontSize: '13px', fontWeight: '700', color: '#e65100', fontFamily: 'monospace' }}>
+                    {p.no_resi}
+                  </div>
+                </div>
+              )}
+
+              {/* Total & pembayaran */}
+              <div style={{ padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+                <div style={{ fontSize: '11px', color: '#5a7da0', minWidth: 0 }}>
+                  {(p.metode_bayar ?? '-').replace(/_/g, ' ')} · {p.payment_status ?? '-'}
+                </div>
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <div style={{ fontSize: '10px', color: '#5a7da0' }}>Total</div>
+                  <div style={{ fontSize: '15px', fontWeight: '700', color: '#0C447C' }}>{fmt(p.total ?? 0)}</div>
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </main>
+  )
+}

@@ -169,7 +169,17 @@ export default function Navbar() {
               </a>
             ))}
             {user && (
-              <a href="/dashboard" style={{ color: '#B5D4F4', fontSize: '12px', marginLeft: '4px', textDecoration: 'none', padding: '6px 10px', borderRadius: '6px' }}>
+              <a href="/pesanan" style={{
+                color: isActive('/pesanan') ? '#fff' : '#B5D4F4',
+                fontSize: '12px', marginLeft: '4px', textDecoration: 'none',
+                padding: '6px 10px', borderRadius: '6px',
+                background: isActive('/pesanan') ? 'rgba(255,255,255,0.15)' : 'transparent',
+              }}>
+                🧾 Pesanan Saya
+              </a>
+            )}
+            {user && (
+              <a href="/dashboard" style={{ color: '#B5D4F4', fontSize: '12px', textDecoration: 'none', padding: '6px 10px', borderRadius: '6px' }}>
                 Dashboard
               </a>
             )}
@@ -274,6 +284,16 @@ export default function Navbar() {
                 {l.label}
               </a>
             ))}
+            {user && (
+              <a href="/pesanan" onClick={() => setOpen(false)} style={{
+                display: 'block', color: isActive('/pesanan') ? '#fff' : '#B5D4F4',
+                fontSize: '14px', textDecoration: 'none', padding: '10px 12px',
+                borderRadius: '8px', marginBottom: '2px',
+                background: isActive('/pesanan') ? 'rgba(255,255,255,0.15)' : 'transparent',
+              }}>
+                🧾 Pesanan Saya
+              </a>
+            )}
             {user && (
               <a href="/dashboard" onClick={() => setOpen(false)} style={{ display: 'block', color: '#B5D4F4', fontSize: '14px', textDecoration: 'none', padding: '10px 12px', borderRadius: '8px', marginBottom: '2px' }}>
                 📊 Dashboard Seller
