@@ -166,6 +166,30 @@ main {
   min-height: 44px;
 }
 
+/* ── Bottom navigation (mobile) ──
+   Hanya tampil di bawah 768px. Body diberi ruang di bawah supaya konten
+   terakhir tidak tertutup bar, sudah termasuk home indicator iPhone. */
+.bottomnav-only { display: none; }
+
+@media (max-width: 767px) {
+  .bottomnav-only { display: block; }
+
+  body {
+    padding-bottom: calc(56px + env(safe-area-inset-bottom));
+  }
+
+  /* Bar sticky yang sudah ada harus naik di atas bottom nav */
+  .cta-bottom-bar,
+  .checkout-bar {
+    bottom: calc(56px + env(safe-area-inset-bottom));
+  }
+}
+
+@keyframes sheetNaik {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
 /* ── Search overlay ── */
 @keyframes searchPanelIn {
   from { opacity: 0; transform: translateY(-16px) scale(0.97); }
@@ -196,3 +220,4 @@ main {
 }
 .search-dots span:nth-child(2) { animation-delay: 0.2s; }
 .search-dots span:nth-child(3) { animation-delay: 0.4s; }
+

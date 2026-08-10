@@ -14,7 +14,6 @@ const links = [
 ]
 
 export default function Navbar() {
-  const [open, setOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [user, setUser] = useState<any>(null)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
@@ -64,7 +63,6 @@ export default function Navbar() {
 
   async function handleLogout() {
     await supabase.auth.signOut()
-    setOpen(false)
     router.push('/')
   }
 
@@ -265,140 +263,46 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* ── Mobile controls: search + cart + hamburger ── */}
-          <div className="nav-hamburger" style={{ display: 'none', alignItems: 'center', gap: '2px' }}>
+          {/* ── Kontrol mobile: cari + notifikasi ──
+              Navigasi utama sudah pindah ke bottom nav, jadi hamburger dihapus
+              supaya menunya tidak dobel. Sisa menu ada di sheet Akun. */}
+          <div className="nav-hamburger" style={{ display: 'none', alignItems: 'center', gap: '4px' }}>
             <button
               onClick={() => setSearchOpen(true)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#fff', fontSize: '20px', padding: '6px', lineHeight: 1, borderRadius: '6px' }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#fff', fontSize: '20px', lineHeight: 1, borderRadius: '8px', minWidth: '44px', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               aria-label="Cari"
             >
               🔍
             </button>
-            <CartBadge size={20} />
-            <button
-              onClick={() => setOpen(!open)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px', display: 'flex', flexDirection: 'column', gap: '5px' }}
-              aria-label="Toggle menu"
-            >
-              <span style={{ display: 'block', width: '22px', height: '2px', background: open ? 'transparent' : '#fff', transition: 'all 0.2s' }} />
-              <span style={{
-                display: 'block', width: '22px', height: '2px', background: '#fff', transition: 'all 0.2s',
-                transform: open ? 'rotate(45deg) translate(0, 0)' : 'none',
-                marginTop: open ? '-7px' : '0',
-              }} />
-              <span style={{
-                display: 'block', width: '22px', height: '2px', background: '#fff', transition: 'all 0.2s',
-                transform: open ? 'rotate(-45deg) translate(0, 0)' : 'none',
-                marginTop: open ? '-2px' : '0',
-              }} />
-            </button>
-          </div>
-        </div>
-
-        {/* Mobile dropdown */}
-        {open && (
-          <div className="nav-mobile nav-menu-animate" style={{ borderTop: '1px solid rgba(255,255,255,0.1)', padding: '8px 16px 12px' }}>
-            {links.map(l => (
+            {user && (
               <a
-                key={l.href}
-                href={l.href}
-                onClick={() => setOpen(false)}
-                style={{
-                  display: 'block', color: isActive(l.href) ? '#fff' : '#B5D4F4',
-                  fontSize: '14px', textDecoration: 'none',
-                  padding: '10px 12px', borderRadius: '8px',
-                  background: isActive(l.href) ? 'rgba(255,255,255,0.15)' : 'transparent',
-                  fontWeight: isActive(l.href) ? '500' : '400', marginBottom: '2px',
-                }}
+                href="/chat"
+                style={{ position: 'relative', color: '#fff', textDecoration: 'none', fontSize: '20px', lineHeight: 1, borderRadius: '8px', minWidth: '44px', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                aria-label="Notifikasi pesan"
               >
-                {l.label}
-              </a>
-            ))}
-            {user && (
-              <a href="/pesanan" onClick={() => setOpen(false)} style={{
-                display: 'block', color: isActive('/pesanan') ? '#fff' : '#B5D4F4',
-                fontSize: '14px', textDecoration: 'none', padding: '10px 12px',
-                borderRadius: '8px', marginBottom: '2px',
-                background: isActive('/pesanan') ? 'rgba(255,255,255,0.15)' : 'transparent',
-              }}>
-                🧾 Pesanan Saya
-              </a>
-            )}
-            {user && (
-              <a href="/dashboard" onClick={() => setOpen(false)} style={{ display: 'block', color: '#B5D4F4', fontSize: '14px', textDecoration: 'none', padding: '10px 12px', borderRadius: '8px', marginBottom: '2px' }}>
-                📊 Dashboard Seller
-              </a>
-            )}
-            {user && (
-              <a href="/toko/saya" onClick={() => setOpen(false)} style={{ display: 'block', color: '#B5D4F4', fontSize: '14px', textDecoration: 'none', padding: '10px 12px', borderRadius: '8px', marginBottom: '2px' }}>
-                🏪 Toko Saya
-              </a>
-            )}
-            {user && (
-              <a href="/chat" onClick={() => setOpen(false)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#B5D4F4', fontSize: '14px', textDecoration: 'none', padding: '10px 12px', borderRadius: '8px', marginBottom: '2px' }}>
-                <span>💬 Pesan</span>
+                🔔
                 {unreadCount > 0 && (
-                  <span style={{ background: '#e53935', color: '#fff', borderRadius: '50%', minWidth: '20px', height: '20px', fontSize: '11px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{
+                    position: 'absolute', top: '6px', right: '6px',
+                    background: '#e53935', color: '#fff',
+                    fontSize: '10px', fontWeight: '700', lineHeight: 1,
+                    borderRadius: '10px', minWidth: '16px', height: '16px', padding: '0 4px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}
               </a>
             )}
-            {user && (
-              <a href="/profil" onClick={() => setOpen(false)} style={{ display: 'block', color: '#B5D4F4', fontSize: '14px', textDecoration: 'none', padding: '10px 12px', borderRadius: '8px', marginBottom: '2px' }}>
-                👤 Profil Saya
-              </a>
-            )}
-            {isAdmin && (
-              <a href="/admin" onClick={() => setOpen(false)} style={{ display: 'block', fontSize: '14px', textDecoration: 'none', padding: '10px 12px', borderRadius: '8px', marginBottom: '2px', background: 'rgba(230,81,0,0.15)', color: '#ffb74d', fontWeight: '600' }}>
-                ⭐ Panel Admin
-              </a>
-            )}
-            {isAdmin && (
-              <a href="/admin/verifikasi" onClick={() => setOpen(false)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '14px', textDecoration: 'none', padding: '10px 12px', borderRadius: '8px', marginBottom: '2px', background: 'rgba(230,81,0,0.15)', color: '#ffb74d', fontWeight: '600' }}>
-                <span>🎓 Verifikasi Alumni</span>
-                {menungguVerifikasi > 0 && (
-                  <span style={{ background: '#e53935', color: '#fff', borderRadius: '10px', minWidth: '20px', height: '20px', padding: '0 6px', fontSize: '11px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {menungguVerifikasi > 99 ? '99+' : menungguVerifikasi}
-                  </span>
-                )}
-              </a>
-            )}
-            {user && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', background: 'rgba(255,255,255,0.07)', borderRadius: '8px', marginBottom: '4px' }}>
-                <AvatarCircle size={36} />
-                <div style={{ minWidth: 0 }}>
-                  {userName && <div style={{ color: '#fff', fontSize: '13px', fontWeight: '500', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userName}</div>}
-                  <div style={{ color: '#B5D4F4', fontSize: '11px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.email}</div>
-                </div>
-              </div>
-            )}
-            {user ? (
-              <button
-                onClick={handleLogout}
-                style={{ display: 'block', width: '100%', color: '#fff', fontSize: '14px', background: '#a53018', border: 'none', padding: '10px 12px', borderRadius: '8px', textAlign: 'center', marginTop: '6px', cursor: 'pointer' }}
-              >
-                Keluar
-              </button>
-            ) : (
-              <a
-                href="/auth"
-                onClick={() => setOpen(false)}
-                style={{ display: 'block', color: '#fff', fontSize: '14px', textDecoration: 'none', background: '#185FA5', padding: '10px 12px', borderRadius: '8px', textAlign: 'center', marginTop: '6px' }}
-              >
-                Masuk
-              </a>
-            )}
           </div>
-        )}
+        </div>
 
+        {/* Ambang 767px disamakan dengan bottom nav, supaya tidak ada lebar
+            layar yang menampilkan navbar desktop dan bottom nav sekaligus */}
         <style>{`
-          @media (max-width: 640px) {
+          @media (max-width: 767px) {
             .nav-desktop { display: none !important; }
             .nav-hamburger { display: flex !important; }
-          }
-          @media (min-width: 641px) {
-            .nav-mobile { display: none !important; }
           }
         `}</style>
       </nav>
