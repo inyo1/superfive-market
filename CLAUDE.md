@@ -174,10 +174,13 @@ Dua hal penting:
    - `Ada produk yang sudah tidak tersedia`
    - `Produk "X" belum lengkap datanya dan tidak bisa dipesan. Hapus dari
      keranjang atau hubungi penjual.`
+   - `Gagal menyimpan item pesanan (N dari M tersimpan). Transaksi dibatalkan.`
 
-Pemeriksaan produk cacat (tanpa toko, tanpa harga, atau harga ≤ 0) dilakukan
-di awal fungsi sebelum insert apa pun, jadi tidak mungkin ada pesanan yang
-terbentuk tanpa item.
+Pesanan tidak mungkin terbentuk tanpa item. Ada tiga lapis yang menjaganya:
+pemeriksaan produk cacat di awal fungsi sebelum insert apa pun, join item ke
+pesanan memakai `IS NOT DISTINCT FROM` sehingga `toko_id` NULL pun tetap cocok,
+dan jaring pengaman di akhir yang membandingkan jumlah item tersimpan dengan
+jumlah baris keranjang — kalau tidak sama, seluruh transaksi dibatalkan.
 
 ## Trigger Otomatis
 
