@@ -5,6 +5,7 @@ import Navbar from '../components/Navbar'
 import FotoProduk from '../components/FotoProduk'
 import SkeletonCard from '../components/SkeletonCard'
 import BadgeVerifikasi from '../components/BadgeVerifikasi'
+import EmptyState from '../components/EmptyState'
 
 type Produk = {
   id: string
@@ -114,11 +115,26 @@ export default function ProdukPage() {
             {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
           </div>
         ) : filtered.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px' }}>
-            <div style={{ fontSize: '40px', marginBottom: '12px' }}>📦</div>
-            <div style={{ fontSize: '14px', color: '#5a7da0', marginBottom: '8px' }}>Belum ada produk</div>
-            <a href="/produk/tambah" style={{ background: '#0C447C', color: '#fff', padding: '10px 20px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none' }}>+ Tambah Produk Pertama</a>
-          </div>
+          search.trim() || kategori !== 'semua' ? (
+            <EmptyState
+              kecil
+              ikon="🔍"
+              judul="Tidak ada yang cocok"
+              pesan={search.trim()
+                ? `Belum ada produk alumni yang cocok dengan "${search.trim()}". Coba kata lain atau ganti kategori.`
+                : `Belum ada alumni yang jualan di kategori ${kategori}. Mungkin kamu yang pertama?`}
+              aksiLabel="Tampilkan Semua"
+              onAksi={() => { setSearch(''); setKategori('semua') }}
+            />
+          ) : (
+            <EmptyState
+              ikon="📦"
+              judul="Etalase masih kosong"
+              pesan="Belum ada alumni yang membuka lapak. Jadi yang pertama — produkmu akan dilihat seluruh angkatan Superfive."
+              aksiLabel="+ Jualan Pertama"
+              aksiHref="/produk/tambah"
+            />
+          )
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
             {filtered.map((p, i) => (

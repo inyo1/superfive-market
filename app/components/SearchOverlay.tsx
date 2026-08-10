@@ -205,14 +205,25 @@ export default function SearchOverlay({ open, onClose }: { open: boolean; onClos
 
           {/* No results */}
           {!loading && hasQuery && !hasResults && (
-            <div style={{ padding: '36px 20px', textAlign: 'center' }}>
-              <div style={{ fontSize: '36px', marginBottom: '12px' }}>😕</div>
-              <div style={{ fontSize: '14px', fontWeight: '500', color: '#1a1a1a', marginBottom: '6px' }}>
-                Tidak ditemukan
+            <div style={{ padding: '32px 20px', textAlign: 'center' }}>
+              <div style={{ fontSize: '40px', marginBottom: '12px' }}>🔍</div>
+              <div style={{ fontSize: '14px', fontWeight: '700', color: '#1a1a1a', marginBottom: '6px' }}>
+                Belum ada yang cocok
               </div>
-              <div style={{ fontSize: '13px', color: '#5a7da0' }}>
-                Tidak ada produk atau toko dengan kata "{query}"
+              <div style={{ fontSize: '13px', color: '#5a7da0', lineHeight: 1.6, maxWidth: '300px', margin: '0 auto 18px' }}>
+                Tidak ada produk atau toko alumni dengan kata &ldquo;{query}&rdquo;. Coba kata yang lebih umum.
               </div>
+              <button
+                onClick={() => navigate('/produk')}
+                className="btn-primary"
+                style={{
+                  background: '#0C447C', color: '#fff', border: 'none',
+                  padding: '11px 22px', borderRadius: '9px', fontSize: '13px',
+                  fontWeight: '600', cursor: 'pointer', minHeight: '44px',
+                }}
+              >
+                Jelajahi Semua Produk
+              </button>
             </div>
           )}
 

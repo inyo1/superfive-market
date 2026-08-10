@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase'
 import Navbar from '../components/Navbar'
 import BadgeVerifikasi from '../components/BadgeVerifikasi'
 import { DaftarSkeletonChat } from '../components/Skeleton'
+import EmptyState from '../components/EmptyState'
 
 type ConvDisplay = {
   id: string
@@ -114,11 +115,15 @@ export default function ChatListPage() {
         {loading ? (
           <DaftarSkeletonChat jumlah={4} />
         ) : convs.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '60px 20px', background: '#fff', borderRadius: '12px', border: '0.5px solid #e8f0f8' }}>
-            <div style={{ fontSize: '40px', marginBottom: '12px' }}>💬</div>
-            <div style={{ fontSize: '14px', color: '#5a7da0', marginBottom: '6px' }}>Belum ada percakapan</div>
-            <div style={{ fontSize: '12px', color: '#9ab4cc' }}>Mulai chat dari halaman produk atau toko alumni</div>
-          </div>
+          <EmptyState
+            ikon="💬"
+            judul="Belum ada percakapan"
+            pesan="Punya pertanyaan soal produk? Sapa langsung penjualnya — sesama alumni, jadi santai saja."
+            aksiLabel="Cari Produk"
+            aksiHref="/produk"
+            aksiKeduaLabel="Lihat Alumni"
+            aksiKeduaHref="/alumni"
+          />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
             {convs.map(c => (

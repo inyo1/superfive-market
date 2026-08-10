@@ -6,6 +6,7 @@ import { useCart } from '../context/CartContext'
 import Navbar from '../components/Navbar'
 import FotoProduk from '../components/FotoProduk'
 import DialogKonfirmasi from '../components/DialogKonfirmasi'
+import EmptyState from '../components/EmptyState'
 import { useToast } from '../context/ToastContext'
 
 const emojiKategori: Record<string, string> = {
@@ -51,20 +52,16 @@ export default function KeranjangPage() {
     return (
       <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
         <Navbar />
-        <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-          <div style={{ fontSize: '56px', marginBottom: '16px' }}>🛒</div>
-          <div style={{ fontSize: '16px', fontWeight: '600', color: '#333', marginBottom: '8px' }}>
-            Keranjang kamu kosong
-          </div>
-          <div style={{ fontSize: '13px', color: '#5a7da0', marginBottom: '24px' }}>
-            Yuk cari produk alumni Superfive!
-          </div>
-          <a href="/produk" style={{
-            background: '#0C447C', color: '#fff', padding: '12px 28px',
-            borderRadius: '8px', fontSize: '13px', textDecoration: 'none',
-          }}>
-            Lihat Produk
-          </a>
+        <div style={{ maxWidth: '560px', margin: '0 auto', padding: '24px 16px' }}>
+          <EmptyState
+            ikon="🛒"
+            judul="Keranjang masih kosong"
+            pesan="Yuk dukung bisnis sesama Superfive! Setiap pembelian di sini langsung sampai ke alumni yang jualan."
+            aksiLabel="Lihat Produk"
+            aksiHref="/produk"
+            aksiKeduaLabel="Jelajahi Alumni"
+            aksiKeduaHref="/alumni"
+          />
         </div>
       </main>
     )

@@ -7,6 +7,7 @@ import { statusBerikutnya, bisaDibatalkan, warnaStatus, labelStatus, warnaPembay
 import Navbar from '../components/Navbar'
 import FotoProduk from '../components/FotoProduk'
 import Skeleton, { DaftarSkeletonPesanan } from '../components/Skeleton'
+import EmptyState from '../components/EmptyState'
 
 type Toko = { id: string; nama_toko: string; kategori: string }
 type Produk = { id: string; nama: string; harga: number; kategori: string; stok: number; terjual: number; rating: number; deskripsi: string; foto_url?: string | null }
@@ -397,9 +398,14 @@ export default function DashboardPage() {
             {/* Pesanan terbaru */}
             <div style={{ fontSize: '13px', fontWeight: '600', color: '#1a1a1a', marginBottom: '10px' }}>Pesanan Terbaru</div>
             {pesanan.length === 0 ? (
-              <div style={{ background: '#fff', borderRadius: '10px', padding: '24px', border: '0.5px solid #c5d9ef', textAlign: 'center', fontSize: '13px', color: '#5a7da0' }}>
-                Belum ada pesanan masuk
-              </div>
+              <EmptyState
+                kecil
+                ikon="🔔"
+                judul="Belum ada pesanan masuk"
+                pesan="Begitu ada alumni yang membeli, pesanannya muncul di sini dan kamu tinggal proses."
+                aksiLabel="Lihat Produkku"
+                onAksi={() => setTab('produk')}
+              />
             ) : pesanan.slice(0, 5).map(p => (
               <div key={p.id} style={{ background: '#fff', borderRadius: '10px', padding: '12px 14px', border: '0.5px solid #c5d9ef', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
                 <div style={{ minWidth: 0 }}>
@@ -420,11 +426,13 @@ export default function DashboardPage() {
         {tab === 'produk' && (
           <div>
             {produk.length === 0 ? (
-              <div style={{ background: '#fff', borderRadius: '10px', padding: '40px', border: '0.5px solid #c5d9ef', textAlign: 'center' }}>
-                <div style={{ fontSize: '36px', marginBottom: '10px' }}>📦</div>
-                <div style={{ fontSize: '13px', color: '#5a7da0', marginBottom: '16px' }}>Belum ada produk</div>
-                <a href="/produk/tambah" style={{ background: '#0C447C', color: '#fff', padding: '10px 20px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none' }}>+ Tambah Produk</a>
-              </div>
+              <EmptyState
+                ikon="📦"
+                judul="Etalasemu masih kosong"
+                pesan="Unggah produk pertamamu — seluruh alumni Superfive bisa langsung melihatnya."
+                aksiLabel="+ Tambah Produk"
+                aksiHref="/produk/tambah"
+              />
             ) : produk.map(p => (
               <div key={p.id} style={{ background: '#fff', borderRadius: '10px', padding: '14px', border: '0.5px solid #c5d9ef', marginBottom: '8px' }}>
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
@@ -459,10 +467,13 @@ export default function DashboardPage() {
         {tab === 'pesanan' && (
           <div>
             {pesanan.length === 0 ? (
-              <div style={{ background: '#fff', borderRadius: '10px', padding: '40px', border: '0.5px solid #c5d9ef', textAlign: 'center' }}>
-                <div style={{ fontSize: '36px', marginBottom: '10px' }}>🧾</div>
-                <div style={{ fontSize: '13px', color: '#5a7da0' }}>Belum ada pesanan masuk</div>
-              </div>
+              <EmptyState
+                ikon="🧾"
+                judul="Belum ada pesanan masuk"
+                pesan="Sabar ya — pesanan pertama biasanya datang setelah produkmu dilihat beberapa alumni."
+                aksiLabel="Kelola Produk"
+                onAksi={() => setTab('produk')}
+              />
             ) : pesanan.map(p => {
               const berikutnya = statusBerikutnya(p.status)
               const sedangProses = prosesId === p.id

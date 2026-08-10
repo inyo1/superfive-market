@@ -6,6 +6,7 @@ import { STATUS_PESANAN, warnaStatus, labelStatus, warnaPembayaran, labelPembaya
 import Navbar from '../components/Navbar'
 import FotoProduk from '../components/FotoProduk'
 import Skeleton, { DaftarSkeletonPesanan } from '../components/Skeleton'
+import EmptyState from '../components/EmptyState'
 
 type PesananItem = {
   id: string
@@ -167,20 +168,24 @@ export default function PesananPage() {
         </div>
 
         {terlihat.length === 0 ? (
-          <div style={{ background: '#fff', borderRadius: '12px', padding: '48px 20px', border: '0.5px solid #c5d9ef', textAlign: 'center' }}>
-            <div style={{ fontSize: '44px', marginBottom: '12px' }}>🧾</div>
-            <div style={{ fontSize: '14px', color: '#1a1a1a', marginBottom: '6px' }}>
-              {tab === 'semua' ? 'Belum ada pesanan' : `Tidak ada pesanan berstatus "${LABEL_TAB[tab]}"`}
-            </div>
-            <div style={{ fontSize: '12px', color: '#5a7da0', marginBottom: '20px' }}>
-              {tab === 'semua' ? 'Yuk mulai belanja produk alumni.' : 'Coba pilih tab lain.'}
-            </div>
-            {tab === 'semua' && (
-              <a href="/produk" style={{ background: '#0C447C', color: '#fff', padding: '11px 22px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none' }}>
-                Lihat Produk
-              </a>
-            )}
-          </div>
+          tab === 'semua' ? (
+            <EmptyState
+              ikon="🧾"
+              judul="Belum ada pesanan"
+              pesan="Belanja pertamamu di Superfive Market akan muncul di sini — lengkap dengan status pengiriman dan nomor resinya."
+              aksiLabel="Mulai Belanja"
+              aksiHref="/produk"
+            />
+          ) : (
+            <EmptyState
+              kecil
+              ikon="🔍"
+              judul={`Tidak ada pesanan "${LABEL_TAB[tab]}"`}
+              pesan="Coba pilih tab lain untuk melihat pesananmu yang lain."
+              aksiLabel="Lihat Semua"
+              onAksi={() => setTab('semua')}
+            />
+          )
         ) : terlihat.map(p => {
           const warna = warnaStatus(p.status)
           return (

@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import Navbar from '../components/Navbar'
 import BadgeVerifikasi from '../components/BadgeVerifikasi'
 import Skeleton, { GridSkeletonAlumni } from '../components/Skeleton'
+import EmptyState from '../components/EmptyState'
 
 type Member = {
   id: string
@@ -162,10 +163,14 @@ export default function AlumniPage() {
             <GridSkeletonAlumni jumlah={8} />
           </>
         ) : filtered.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-            <div style={{ fontSize: '36px', marginBottom: '10px' }}>🎓</div>
-            <div style={{ fontSize: '14px', color: '#5a7da0' }}>Tidak ada alumni ditemukan</div>
-          </div>
+          <EmptyState
+            kecil
+            ikon="🎓"
+            judul="Alumni tidak ditemukan"
+            pesan="Tidak ada nama atau angkatan yang cocok dengan pencarianmu. Coba kata kunci lain."
+            aksiLabel="Tampilkan Semua"
+            onAksi={() => setSearch('')}
+          />
         ) : (
           filtered.map(g => (
             <div key={g.angkatan ?? 'unknown'} style={{ marginBottom: '24px' }}>
