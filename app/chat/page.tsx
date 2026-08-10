@@ -3,12 +3,14 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 import Navbar from '../components/Navbar'
+import BadgeVerifikasi from '../components/BadgeVerifikasi'
 
 type ConvDisplay = {
   id: string
   otherId: string
   otherNama: string | null
   otherAvatar: string | null
+  otherVerifikasi: string | null
   lastMessage: string | null
   lastMessageAt: string | null
   unread: number
@@ -63,7 +65,7 @@ export default function ChatListPage() {
       const otherIds = rawConvs.map(c => c.buyer_id === user.id ? c.seller_id : c.buyer_id)
       const { data: profiles } = await supabase
         .from('users')
-        .select('id, nama, avatar_url')
+        .select('id, nama, avatar_url, status_verifikasi')
         .in('id', [...new Set(otherIds)])
 
       const profileMap = Object.fromEntries((profiles ?? []).map(p => [p.id, p]))
@@ -88,6 +90,7 @@ export default function ChatListPage() {
           otherId,
           otherNama: p?.nama ?? null,
           otherAvatar: p?.avatar_url ?? null,
+          otherVerifikasi: p?.status_verifikasi ?? null,
           lastMessage: c.last_message,
           lastMessageAt: c.last_message_at,
           unread: unreadByConv[c.id] ?? 0,
@@ -131,8 +134,11 @@ export default function ChatListPage() {
                 <AvatarCircle nama={c.otherNama} avatar={c.otherAvatar} size={48} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
-                    <div style={{ fontSize: '14px', fontWeight: c.unread > 0 ? '700' : '500', color: '#1a1a1a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {c.otherNama || 'Alumni'}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', minWidth: 0 }}>
+                      <span style={{ fontSize: '14px', fontWeight: c.unread > 0 ? '700' : '500', color: '#1a1a1a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {c.otherNama || 'Alumni'}
+                      </span>
+                      <BadgeVerifikasi status={c.otherVerifikasi} size={13} />
                     </div>
                     <div style={{ fontSize: '11px', color: '#9ab4cc', flexShrink: 0, marginLeft: '8px' }}>
                       {timeAgo(c.lastMessageAt)}

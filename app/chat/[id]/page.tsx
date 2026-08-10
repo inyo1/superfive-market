@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '../../../lib/supabase'
 import Navbar from '../../components/Navbar'
+import BadgeVerifikasi from '../../components/BadgeVerifikasi'
 
 type Message = {
   id: string
@@ -15,6 +16,7 @@ type Message = {
 type ConvInfo = {
   otherNama: string | null
   otherAvatar: string | null
+  otherVerifikasi: string | null
   produkNama: string | null
 }
 
@@ -79,11 +81,12 @@ export default function ChatRoom() {
 
       const otherId = conv.buyer_id === user.id ? conv.seller_id : conv.buyer_id
       const { data: profile } = await supabase
-        .from('users').select('nama, avatar_url').eq('id', otherId).single()
+        .from('users').select('nama, avatar_url, status_verifikasi').eq('id', otherId).single()
 
       setConvInfo({
         otherNama: profile?.nama ?? null,
         otherAvatar: profile?.avatar_url ?? null,
+        otherVerifikasi: profile?.status_verifikasi ?? null,
         produkNama: (conv.produk as any)?.nama ?? null,
       })
 
@@ -186,7 +189,12 @@ export default function ChatRoom() {
         <button onClick={() => router.push('/chat')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#0C447C', fontSize: '20px', padding: '2px 8px 2px 0', lineHeight: 1 }}>←</button>
         <AvatarCircle nama={convInfo?.otherNama ?? null} avatar={convInfo?.otherAvatar ?? null} size={38} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a1a' }}>{convInfo?.otherNama || 'Alumni'}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <span style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a1a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {convInfo?.otherNama || 'Alumni'}
+            </span>
+            <BadgeVerifikasi status={convInfo?.otherVerifikasi} size={13} />
+          </div>
           {convInfo?.produkNama && (
             <div style={{ fontSize: '11px', color: '#5a7da0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               Re: {convInfo.produkNama}

@@ -2,12 +2,14 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import Navbar from '../components/Navbar'
+import BadgeVerifikasi from '../components/BadgeVerifikasi'
 
 type Member = {
   id: string
   nama: string | null
   angkatan: number | null
   avatar_url: string | null
+  status_verifikasi: string | null
   jumlahProduk: number
 }
 
@@ -47,7 +49,7 @@ export default function AlumniPage() {
   useEffect(() => {
     async function load() {
       const [usersRes, tokoRes, produkRes] = await Promise.all([
-        supabase.from('users').select('id, nama, angkatan, avatar_url'),
+        supabase.from('users').select('id, nama, angkatan, avatar_url, status_verifikasi'),
         supabase.from('toko').select('id, seller_id'),
         supabase.from('produk').select('toko_id'),
       ])
@@ -187,11 +189,16 @@ export default function AlumniPage() {
                   }}>
                     <Avatar member={m} size={52} />
                     <div style={{
-                      fontSize: '13px', fontWeight: '600', color: '#1a1a1a',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
                       marginTop: '10px', marginBottom: '3px',
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     }}>
-                      {m.nama || 'Alumni'}
+                      <span style={{
+                        fontSize: '13px', fontWeight: '600', color: '#1a1a1a',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>
+                        {m.nama || 'Alumni'}
+                      </span>
+                      <BadgeVerifikasi status={m.status_verifikasi} size={13} />
                     </div>
                     <div style={{ fontSize: '11px', color: '#5a7da0', marginBottom: '8px' }}>
                       {m.angkatan ? `Angkatan ${m.angkatan}` : '—'}

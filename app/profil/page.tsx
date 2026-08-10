@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 import Navbar from '../components/Navbar'
+import BadgeVerifikasi from '../components/BadgeVerifikasi'
 
 export default function ProfilPage() {
   const router = useRouter()
@@ -23,6 +24,7 @@ export default function ProfilPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [pesan, setPesan] = useState('')
+  const [statusVerifikasi, setStatusVerifikasi] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -34,12 +36,13 @@ export default function ProfilPage() {
 
       const { data } = await supabase
         .from('users')
-        .select('nama, email, angkatan, avatar_url, no_hp, jalan, kelurahan, kecamatan, kota, provinsi, kode_pos')
+        .select('nama, email, angkatan, avatar_url, no_hp, jalan, kelurahan, kecamatan, kota, provinsi, kode_pos, status_verifikasi')
         .eq('id', user.id)
         .single()
 
       if (data) {
         setNama(data.nama ?? '')
+        setStatusVerifikasi(data.status_verifikasi ?? null)
         setAngkatan(data.angkatan ? String(data.angkatan) : '')
         setAvatarUrl(data.avatar_url ?? null)
         setNoHp(data.no_hp ?? '')
@@ -164,7 +167,10 @@ export default function ProfilPage() {
             }}>📷</div>
           </div>
           <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFileChange} style={{ display: 'none' }} />
-          <div style={{ fontSize: '13px', fontWeight: '500', color: '#1a1a1a', marginBottom: '2px' }}>{nama || 'Nama belum diisi'}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '2px' }}>
+            <span style={{ fontSize: '13px', fontWeight: '500', color: '#1a1a1a' }}>{nama || 'Nama belum diisi'}</span>
+            <BadgeVerifikasi status={statusVerifikasi} size={14} />
+          </div>
           <div style={{ fontSize: '12px', color: '#5a7da0', marginBottom: '6px' }}>{userEmail}</div>
           {angkatan && (
             <div style={{ fontSize: '11px', background: '#E6F1FB', color: '#0C447C', padding: '3px 10px', borderRadius: '20px', fontWeight: '500' }}>

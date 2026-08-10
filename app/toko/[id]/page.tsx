@@ -5,6 +5,7 @@ import { supabase } from '../../../lib/supabase'
 import Navbar from '../../components/Navbar'
 import { useCart } from '../../context/CartContext'
 import FotoProduk from '../../components/FotoProduk'
+import BadgeVerifikasi from '../../components/BadgeVerifikasi'
 
 type Toko = {
   id: string
@@ -12,7 +13,7 @@ type Toko = {
   nama_toko: string
   kategori: string
   deskripsi?: string
-  users: { nama: string; angkatan: number }
+  users: { nama: string; angkatan: number; status_verifikasi: string | null }
 }
 
 type Produk = {
@@ -66,7 +67,7 @@ export default function TokoPage() {
     async function fetch() {
       const { data: tokoData, error } = await supabase
         .from('toko')
-        .select('*, users(nama, angkatan)')
+        .select('*, users(nama, angkatan, status_verifikasi)')
         .eq('id', id)
         .single()
 
@@ -202,8 +203,10 @@ export default function TokoPage() {
               ) : (
                 <div style={{ fontSize: '18px', fontWeight: '700', marginBottom: '4px' }}>{toko.nama_toko}</div>
               )}
-              <div style={{ fontSize: '12px', color: '#B5D4F4' }}>
-                {toko.users?.nama || 'Alumni'} · Angkatan {toko.users?.angkatan}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: '#B5D4F4' }}>
+                <span>{toko.users?.nama || 'Alumni'}</span>
+                <BadgeVerifikasi status={toko.users?.status_verifikasi} size={13} />
+                <span>· Angkatan {toko.users?.angkatan}</span>
               </div>
             </div>
             {isOwner && !editMode && (

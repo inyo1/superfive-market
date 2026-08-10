@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import Navbar from '../components/Navbar'
 import FotoProduk from '../components/FotoProduk'
 import SkeletonCard from '../components/SkeletonCard'
+import BadgeVerifikasi from '../components/BadgeVerifikasi'
 
 type Produk = {
   id: string
@@ -14,7 +15,7 @@ type Produk = {
   terjual: number
   rating: number
   foto_url?: string | null
-  toko: { nama_toko: string }
+  toko: { nama_toko: string; users: { angkatan: number; status_verifikasi: string | null } | null } | null
   users: { angkatan: number }
 }
 
@@ -39,7 +40,7 @@ export default function ProdukPage() {
   async function fetchProduk() {
     const { data, error } = await supabase
       .from('produk')
-      .select(`*, toko(nama_toko, seller_id, users(angkatan))`)
+      .select(`*, toko(nama_toko, seller_id, users(angkatan, status_verifikasi))`)
       .order('created_at', { ascending: false })
     if (!error && data) setProduk(data as any)
     setLoading(false)
@@ -112,6 +113,14 @@ export default function ProdukPage() {
                   <div style={{ fontSize: '10px', background: '#E6F1FB', color: '#0C447C', padding: '2px 6px', borderRadius: '4px', display: 'inline-block' }}>
                     {p.kategori}
                   </div>
+                  {p.toko?.nama_toko && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginTop: '6px' }}>
+                      <span style={{ fontSize: '10px', color: '#5a7da0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        🏪 {p.toko.nama_toko}
+                      </span>
+                      <BadgeVerifikasi status={p.toko.users?.status_verifikasi} size={11} />
+                    </div>
+                  )}
                 </div>
                 <div className="prod-card-btn" style={{ width: '100%', background: '#0C447C', color: '#fff', padding: '8px', fontSize: '12px', textAlign: 'center' }}>
                   Lihat Detail
