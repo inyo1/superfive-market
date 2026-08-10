@@ -15,8 +15,8 @@ import Tombol from '../components/Tombol'
 import { useTampilSkeleton } from '../hooks/useSkeleton'
 import { keAngka } from '../../lib/format'
 
-type Toko = { id: string; nama_toko: string; kategori: string }
-type Produk = { id: string; nama: string; harga: number; kategori: string; stok: number; terjual: number; rating: number; deskripsi: string; foto_url?: string | null }
+type Toko = { id: string; nama_toko: string; kategori: string; is_official: boolean }
+type Produk = { id: string; nama: string; harga: number; kategori: string; stok: number; terjual: number; rating: number; deskripsi: string; urutan: number | null; foto_url?: string | null }
 
 type PesananItem = {
   id: string
@@ -87,14 +87,19 @@ export default function DashboardPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/auth'); return }
 
-      const { data: tokoData } = await supabase.from('toko').select('id, nama_toko, kategori').eq('seller_id', user.id).single()
+      const { data: tokoData } = await supabase.from('toko').select('id, nama_toko, kategori, is_official').eq('seller_id', user.id).single()
       if (!tokoData) { setNoToko(true); setLoading(false); return }
       setToko(tokoData)
 
-      const { data: produkData } = await supabase.from('produk')
-        .select('id, nama, harga, kategori, stok, terjual, rating, deskripsi, foto_url')
+      // Toko resmi diurutkan sama seperti di beranda, supaya pengelola melihat
+      // susunan yang sama dengan yang dilihat pengunjung
+      let kueriProduk = supabase.from('produk')
+        .select('id, nama, harga, kategori, stok, terjual, rating, deskripsi, urutan, foto_url')
         .eq('toko_id', tokoData.id)
-        .order('created_at', { ascending: false })
+
+      if (tokoData.is_official) kueriProduk = kueriProduk.order('urutan', { ascending: true })
+
+      const { data: produkData } = await kueriProduk.order('created_at', { ascending: false })
       setProduk((produkData ?? []) as Produk[])
 
       // Pesanan milik toko ini, beserta itemnya. Satu baris pesanan = satu toko,
@@ -115,7 +120,7 @@ export default function DashboardPage() {
 
   function bukaEdit(p: Produk) {
     setEditId(p.id)
-    setEditData({ nama: p.nama, harga: p.harga, kategori: p.kategori, stok: p.stok, deskripsi: p.deskripsi, foto_url: p.foto_url })
+    setEditData({ nama: p.nama, harga: p.harga, kategori: p.kategori, stok: p.stok, deskripsi: p.deskripsi, urutan: p.urutan, foto_url: p.foto_url })
     setEditFoto(null)
     setEditPreview(null)
   }
@@ -138,14 +143,16 @@ export default function DashboardPage() {
       foto_url = url
     }
 
+    const urutanBaru = keAngka(editData.urutan)
+
     const { error } = await supabase.from('produk').update({
       nama: editData.nama, harga: keAngka(editData.harga),
       kategori: editData.kategori, stok: keAngka(editData.stok),
-      deskripsi: editData.deskripsi, foto_url,
+      deskripsi: editData.deskripsi, urutan: urutanBaru, foto_url,
     }).eq('id', editId)
 
     if (!error) {
-      setProduk(prev => prev.map(p => p.id === editId ? { ...p, ...editData, harga: keAngka(editData.harga), stok: keAngka(editData.stok), foto_url } as Produk : p))
+      setProduk(prev => prev.map(p => p.id === editId ? { ...p, ...editData, harga: keAngka(editData.harga), stok: keAngka(editData.stok), urutan: urutanBaru, foto_url } as Produk : p))
       notif('Produk berhasil diperbarui!')
       setEditId(null)
     } else notif('Gagal: ' + error.message)
@@ -315,6 +322,30 @@ export default function DashboardPage() {
                 style={{ width: '100%', padding: '11px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', minHeight: '44px' }}
               />
             </div>
+            {/* Urutan hanya relevan untuk toko resmi, karena produknya yang
+                tampil di section merchandise beranda */}
+            {toko?.is_official && (
+              <div style={{ marginBottom: '10px' }}>
+                <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '4px' }}>
+                  Urutan Tampil
+                </label>
+                <input
+                  value={editData.urutan ?? ''}
+                  onChange={e => {
+                    const v = e.target.value.replace(/\D/g, '')
+                    setEditData(prev => ({ ...prev, urutan: v === '' ? null : Number(v) }))
+                  }}
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  placeholder="0"
+                  style={{ width: '100%', padding: '11px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', minHeight: '44px' }}
+                />
+                <div style={{ fontSize: '11px', color: '#9ab4cc', marginTop: '4px', lineHeight: 1.5 }}>
+                  Angka kecil tampil lebih dulu di beranda. Kalau sama, yang terbaru di depan.
+                </div>
+              </div>
+            )}
+
             <div style={{ marginBottom: '10px' }}>
               <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '4px' }}>Kategori</label>
               <select value={editData.kategori ?? ''} onChange={e => setEditData(prev => ({ ...prev, kategori: e.target.value }))}
@@ -460,6 +491,9 @@ export default function DashboardPage() {
                     <div style={{ display: 'flex', gap: '10px', fontSize: '11px', color: '#5a7da0', marginTop: '2px' }}>
                       <span>Stok: <strong style={{ color: p.stok <= 3 ? '#e65100' : '#1a1a1a' }}>{p.stok}</strong></span>
                       <span>Terjual: {p.terjual || 0}</span>
+                      {toko?.is_official && (
+                        <span style={{ color: '#8a5a05', fontWeight: '600' }}>Urutan: {p.urutan ?? 0}</span>
+                      )}
                       <span>⭐ {p.rating || '5.0'}</span>
                     </div>
                   </div>
