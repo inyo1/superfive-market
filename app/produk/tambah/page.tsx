@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../../lib/supabase'
@@ -114,13 +115,13 @@ export default function TambahProduk() {
           <div style={{ fontSize: '13px', color: '#5a7da0', marginBottom: '20px' }}>
             Mengarahkan ke halaman login dalam {countdown} detik...
           </div>
-          <a href="/auth" style={{
+          <Link href="/auth" style={{
             display: 'inline-block', background: '#0C447C', color: '#fff',
             padding: '10px 24px', borderRadius: '8px', fontSize: '13px',
             fontWeight: '600', textDecoration: 'none',
           }}>
             Login Sekarang
-          </a>
+          </Link>
         </div>
       </main>
     )
@@ -209,9 +210,9 @@ export default function TambahProduk() {
             <div style={{ background: pesan.includes('berhasil') ? '#e8f5e9' : '#fce4e4', border: `0.5px solid ${pesan.includes('berhasil') ? '#a5d6a7' : '#f09595'}`, borderRadius: '8px', padding: '10px', fontSize: '12px', color: pesan.includes('berhasil') ? '#2e7d32' : '#c62828', marginBottom: '12px' }}>
               {pesan}
               {pesan.includes('berhasil') && (
-                <a href="/toko/saya" style={{ display: 'block', marginTop: '6px', color: '#0C447C', fontWeight: '600', textDecoration: 'none' }}>
+                <Link href="/toko/saya" style={{ display: 'block', marginTop: '6px', color: '#0C447C', fontWeight: '600', textDecoration: 'none' }}>
                   → Lihat Toko Saya
-                </a>
+                </Link>
               )}
             </div>
           )}

@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '../../../lib/supabase'
@@ -191,7 +192,7 @@ export default function DetailProduk() {
         <div style={{ textAlign: 'center', padding: '60px 20px' }}>
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>📦</div>
           <div style={{ fontSize: '16px', color: '#333', marginBottom: '8px' }}>Produk tidak ditemukan</div>
-          <a href="/produk" style={{ color: '#0C447C', fontSize: '13px' }}>← Kembali ke Produk</a>
+          <Link href="/produk" style={{ color: '#0C447C', fontSize: '13px' }}>← Kembali ke Produk</Link>
         </div>
       </main>
     )
@@ -254,7 +255,7 @@ export default function DetailProduk() {
         )}
 
         {/* Info toko */}
-        <a href={`/toko/${(produk.toko as any)?.id}`} style={{ textDecoration: 'none', display: 'block', background: '#fff', borderRadius: '12px', padding: '18px', border: '0.5px solid #c5d9ef', marginBottom: '20px' }}>
+        <Link href={`/toko/${(produk.toko as any)?.id}`} style={{ textDecoration: 'none', display: 'block', background: '#fff', borderRadius: '12px', padding: '18px', border: '0.5px solid #c5d9ef', marginBottom: '20px' }}>
           <div style={{ fontSize: '13px', fontWeight: '600', color: '#0C447C', marginBottom: '10px' }}>Info Penjual</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{
@@ -274,7 +275,7 @@ export default function DetailProduk() {
             </div>
             <div style={{ fontSize: '12px', color: '#0C447C' }}>Lihat Toko →</div>
           </div>
-        </a>
+        </Link>
 
         {/* Chat dengan seller */}
         {currentUserId && currentUserId !== (produk.toko as any)?.seller_id && (

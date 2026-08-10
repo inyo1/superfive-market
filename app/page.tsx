@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabase'
@@ -74,13 +75,11 @@ export default function Home() {
   const [loggedIn, setLoggedIn] = useState(false)
   const [statusVerifikasi, setStatusVerifikasi] = useState<string | null>(null)
 
-  function handleJualClick(e: React.MouseEvent) {
-    e.preventDefault()
-    if (loggedIn) {
-      router.push('/produk/tambah')
-    } else {
-      router.push('/auth')
-    }
+  // Tujuannya bergantung status login, jadi ini tombol aksi — bukan tautan.
+  // Sebelumnya <a href> dengan preventDefault, yang menyesatkan pembaca layar
+  // karena href-nya tidak pernah benar-benar dipakai.
+  function handleJualClick() {
+    router.push(loggedIn ? '/produk/tambah' : '/auth')
   }
 
   useEffect(() => {
@@ -138,14 +137,14 @@ export default function Home() {
                 Kamu bisa belanja, tapi belum bisa membuka toko.
               </div>
             </div>
-            <a href="/verifikasi" style={{
+            <Link href="/verifikasi" style={{
               background: '#f57f17', color: '#fff', padding: '0 18px',
               minHeight: '44px', display: 'inline-flex', alignItems: 'center',
               borderRadius: '8px', fontSize: '12px', fontWeight: '600',
               textDecoration: 'none', flexShrink: 0,
             }}>
               Lengkapi Verifikasi
-            </a>
+            </Link>
           </div>
         </div>
       )}
@@ -188,15 +187,15 @@ export default function Home() {
         {/* CTA buttons — guest only */}
         {!loggedIn && (
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '24px' }}>
-            <a href="/auth" style={{
+            <Link href="/auth" style={{
               background: '#fff', color: '#0C447C',
               padding: '0 22px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', borderRadius: '9px',
               fontSize: '13px', fontWeight: '700', textDecoration: 'none',
               textTransform: 'uppercase', letterSpacing: '0.5px',
             }}>
               MASUK
-            </a>
-            <a href="/auth" style={{
+            </Link>
+            <Link href="/auth" style={{
               background: 'rgba(255,255,255,0.14)', color: '#fff',
               padding: '0 22px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', borderRadius: '9px',
               fontSize: '13px', fontWeight: '600', textDecoration: 'none',
@@ -204,7 +203,7 @@ export default function Home() {
               textTransform: 'uppercase', letterSpacing: '0.5px',
             }}>
               DAFTAR SEKARANG
-            </a>
+            </Link>
           </div>
         )}
 
@@ -243,23 +242,24 @@ export default function Home() {
 
         {/* ── CTA navigasi ── */}
         <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-          <a href="/produk" style={{
+          <Link href="/produk" style={{
             flex: 1, background: '#0C447C', color: '#fff',
             padding: '12px', borderRadius: '9px', textAlign: 'center',
             fontSize: '13px', fontWeight: '700', textDecoration: 'none',
             textTransform: 'uppercase', letterSpacing: '0.5px',
           }}>
             JELAJAHI PRODUK
-          </a>
-          <a href="/produk/tambah" onClick={handleJualClick} style={{
+          </Link>
+          <button onClick={handleJualClick} style={{
             flex: 1, background: '#fff', color: '#0C447C',
             border: '1.5px solid #0C447C',
             padding: '12px', borderRadius: '9px', textAlign: 'center',
-            fontSize: '13px', fontWeight: '700', textDecoration: 'none',
+            fontSize: '13px', fontWeight: '700', cursor: 'pointer',
+            minHeight: '44px',
             textTransform: 'uppercase', letterSpacing: '0.5px',
           }}>
             MULAI BERJUALAN
-          </a>
+          </button>
         </div>
 
         {/* ── Kategori Shortcuts ── */}
@@ -269,7 +269,7 @@ export default function Home() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
             {kategoris.map((k, i) => (
-              <a
+              <Link
                 key={k.key}
                 href={`/produk?kategori=${encodeURIComponent(k.key)}`}
                 className="prod-card"
@@ -283,7 +283,7 @@ export default function Home() {
               >
                 <span style={{ fontSize: '26px', lineHeight: 1 }}>{k.emoji}</span>
                 <span style={{ fontSize: '11px', fontWeight: '600', color: '#444' }}>{k.key}</span>
-              </a>
+              </Link>
             ))}
           </div>
         </div>
@@ -292,9 +292,9 @@ export default function Home() {
         <div style={{ marginBottom: '28px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <div style={{ fontSize: '13px', fontWeight: '700', color: '#1a1a1a' }}>Produk Terbaru</div>
-            <a href="/produk" style={{ fontSize: '12px', color: '#0C447C', textDecoration: 'none', fontWeight: '600', minHeight: '44px', display: 'inline-flex', alignItems: 'center', padding: '0 4px' }}>
+            <Link href="/produk" style={{ fontSize: '12px', color: '#0C447C', textDecoration: 'none', fontWeight: '600', minHeight: '44px', display: 'inline-flex', alignItems: 'center', padding: '0 4px' }}>
               Lihat Semua →
-            </a>
+            </Link>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '10px' }}>
@@ -305,13 +305,13 @@ export default function Home() {
                   <div style={{ gridColumn: '1 / -1', background: '#fff', borderRadius: '12px', padding: '36px 20px', textAlign: 'center', border: '0.5px solid #e8f0f8' }}>
                     <div style={{ fontSize: '36px', marginBottom: '10px' }}>📦</div>
                     <div style={{ fontSize: '13px', color: '#5a7da0', marginBottom: '14px' }}>Belum ada produk</div>
-                    <a href="/produk/tambah" onClick={handleJualClick} style={{ background: '#0C447C', color: '#fff', padding: '9px 20px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none' }}>
+                    <button onClick={handleJualClick} style={{ background: '#0C447C', color: '#fff', border: 'none', padding: '0 20px', minHeight: '44px', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' }}>
                       + Tambah Produk Pertama
-                    </a>
+                    </button>
                   </div>
                 )
                 : latest.map((p, i) => (
-                  <a
+                  <Link
                     key={p.id}
                     href={`/produk/${p.id}`}
                     className="prod-card"
@@ -341,7 +341,7 @@ export default function Home() {
                     <div className="prod-card-btn" style={{ background: '#0C447C', color: '#fff', padding: '8px', fontSize: '11px', textAlign: 'center' }}>
                       Lihat Detail
                     </div>
-                  </a>
+                  </Link>
                 ))
             }
           </div>
@@ -364,19 +364,19 @@ export default function Home() {
             Bergabung dan mulai berjualan ke sesama alumni Superfive secara gratis.
           </p>
           <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <a href="/produk/tambah" onClick={handleJualClick} style={{
-              background: '#fff', color: '#0C447C', fontWeight: '700',
-              padding: '0 22px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', borderRadius: '8px', fontSize: '13px', textDecoration: 'none',
+            <button onClick={handleJualClick} style={{
+              background: '#fff', color: '#0C447C', fontWeight: '700', border: 'none',
+              padding: '0 22px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', borderRadius: '8px', fontSize: '13px', cursor: 'pointer',
             }}>
               + Tambah Produk
-            </a>
-            <a href="/auth" style={{
+            </button>
+            <Link href="/auth" style={{
               background: 'rgba(255,255,255,0.15)', color: '#fff',
               border: '1px solid rgba(255,255,255,0.3)',
               padding: '0 22px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', borderRadius: '8px', fontSize: '13px', textDecoration: 'none',
             }}>
               Daftar Sekarang
-            </a>
+            </Link>
           </div>
         </div>
 

@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import Navbar from '../components/Navbar'
@@ -141,7 +142,7 @@ export default function ProdukPage() {
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
             {filtered.map((p, i) => (
-              <a key={p.id} href={`/produk/${p.id}`} className="prod-card" style={{ background: '#fff', borderRadius: '10px', border: '0.5px solid #e8f0f8', overflow: 'hidden', textDecoration: 'none', display: 'block', animation: `fadeInUp 0.28s ease both`, animationDelay: `${Math.min(i * 40, 300)}ms` }}>
+              <Link key={p.id} href={`/produk/${p.id}`} className="prod-card" style={{ background: '#fff', borderRadius: '10px', border: '0.5px solid #e8f0f8', overflow: 'hidden', textDecoration: 'none', display: 'block', animation: `fadeInUp 0.28s ease both`, animationDelay: `${Math.min(i * 40, 300)}ms` }}>
                 <FotoProduk src={p.foto_url} kategori={p.kategori} height={120} fontSize={40} />
                 <div style={{ padding: '10px' }}>
                   <div style={{ fontSize: '12px', fontWeight: '500', color: '#333', marginBottom: '4px', height: '32px', overflow: 'hidden' }}>{p.nama}</div>
@@ -170,15 +171,15 @@ export default function ProdukPage() {
                 <div className="prod-card-btn" style={{ width: '100%', background: '#0C447C', color: '#fff', padding: '8px', fontSize: '12px', textAlign: 'center' }}>
                   Lihat Detail
                 </div>
-              </a>
+              </Link>
             ))}
           </div>
         )}
 
         <div style={{ marginTop: '16px', textAlign: 'center' }}>
-          <a href="/produk/tambah" style={{ background: '#fff', border: '1px dashed #378ADD', color: '#0C447C', padding: '12px 24px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none', display: 'inline-block' }}>
+          <Link href="/produk/tambah" style={{ background: '#fff', border: '1px dashed #378ADD', color: '#0C447C', padding: '12px 24px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none', display: 'inline-block' }}>
             + Tambah Produk Baru
-          </a>
+          </Link>
         </div>
       </div>
     </main>

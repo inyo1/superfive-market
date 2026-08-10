@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import Navbar from '../components/Navbar'
 
 export default function AboutPage() {
@@ -89,21 +90,21 @@ export default function AboutPage() {
 
         {/* CTA */}
         <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap', paddingBottom: '20px' }}>
-          <a href="/produk" style={{
+          <Link href="/produk" style={{
             background: '#0C447C', color: '#fff',
             padding: '13px 32px', borderRadius: '9px',
             fontSize: '15px', fontWeight: '600', textDecoration: 'none', textAlign: 'center',
           }}>
             Lihat Produk
-          </a>
-          <a href="/auth" style={{
+          </Link>
+          <Link href="/auth" style={{
             background: '#fff', color: '#0C447C',
             padding: '13px 32px', borderRadius: '9px',
             fontSize: '15px', fontWeight: '600', textDecoration: 'none',
             border: '1.5px solid #0C447C', textAlign: 'center',
           }}>
             Bergabung
-          </a>
+          </Link>
         </div>
       </div>
     </main>
