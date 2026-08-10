@@ -1,3 +1,5 @@
+import Link from 'next/link'
+
 // Tampilan untuk daftar yang kosong: ikon besar, judul, satu kalimat
 // penjelasan, dan satu tombol aksi. Nada bicaranya khas Superfive —
 // mengajak dan menyebut komunitas, bukan kalimat generik "no data found".
@@ -72,11 +74,11 @@ export default function EmptyState({
         }}>
           {aksiLabel && (
             aksiHref
-              ? <a href={aksiHref} style={gayaTombol} className="btn-primary">{aksiLabel}</a>
+              ? <Link href={aksiHref} style={gayaTombol} className="btn-primary">{aksiLabel}</Link>
               : <button onClick={onAksi} style={gayaTombol} className="btn-primary">{aksiLabel}</button>
           )}
           {aksiKeduaLabel && aksiKeduaHref && (
-            <a href={aksiKeduaHref} style={gayaTombolKedua} className="btn-primary">{aksiKeduaLabel}</a>
+            <Link href={aksiKeduaHref} style={gayaTombolKedua} className="btn-primary">{aksiKeduaLabel}</Link>
           )}
         </div>
       )}

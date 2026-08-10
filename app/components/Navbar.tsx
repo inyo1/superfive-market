@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
@@ -75,7 +76,7 @@ export default function Navbar() {
     : (user?.email?.charAt(0).toUpperCase() ?? '?')
 
   const AvatarCircle = ({ size = 32 }: { size?: number }) => (
-    <a
+    <Link
       href="/profil"
       style={{
         width: `${size}px`, height: `${size}px`, borderRadius: '50%',
@@ -93,11 +94,11 @@ export default function Navbar() {
           {initials}
         </span>
       )}
-    </a>
+    </Link>
   )
 
   const ChatBadge = ({ size = 20 }: { size?: number }) => (
-    <a
+    <Link
       href="/chat"
       style={{ position: 'relative', color: '#fff', textDecoration: 'none', fontSize: `${size}px`, lineHeight: 1, padding: '4px 2px', display: 'flex', alignItems: 'center' }}
       aria-label="Chat"
@@ -114,11 +115,11 @@ export default function Navbar() {
           {unreadCount > 99 ? '99+' : unreadCount}
         </span>
       )}
-    </a>
+    </Link>
   )
 
   const CartBadge = ({ size = 20 }: { size?: number }) => (
-    <a
+    <Link
       href="/keranjang"
       style={{
         position: 'relative', color: '#fff', textDecoration: 'none',
@@ -140,7 +141,7 @@ export default function Navbar() {
           {totalItem > 99 ? '99+' : totalItem}
         </span>
       )}
-    </a>
+    </Link>
   )
 
   return (
@@ -152,18 +153,18 @@ export default function Navbar() {
         <div style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
 
           {/* Logo */}
-          <a href="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', flex: 1, minWidth: 0 }}>
+          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', flex: 1, minWidth: 0 }}>
             <img src="/logo.png" alt="Logo" style={{ width: '60px', height: '60px', objectFit: 'contain', flexShrink: 0 }} />
             <div style={{ minWidth: 0 }}>
               <div style={{ color: '#fff', fontSize: '15px', fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Superfive Market</div>
               <div style={{ color: '#B5D4F4', fontSize: '10px', letterSpacing: '1px' }}>ALUMNI SMPN 5 BANDUNG</div>
             </div>
-          </a>
+          </Link>
 
           {/* ── Desktop links ── */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }} className="nav-desktop">
             {links.map(l => (
-              <a
+              <Link
                 key={l.href}
                 href={l.href}
                 style={{
@@ -175,39 +176,39 @@ export default function Navbar() {
                 }}
               >
                 {l.label}
-              </a>
+              </Link>
             ))}
             {user && (
-              <a href="/pesanan" style={{
+              <Link href="/pesanan" style={{
                 color: isActive('/pesanan') ? '#fff' : '#B5D4F4',
                 fontSize: '12px', marginLeft: '4px', textDecoration: 'none',
                 padding: '6px 10px', borderRadius: '6px',
                 background: isActive('/pesanan') ? 'rgba(255,255,255,0.15)' : 'transparent',
               }}>
                 🧾 Pesanan Saya
-              </a>
+              </Link>
             )}
             {user && (
-              <a href="/dashboard" style={{ color: '#B5D4F4', fontSize: '12px', textDecoration: 'none', padding: '6px 10px', borderRadius: '6px' }}>
+              <Link href="/dashboard" style={{ color: '#B5D4F4', fontSize: '12px', textDecoration: 'none', padding: '6px 10px', borderRadius: '6px' }}>
                 Dashboard
-              </a>
+              </Link>
             )}
             {user && (
-              <a href="/toko/saya" style={{ color: '#B5D4F4', fontSize: '12px', textDecoration: 'none', padding: '6px 10px', borderRadius: '6px' }}>
+              <Link href="/toko/saya" style={{ color: '#B5D4F4', fontSize: '12px', textDecoration: 'none', padding: '6px 10px', borderRadius: '6px' }}>
                 🏪 Toko Saya
-              </a>
+              </Link>
             )}
             {isAdmin && (
-              <a href="/admin" style={{
+              <Link href="/admin" style={{
                 color: '#fff', fontSize: '12px', marginLeft: '2px', textDecoration: 'none',
                 padding: '5px 10px', borderRadius: '6px',
                 background: '#e65100', fontWeight: '600',
               }}>
                 ⭐ Admin
-              </a>
+              </Link>
             )}
             {isAdmin && (
-              <a href="/admin/verifikasi" style={{
+              <Link href="/admin/verifikasi" style={{
                 position: 'relative', color: '#fff', fontSize: '12px', textDecoration: 'none',
                 padding: '5px 10px', borderRadius: '6px',
                 background: 'rgba(230,81,0,0.35)', fontWeight: '600',
@@ -223,7 +224,7 @@ export default function Navbar() {
                     {menungguVerifikasi > 99 ? '99+' : menungguVerifikasi}
                   </span>
                 )}
-              </a>
+              </Link>
             )}
 
             {/* Search button — desktop */}
@@ -257,9 +258,9 @@ export default function Navbar() {
                 </button>
               </>
             ) : (
-              <a href="/auth" style={{ color: '#fff', fontSize: '12px', textDecoration: 'none', background: '#185FA5', padding: '6px 14px', borderRadius: '6px', marginLeft: '6px' }}>
+              <Link href="/auth" style={{ color: '#fff', fontSize: '12px', textDecoration: 'none', background: '#185FA5', padding: '6px 14px', borderRadius: '6px', marginLeft: '6px' }}>
                 Masuk
-              </a>
+              </Link>
             )}
           </div>
 
@@ -275,7 +276,7 @@ export default function Navbar() {
               🔍
             </button>
             {user && (
-              <a
+              <Link
                 href="/chat"
                 style={{ position: 'relative', color: '#fff', textDecoration: 'none', fontSize: '20px', lineHeight: 1, borderRadius: '8px', minWidth: '44px', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                 aria-label="Notifikasi pesan"
@@ -292,7 +293,7 @@ export default function Navbar() {
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}
-              </a>
+              </Link>
             )}
           </div>
         </div>

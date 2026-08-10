@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import Skeleton from './Skeleton'
@@ -276,9 +277,9 @@ export default function ReviewSection({ produkId }: { produkId: string }) {
       {/* CTA login jika belum masuk */}
       {!currentUserId && (
         <div style={{ padding: '14px 18px', borderBottom: reviews.length > 0 ? '0.5px solid #e8f0f8' : 'none', textAlign: 'center' }}>
-          <a href="/auth" style={{ fontSize: '13px', color: '#0C447C', textDecoration: 'none', fontWeight: '500' }}>
+          <Link href="/auth" style={{ fontSize: '13px', color: '#0C447C', textDecoration: 'none', fontWeight: '500' }}>
             Masuk untuk menulis ulasan →
-          </a>
+          </Link>
         </div>
       )}
 

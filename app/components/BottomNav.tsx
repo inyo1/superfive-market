@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
@@ -182,7 +183,7 @@ export default function BottomNav() {
             )}
 
             {menuAkun.map(m => (
-              <a
+              <Link
                 key={m.href}
                 href={m.href}
                 style={{
@@ -194,18 +195,18 @@ export default function BottomNav() {
               >
                 <span style={{ fontSize: '18px' }}>{m.ikon}</span>
                 {m.label}
-              </a>
+              </Link>
             ))}
 
             {isAdmin && (
               <>
                 <div style={{ height: '1px', background: '#e8f0f8', margin: '8px 12px' }} />
-                <a href="/admin" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '13px 12px', borderRadius: '10px', fontSize: '14px', color: '#e65100', fontWeight: '600', textDecoration: 'none', minHeight: '44px', boxSizing: 'border-box' }}>
+                <Link href="/admin" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '13px 12px', borderRadius: '10px', fontSize: '14px', color: '#e65100', fontWeight: '600', textDecoration: 'none', minHeight: '44px', boxSizing: 'border-box' }}>
                   <span style={{ fontSize: '18px' }}>⭐</span> Panel Admin
-                </a>
-                <a href="/admin/verifikasi" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '13px 12px', borderRadius: '10px', fontSize: '14px', color: '#e65100', fontWeight: '600', textDecoration: 'none', minHeight: '44px', boxSizing: 'border-box' }}>
+                </Link>
+                <Link href="/admin/verifikasi" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '13px 12px', borderRadius: '10px', fontSize: '14px', color: '#e65100', fontWeight: '600', textDecoration: 'none', minHeight: '44px', boxSizing: 'border-box' }}>
                   <span style={{ fontSize: '18px' }}>🎓</span> Verifikasi Alumni
-                </a>
+                </Link>
               </>
             )}
 
@@ -219,12 +220,12 @@ export default function BottomNav() {
                 Keluar
               </button>
             ) : (
-              <a
+              <Link
                 href="/auth"
                 style={{ display: 'block', textAlign: 'center', background: BIRU, color: '#fff', padding: '13px', borderRadius: '10px', fontSize: '14px', fontWeight: '600', textDecoration: 'none', minHeight: '44px', boxSizing: 'border-box' }}
               >
                 Masuk / Daftar
-              </a>
+              </Link>
             )}
           </div>
         </div>
@@ -243,7 +244,7 @@ export default function BottomNav() {
           {item.map(({ href, label, Ikon, lencana }) => {
             const isAktif = aktif(href) && !sheetTerbuka
             return (
-              <a
+              <Link
                 key={href}
                 href={href}
                 style={{
@@ -260,7 +261,7 @@ export default function BottomNav() {
                 <span style={{ fontSize: '10px', fontWeight: isAktif ? '700' : '500', lineHeight: 1 }}>
                   {label}
                 </span>
-              </a>
+              </Link>
             )
           })}
 
