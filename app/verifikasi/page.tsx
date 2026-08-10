@@ -6,6 +6,7 @@ import { uploadBuktiAlumni } from '../../lib/buktiAlumni'
 import Navbar from '../components/Navbar'
 import Skeleton, { SkeletonPanel } from '../components/Skeleton'
 import Tombol from '../components/Tombol'
+import { useTampilSkeleton } from '../hooks/useSkeleton'
 
 const MAX_UKURAN = 5 * 1024 * 1024 // 5 MB
 
@@ -19,6 +20,7 @@ export default function VerifikasiPage() {
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const tampilSkeleton = useTampilSkeleton(loading)
   const [mengirim, setMengirim] = useState(false)
   const [pesan, setPesan] = useState<{ text: string; ok: boolean } | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -102,7 +104,7 @@ export default function VerifikasiPage() {
     }
   }
 
-  if (loading) return (
+  if (tampilSkeleton) return (
     <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
       <Navbar />
       <div style={{ maxWidth: '520px', margin: '0 auto', padding: '16px' }}>

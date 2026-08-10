@@ -7,6 +7,7 @@ import SkeletonCard from '../components/SkeletonCard'
 import BadgeVerifikasi from '../components/BadgeVerifikasi'
 import EmptyState from '../components/EmptyState'
 import BadgeAngkatan from '../components/BadgeAngkatan'
+import { useTampilSkeleton } from '../hooks/useSkeleton'
 
 type Produk = {
   id: string
@@ -26,6 +27,7 @@ const kategoris = ['semua', 'Teknologi', 'Fashion', 'Kuliner', 'Properti', 'Jasa
 export default function ProdukPage() {
   const [produk, setProduk] = useState<Produk[]>([])
   const [loading, setLoading] = useState(true)
+  const tampilSkeleton = useTampilSkeleton(loading)
   const [search, setSearch] = useState('')
   const [kategori, setKategori] = useState('semua')
 
@@ -111,7 +113,7 @@ export default function ProdukPage() {
           ))}
         </div>
 
-        {loading ? (
+        {tampilSkeleton ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
             {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
           </div>

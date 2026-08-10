@@ -7,6 +7,7 @@ import BadgeVerifikasi from '../components/BadgeVerifikasi'
 import { DaftarSkeletonChat } from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
 import BadgeAngkatan from '../components/BadgeAngkatan'
+import { useTampilSkeleton } from '../hooks/useSkeleton'
 
 type ConvDisplay = {
   id: string
@@ -52,6 +53,7 @@ export default function ChatListPage() {
   const router = useRouter()
   const [convs, setConvs] = useState<ConvDisplay[]>([])
   const [loading, setLoading] = useState(true)
+  const tampilSkeleton = useTampilSkeleton(loading)
 
   useEffect(() => {
     async function load() {
@@ -115,7 +117,7 @@ export default function ChatListPage() {
           Pesan
         </h1>
 
-        {loading ? (
+        {tampilSkeleton ? (
           <DaftarSkeletonChat jumlah={4} />
         ) : convs.length === 0 ? (
           <EmptyState

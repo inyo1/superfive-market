@@ -5,6 +5,7 @@ import { supabase } from '../../../lib/supabase'
 import { urlBukti } from '../../../lib/buktiAlumni'
 import Navbar from '../../components/Navbar'
 import Skeleton, { SkeletonPanel } from '../../components/Skeleton'
+import { useTampilSkeleton } from '../../hooks/useSkeleton'
 
 type Pendaftar = {
   id: string
@@ -58,6 +59,7 @@ function Avatar({ nama, url, size = 48 }: { nama: string | null; url: string | n
 export default function VerifikasiAdminPage() {
   const router = useRouter()
   const [ready, setReady] = useState(false)
+  const tampilSkeleton = useTampilSkeleton(!ready)
   const [tab, setTab] = useState<Tab>('menunggu')
   const [pendaftar, setPendaftar] = useState<Pendaftar[]>([])
   const [pesan, setPesan] = useState<{ text: string; ok: boolean } | null>(null)
@@ -154,7 +156,7 @@ export default function VerifikasiAdminPage() {
   const terlihat = pendaftar.filter(p => p.status_verifikasi === tab)
   function jumlah(t: Tab) { return pendaftar.filter(p => p.status_verifikasi === t).length }
 
-  if (!ready) return (
+  if (tampilSkeleton) return (
     <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
       <Navbar />
       <div style={{ maxWidth: '660px', margin: '0 auto', padding: '16px' }}>

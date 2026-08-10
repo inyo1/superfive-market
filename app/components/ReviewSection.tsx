@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import Skeleton from './Skeleton'
 import BadgeAngkatan from './BadgeAngkatan'
+import { useTampilSkeleton } from '../hooks/useSkeleton'
 
 type Review = {
   id: string
@@ -54,6 +55,7 @@ export default function ReviewSection({ produkId }: { produkId: string }) {
   const [reviews, setReviews] = useState<Review[]>([])
   const [angkatanPengulas, setAngkatanPengulas] = useState<Record<string, number | null>>({})
   const [loading, setLoading] = useState(true)
+  const tampilSkeleton = useTampilSkeleton(loading)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [myReview, setMyReview] = useState<Review | null>(null)
   const [editMode, setEditMode] = useState(false)
@@ -281,7 +283,7 @@ export default function ReviewSection({ produkId }: { produkId: string }) {
       )}
 
       {/* Daftar semua review */}
-      {loading ? (
+      {tampilSkeleton ? (
         <div style={{ padding: '16px 0' }}>
           {[0, 1].map(i => (
             <div key={i} style={{ display: 'flex', gap: '10px', marginBottom: '14px' }}>

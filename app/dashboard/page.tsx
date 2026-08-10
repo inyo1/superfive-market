@@ -11,6 +11,7 @@ import EmptyState from '../components/EmptyState'
 import InputHarga from '../components/InputHarga'
 import DialogKonfirmasi from '../components/DialogKonfirmasi'
 import Tombol from '../components/Tombol'
+import { useTampilSkeleton } from '../hooks/useSkeleton'
 import { keAngka } from '../../lib/format'
 
 type Toko = { id: string; nama_toko: string; kategori: string }
@@ -57,6 +58,7 @@ export default function DashboardPage() {
   const [pesanan, setPesanan] = useState<Pesanan[]>([])
   const [loading, setLoading] = useState(true)
   const [noToko, setNoToko] = useState(false)
+  const tampilSkeleton = useTampilSkeleton(loading)
 
   // Edit produk
   const [editId, setEditId] = useState<string | null>(null)
@@ -230,7 +232,7 @@ export default function DashboardPage() {
   const totalTerjual = produk.reduce((s, p) => s + (p.terjual || 0), 0)
   const pesananAktif = pesanan.filter(p => ['menunggu', 'dibayar', 'diproses'].includes(p.status)).length
 
-  if (loading) return (
+  if (tampilSkeleton) return (
     <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
       <Navbar />
       <div style={{ maxWidth: '660px', margin: '0 auto', padding: '16px' }}>

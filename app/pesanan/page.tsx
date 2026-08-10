@@ -8,6 +8,7 @@ import FotoProduk from '../components/FotoProduk'
 import Skeleton, { DaftarSkeletonPesanan } from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
 import BadgeAngkatan from '../components/BadgeAngkatan'
+import { useTampilSkeleton } from '../hooks/useSkeleton'
 
 type PesananItem = {
   id: string
@@ -60,6 +61,7 @@ export default function PesananPage() {
   const [pesanan, setPesanan] = useState<Pesanan[]>([])
   const [tab, setTab] = useState<Tab>('semua')
   const [loading, setLoading] = useState(true)
+  const tampilSkeleton = useTampilSkeleton(loading)
   const [pesan, setPesan] = useState('')
   const [prosesId, setProsesId] = useState<string | null>(null)
   const [angkatanPenjual, setAngkatanPenjual] = useState<Record<string, number | null>>({})
@@ -124,7 +126,7 @@ export default function PesananPage() {
     return t === 'semua' ? pesanan.length : pesanan.filter(p => p.status === t).length
   }
 
-  if (loading) return (
+  if (tampilSkeleton) return (
     <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
       <Navbar />
       <div style={{ maxWidth: '660px', margin: '0 auto', padding: '16px' }}>

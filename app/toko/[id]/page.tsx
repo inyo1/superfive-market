@@ -9,6 +9,7 @@ import BadgeVerifikasi from '../../components/BadgeVerifikasi'
 import { useToast } from '../../context/ToastContext'
 import Skeleton, { GridSkeletonProduk } from '../../components/Skeleton'
 import BadgeAngkatan from '../../components/BadgeAngkatan'
+import { useTampilSkeleton } from '../../hooks/useSkeleton'
 
 type Toko = {
   id: string
@@ -48,6 +49,7 @@ export default function TokoPage() {
   const [toko, setToko] = useState<Toko | null>(null)
   const [produk, setProduk] = useState<Produk[]>([])
   const [loading, setLoading] = useState(true)
+  const tampilSkeleton = useTampilSkeleton(loading)
   const [notFound, setNotFound] = useState(false)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
@@ -164,7 +166,7 @@ export default function TokoPage() {
 
   const isOwner = toko && currentUserId === toko.seller_id
 
-  if (loading) {
+  if (tampilSkeleton) {
     return (
       <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
         <Navbar />

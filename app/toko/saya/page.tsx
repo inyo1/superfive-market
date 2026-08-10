@@ -6,6 +6,7 @@ import { uploadFotoProduk } from '../../../lib/uploadFoto'
 import Navbar from '../../components/Navbar'
 import FotoProduk from '../../components/FotoProduk'
 import Skeleton, { GridSkeletonProduk } from '../../components/Skeleton'
+import { useTampilSkeleton } from '../../hooks/useSkeleton'
 
 type Toko = { id: string; nama_toko: string; kategori: string }
 type Produk = {
@@ -23,6 +24,7 @@ function fmt(n: number) { return 'Rp ' + (n || 0).toLocaleString('id-ID') }
 export default function TokoSayaPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
+  const tampilSkeleton = useTampilSkeleton(loading)
   const [toko, setToko] = useState<Toko | null>(null)
   const [produk, setProduk] = useState<Produk[]>([])
   const [toast, setToast] = useState<{ text: string; ok: boolean } | null>(null)
@@ -112,7 +114,7 @@ export default function TokoSayaPage() {
     setHapusId(null)
   }
 
-  if (loading) {
+  if (tampilSkeleton) {
     return (
       <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
         <Navbar />

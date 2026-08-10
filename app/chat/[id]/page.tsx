@@ -6,6 +6,7 @@ import Navbar from '../../components/Navbar'
 import BadgeVerifikasi from '../../components/BadgeVerifikasi'
 import Skeleton from '../../components/Skeleton'
 import BadgeAngkatan from '../../components/BadgeAngkatan'
+import { useTampilSkeleton } from '../../hooks/useSkeleton'
 
 type Message = {
   id: string
@@ -59,6 +60,7 @@ export default function ChatRoom() {
   const [messages, setMessages] = useState<Message[]>([])
   const [convInfo, setConvInfo] = useState<ConvInfo | null>(null)
   const [loading, setLoading] = useState(true)
+  const tampilSkeleton = useTampilSkeleton(loading)
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -171,7 +173,7 @@ export default function ChatRoom() {
     else grouped.push({ date, msgs: [m] })
   }
 
-  if (loading) {
+  if (tampilSkeleton) {
     return (
       <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
         <Navbar />

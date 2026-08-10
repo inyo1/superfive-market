@@ -6,6 +6,7 @@ import BadgeVerifikasi from '../components/BadgeVerifikasi'
 import Skeleton, { GridSkeletonAlumni } from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
 import BadgeAngkatan from '../components/BadgeAngkatan'
+import { useTampilSkeleton } from '../hooks/useSkeleton'
 
 type Member = {
   id: string
@@ -46,6 +47,7 @@ function Avatar({ member, size = 56 }: { member: Member; size?: number }) {
 export default function AlumniPage() {
   const [groups, setGroups] = useState<Group[]>([])
   const [loading, setLoading] = useState(true)
+  const tampilSkeleton = useTampilSkeleton(loading)
   const [total, setTotal] = useState(0)
   const [search, setSearch] = useState('')
   const [filterAngkatan, setFilterAngkatan] = useState<number | 'semua'>('semua')
@@ -140,7 +142,7 @@ export default function AlumniPage() {
             Alumni Superfive
           </h1>
           <div style={{ fontSize: '13px', color: '#B5D4F4', marginBottom: '18px', minHeight: '18px' }}>
-            {loading
+            {tampilSkeleton
               ? <span className="skeleton" style={{ display: 'inline-block', width: '130px', height: '12px', borderRadius: '6px', opacity: 0.35 }} />
               : `${total} alumni terdaftar`}
           </div>
@@ -166,7 +168,7 @@ export default function AlumniPage() {
       <div style={{ maxWidth: '700px', margin: '0 auto', padding: '16px 16px 40px' }}>
 
         {/* Filter angkatan */}
-        {!loading && daftarAngkatan.length > 0 && (
+        {!tampilSkeleton && daftarAngkatan.length > 0 && (
           <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '12px', marginBottom: '4px' }}>
             {(['semua', ...daftarAngkatan] as const).map(a => {
               const aktif = filterAngkatan === a
@@ -194,7 +196,7 @@ export default function AlumniPage() {
         )}
 
 
-        {loading ? (
+        {tampilSkeleton ? (
           <>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
               <Skeleton tinggi={24} lebar={128} radius={20} />

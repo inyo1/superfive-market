@@ -6,6 +6,7 @@ import Navbar from '../components/Navbar'
 import BadgeVerifikasi from '../components/BadgeVerifikasi'
 import Skeleton, { SkeletonPanel } from '../components/Skeleton'
 import Tombol from '../components/Tombol'
+import { useTampilSkeleton } from '../hooks/useSkeleton'
 
 export default function ProfilPage() {
   const router = useRouter()
@@ -24,6 +25,7 @@ export default function ProfilPage() {
   const [preview, setPreview] = useState<string | null>(null)
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(true)
+  const tampilSkeleton = useTampilSkeleton(loading)
   const [saving, setSaving] = useState(false)
   const [pesan, setPesan] = useState('')
   const [statusVerifikasi, setStatusVerifikasi] = useState<string | null>(null)
@@ -120,7 +122,7 @@ export default function ProfilPage() {
     setSaving(false)
   }
 
-  if (loading) {
+  if (tampilSkeleton) {
     return (
       <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
         <Navbar />

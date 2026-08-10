@@ -7,6 +7,7 @@ import { useCart } from '../../context/CartContext'
 import FotoProduk from '../../components/FotoProduk'
 import ReviewSection from '../../components/ReviewSection'
 import Skeleton from '../../components/Skeleton'
+import { useTampilSkeleton } from '../../hooks/useSkeleton'
 
 type Produk = {
   id: string
@@ -43,6 +44,7 @@ export default function DetailProduk() {
   const { tambah } = useCart()
   const [produk, setProduk] = useState<Produk | null>(null)
   const [loading, setLoading] = useState(true)
+  const tampilSkeleton = useTampilSkeleton(loading)
   const [notFound, setNotFound] = useState(false)
   const [toast, setToast] = useState<{ text: string; ok: boolean } | null>(null)
   const [adding, setAdding] = useState(false)
@@ -165,7 +167,7 @@ export default function DetailProduk() {
     }
   }
 
-  if (loading) {
+  if (tampilSkeleton) {
     return (
       <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
         <Navbar />
