@@ -88,13 +88,20 @@ export default function Home() {
     async function load() {
       const [authRes, pCount, tCount, uCount, latestRes] = await Promise.all([
         supabase.auth.getUser(),
-        supabase.from('produk').select('*', { count: 'exact', head: true }),
+        // Merchandise resmi punya raknya sendiri, jadi tidak ikut dihitung
+        // di angka etalase umum — supaya cocok dengan yang benar-benar tampil.
+        // toko!inner wajib: tanpa itu filter hanya mengosongkan embed-nya,
+        // produknya sendiri tetap ikut terhitung.
+        supabase.from('produk')
+          .select('id, toko!inner(is_official)', { count: 'exact', head: true })
+          .eq('toko.is_official', false),
         supabase.from('toko').select('*', { count: 'exact', head: true }),
         // Hitung dari view publik — tabel users tidak lagi bisa dibaca umum,
         // kalau tetap dari sana angkanya jadi 0 untuk pengunjung
         supabase.from('alumni_publik').select('*', { count: 'exact', head: true }),
         supabase.from('produk')
-          .select('id, nama, harga, kategori, foto_url, terjual, rating, toko(nama_toko)')
+          .select('id, nama, harga, kategori, foto_url, terjual, rating, toko!inner(nama_toko, is_official)')
+          .eq('toko.is_official', false)
           .order('created_at', { ascending: false })
           .limit(6),
       ])

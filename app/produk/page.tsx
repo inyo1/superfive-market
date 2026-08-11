@@ -44,9 +44,16 @@ export default function ProdukPage() {
   }, [])
 
   async function fetchProduk() {
+    // Etalase umum hanya berisi produk member. Merchandise resmi dikecualikan
+    // di sini supaya punya rak sendiri, dan tetap bisa dicari lewat pencarian
+    // maupun dibuka langsung lewat tautannya.
+    //
+    // toko!inner penting: dengan embed biasa, filter hanya mengosongkan objek
+    // toko-nya sementara produknya tetap ikut terambil.
     const { data, error } = await supabase
       .from('produk')
-      .select(`*, toko(nama_toko, seller_id, is_official)`)
+      .select(`*, toko!inner(nama_toko, seller_id, is_official)`)
+      .eq('toko.is_official', false)
       .order('created_at', { ascending: false })
 
     if (error || !data) { setLoading(false); return }

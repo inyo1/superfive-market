@@ -77,10 +77,22 @@ export default function SearchOverlay({ open, onClose }: { open: boolean; onClos
   }
 
   async function runSearch(q: string) {
-    const [produkRes, tokoRes] = await Promise.all([
+    const kolomProduk = 'id, nama, harga, kategori, foto_url, toko!inner(nama_toko, is_official)'
+    const cocok = `nama.ilike.%${q}%,deskripsi.ilike.%${q}%`
+
+    // Merchandise resmi dicari lewat query terpisah, bukan disaring dari satu
+    // daftar. Kalau digabung dengan limit, hasil member bisa memenuhi kuota
+    // lebih dulu dan yang resmi tidak pernah muncul sama sekali.
+    const [resmiRes, memberRes, tokoRes] = await Promise.all([
       supabase.from('produk')
-        .select('id, nama, harga, kategori, foto_url, toko(nama_toko, is_official)')
-        .or(`nama.ilike.%${q}%,deskripsi.ilike.%${q}%`)
+        .select(kolomProduk)
+        .eq('toko.is_official', true)
+        .or(cocok)
+        .limit(3),
+      supabase.from('produk')
+        .select(kolomProduk)
+        .eq('toko.is_official', false)
+        .or(cocok)
         .limit(5),
       supabase.from('toko')
         .select('id, nama_toko, kategori, seller_id, is_official')
@@ -101,7 +113,11 @@ export default function SearchOverlay({ open, onClose }: { open: boolean; onClos
       angkatanById = Object.fromEntries((penjual ?? []).map(u => [u.id, u.angkatan]))
     }
 
-    setProduk((produkRes.data ?? []) as unknown as ProdukResult[])
+    // Resmi selalu di depan supaya beda kelasnya langsung terbaca
+    setProduk([
+      ...(resmiRes.data ?? []),
+      ...(memberRes.data ?? []),
+    ] as unknown as ProdukResult[])
     setToko(tokoRows.map(t => ({
       ...t,
       users: t.seller_id ? { angkatan: angkatanById[t.seller_id] ?? null } : null,
