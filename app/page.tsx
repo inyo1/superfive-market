@@ -8,6 +8,7 @@ import Navbar from './components/Navbar'
 import FotoProduk from './components/FotoProduk'
 import SkeletonCard from './components/SkeletonCard'
 import SectionOfficial from './components/SectionOfficial'
+import SectionPreorder from './components/SectionPreorder'
 
 type Produk = {
   id: string
@@ -255,6 +256,8 @@ export default function Home() {
 
       {/* ── Official Merchandise INILIMA ── */}
       <SectionOfficial />
+
+      <SectionPreorder />
 
       <div style={{ padding: '20px 16px', maxWidth: '700px', margin: '0 auto' }}>
 
