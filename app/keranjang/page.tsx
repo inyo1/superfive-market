@@ -9,6 +9,9 @@ import FotoProduk from '../components/FotoProduk'
 import DialogKonfirmasi from '../components/DialogKonfirmasi'
 import EmptyState from '../components/EmptyState'
 import { useToast } from '../context/ToastContext'
+import BadgePreorder, { WARNA_PO_TUA } from '../components/BadgePreorder'
+import PeringatanCampuranPO from '../components/PeringatanCampuranPO'
+import { useInfoPO } from '../hooks/useInfoPO'
 
 const emojiKategori: Record<string, string> = {
   Teknologi: '💻', Fashion: '👗', Kuliner: '🍱',
@@ -25,6 +28,7 @@ export default function KeranjangPage() {
   const toast = useToast()
   const [konfirmasiKosongkan, setKonfirmasiKosongkan] = useState(false)
   const [authChecked, setAuthChecked] = useState(false)
+  const { info: infoPo, campuran } = useInfoPO(items.map(i => i.id))
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -100,6 +104,8 @@ export default function KeranjangPage() {
           </button>
         </div>
 
+        <PeringatanCampuranPO tampil={campuran} />
+
         {/* Daftar item */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
           {items.map(item => (
@@ -128,6 +134,16 @@ export default function KeranjangPage() {
                 {item.varian_nama && (
                   <div style={{ fontSize: '11px', color: '#0C447C', fontWeight: '600', marginBottom: '3px' }}>
                     Ukuran {item.varian_nama}
+                  </div>
+                )}
+                {infoPo[item.id]?.is_preorder && (
+                  <div style={{ marginBottom: '3px' }}>
+                    <BadgePreorder aktif kecil />
+                    {infoPo[item.id]?.po_estimasi_kirim && (
+                      <div style={{ fontSize: '10px', color: WARNA_PO_TUA, marginTop: '2px' }}>
+                        🚚 {infoPo[item.id].po_estimasi_kirim}
+                      </div>
+                    )}
                   </div>
                 )}
                 <div style={{ fontSize: '14px', fontWeight: '700', color: '#0C447C' }}>

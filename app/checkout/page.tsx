@@ -6,6 +6,9 @@ import { useCart } from '../context/CartContext'
 import { supabase } from '../../lib/supabase'
 import Navbar from '../components/Navbar'
 import Tombol from '../components/Tombol'
+import BadgePreorder, { WARNA_PO_TUA } from '../components/BadgePreorder'
+import PeringatanCampuranPO from '../components/PeringatanCampuranPO'
+import { useInfoPO } from '../hooks/useInfoPO'
 
 const metodeBayar = [
   { id: 'transfer_bca', label: 'Transfer BCA', icon: '🏦', info: 'BCA 1234567890 a/n Superfive Market' },
@@ -57,6 +60,7 @@ export default function CheckoutPage() {
   const [totalBayar, setTotalBayar] = useState(0)
   const [error, setError] = useState('')
   const [autoFilled, setAutoFilled] = useState(false)
+  const { info: infoPo, campuran } = useInfoPO(items.map(i => i.id))
 
   useEffect(() => {
     async function prefill() {
@@ -285,6 +289,8 @@ export default function CheckoutPage() {
           </div>
         </div>
 
+        <PeringatanCampuranPO tampil={campuran} />
+
         {/* Ringkasan order */}
         <div style={{ background: '#fff', borderRadius: '12px', padding: '18px', border: '0.5px solid #c5d9ef', marginBottom: '12px' }}>
           <div style={{ fontSize: '13px', fontWeight: '600', color: '#0C447C', marginBottom: '12px' }}>🧾 Ringkasan Pesanan</div>
@@ -297,6 +303,16 @@ export default function CheckoutPage() {
                 <div style={{ fontSize: '12px', color: '#1a1a1a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.nama}</div>
                 {item.varian_nama && (
                   <div style={{ fontSize: '11px', color: '#0C447C', fontWeight: '500' }}>Ukuran {item.varian_nama}</div>
+                )}
+                {infoPo[item.id]?.is_preorder && (
+                  <div style={{ margin: '2px 0' }}>
+                    <BadgePreorder aktif kecil />
+                    {infoPo[item.id]?.po_estimasi_kirim && (
+                      <span style={{ fontSize: '10px', color: WARNA_PO_TUA, marginLeft: '5px' }}>
+                        🚚 {infoPo[item.id].po_estimasi_kirim}
+                      </span>
+                    )}
+                  </div>
                 )}
                 <div style={{ fontSize: '11px', color: '#5a7da0' }}>x{item.qty}</div>
               </div>
