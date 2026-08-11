@@ -9,6 +9,7 @@ import BadgeVerifikasi from '../components/BadgeVerifikasi'
 import EmptyState from '../components/EmptyState'
 import BadgeAngkatan from '../components/BadgeAngkatan'
 import BadgeOfficial from '../components/BadgeOfficial'
+import BadgePreorder, { WARNA_PO_TUA } from '../components/BadgePreorder'
 import { useTampilSkeleton } from '../hooks/useSkeleton'
 
 type Produk = {
@@ -19,6 +20,8 @@ type Produk = {
   kategori: string
   terjual: number
   rating: number
+  is_preorder: boolean
+  po_estimasi_kirim: string | null
   foto_url?: string | null
   toko: { nama_toko: string; is_official: boolean; users: { angkatan: number; status_verifikasi: string | null; is_institusi: boolean } | null } | null
   users: { angkatan: number }
@@ -153,6 +156,7 @@ export default function ProdukPage() {
               <Link key={p.id} href={`/produk/${p.id}`} className="prod-card" style={{ background: '#fff', borderRadius: '10px', border: '0.5px solid #e8f0f8', overflow: 'hidden', textDecoration: 'none', display: 'block', animation: `fadeInUp 0.28s ease both`, animationDelay: `${Math.min(i * 40, 300)}ms` }}>
                 <div style={{ position: 'relative' }}>
                   <BadgeOfficial aktif={p.toko?.is_official} bentuk="pita" />
+                  <BadgePreorder aktif={p.is_preorder} bentuk="pita" />
                   <FotoProduk src={p.foto_url} kategori={p.kategori} height={120} fontSize={40} />
                 </div>
                 <div style={{ padding: '10px' }}>
@@ -160,8 +164,15 @@ export default function ProdukPage() {
                   <div style={{ fontSize: '14px', fontWeight: '500', color: '#0C447C', marginBottom: '4px' }}>{fmt(p.harga)}</div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#5a7da0', marginBottom: '6px' }}>
                     <span>⭐ {p.rating || '5.0'}</span>
-                    <span>{p.terjual || 0} terjual</span>
+                    {/* Produk PO belum diproduksi, jadi angka terjual dan stok
+                        tidak bermakna — diganti keterangan pre-order */}
+                    <span>{p.is_preorder ? 'Pre-Order' : `${p.terjual || 0} terjual`}</span>
                   </div>
+                  {p.is_preorder && p.po_estimasi_kirim && (
+                    <div style={{ fontSize: '10px', color: WARNA_PO_TUA, marginBottom: '6px', lineHeight: 1.5 }}>
+                      🚚 {p.po_estimasi_kirim}
+                    </div>
+                  )}
                   <div style={{ fontSize: '10px', background: '#E6F1FB', color: '#0C447C', padding: '2px 6px', borderRadius: '4px', display: 'inline-block' }}>
                     {p.kategori}
                   </div>
