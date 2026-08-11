@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 import BadgeOfficial from './BadgeOfficial'
+import BadgePreorder from './BadgePreorder'
 
 type ProdukResult = {
   id: string
@@ -10,6 +11,7 @@ type ProdukResult = {
   harga: number
   kategori: string
   foto_url?: string | null
+  is_preorder?: boolean
   toko: { nama_toko: string; is_official?: boolean } | null
 }
 
@@ -77,7 +79,7 @@ export default function SearchOverlay({ open, onClose }: { open: boolean; onClos
   }
 
   async function runSearch(q: string) {
-    const kolomProduk = 'id, nama, harga, kategori, foto_url, toko!inner(nama_toko, is_official)'
+    const kolomProduk = 'id, nama, harga, kategori, foto_url, is_preorder, toko!inner(nama_toko, is_official)'
     const cocok = `nama.ilike.%${q}%,deskripsi.ilike.%${q}%`
 
     // Merchandise resmi dicari lewat query terpisah, bukan disaring dari satu
@@ -282,6 +284,7 @@ export default function SearchOverlay({ open, onClose }: { open: boolean; onClos
                         {p.nama}
                       </span>
                       <BadgeOfficial aktif={p.toko?.is_official} kecil />
+                      <BadgePreorder aktif={p.is_preorder} kecil />
                     </div>
                     <div style={{ fontSize: '13px', fontWeight: '600', color: '#0C447C' }}>
                       {fmt(p.harga)}

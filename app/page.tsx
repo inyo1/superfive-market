@@ -9,6 +9,8 @@ import FotoProduk from './components/FotoProduk'
 import SkeletonCard from './components/SkeletonCard'
 import SectionOfficial from './components/SectionOfficial'
 import SectionPreorder from './components/SectionPreorder'
+import BadgePreorder, { WARNA_PO_TUA } from './components/BadgePreorder'
+import { janjiKirim } from '../lib/preorder'
 
 type Produk = {
   id: string
@@ -17,6 +19,8 @@ type Produk = {
   kategori: string
   foto_url?: string | null
   terjual: number
+  is_preorder: boolean
+  po_janji_kirim: string | null
   rating: number
   toko: { nama_toko: string } | null
 }
@@ -105,7 +109,7 @@ export default function Home() {
           .select('*', { count: 'exact', head: true })
           .eq('is_institusi', false),
         supabase.from('produk')
-          .select('id, nama, harga, kategori, foto_url, terjual, rating, toko!inner(nama_toko, is_official)')
+          .select('id, nama, harga, kategori, foto_url, terjual, rating, is_preorder, po_janji_kirim, toko!inner(nama_toko, is_official)')
           .eq('toko.is_official', false)
           .order('created_at', { ascending: false })
           .limit(6),
@@ -343,7 +347,10 @@ export default function Home() {
                       animationDelay: `${Math.min(i * 50, 250)}ms`,
                     }}
                   >
-                    <FotoProduk src={p.foto_url} kategori={p.kategori} height={120} fontSize={40} />
+                    <div style={{ position: 'relative' }}>
+                      <BadgePreorder aktif={p.is_preorder} bentuk="pita" />
+                      <FotoProduk src={p.foto_url} kategori={p.kategori} height={120} fontSize={40} />
+                    </div>
                     <div style={{ padding: '10px' }}>
                       <div style={{ fontSize: '12px', fontWeight: '500', color: '#333', marginBottom: '4px', height: '32px', overflow: 'hidden' }}>
                         {p.nama}
@@ -353,8 +360,16 @@ export default function Home() {
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#5a7da0', marginBottom: '6px' }}>
                         <span>⭐ {p.rating || '5.0'}</span>
-                        <span>{p.terjual || 0} terjual</span>
+                        {/* Stok produk PO selalu 0 karena trg_kurangi_stok
+                            sengaja melewatinya — kalau ditampilkan akan
+                            terbaca habis padahal PO-nya sedang buka */}
+                        <span>{p.is_preorder ? 'Pre-Order' : `${p.terjual || 0} terjual`}</span>
                       </div>
+                      {p.is_preorder && p.po_janji_kirim && (
+                        <div style={{ fontSize: '10px', color: WARNA_PO_TUA, marginBottom: '6px', lineHeight: 1.5 }}>
+                          🚚 {janjiKirim(p.po_janji_kirim)}
+                        </div>
+                      )}
                       <div style={{ fontSize: '10px', background: '#E6F1FB', color: '#0C447C', padding: '2px 6px', borderRadius: '4px', display: 'inline-block' }}>
                         {p.kategori}
                       </div>

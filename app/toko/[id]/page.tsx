@@ -13,6 +13,8 @@ import BadgeAngkatan from '../../components/BadgeAngkatan'
 import BadgeOfficial from '../../components/BadgeOfficial'
 import Image from 'next/image'
 import { useTampilSkeleton } from '../../hooks/useSkeleton'
+import BadgePreorder, { WARNA_PO_TUA } from '../../components/BadgePreorder'
+import { janjiKirim } from '../../../lib/preorder'
 
 type Toko = {
   id: string
@@ -32,6 +34,8 @@ type Produk = {
   terjual: number
   rating: number
   stok: number
+  is_preorder: boolean
+  po_janji_kirim: string | null
   foto_url?: string | null
 }
 
@@ -99,7 +103,7 @@ export default function TokoPage() {
 
       const { data: produkData } = await supabase
         .from('produk')
-        .select('id, nama, harga, kategori, terjual, rating, stok, foto_url')
+        .select('id, nama, harga, kategori, terjual, rating, stok, foto_url, is_preorder, po_janji_kirim')
         .eq('toko_id', id)
         .order('created_at', { ascending: false })
 
@@ -398,14 +402,25 @@ export default function TokoPage() {
             {produk.map(p => (
               <div key={p.id} style={{ background: '#fff', borderRadius: '10px', border: '0.5px solid #e8f0f8', overflow: 'hidden' }}>
                 <Link href={`/produk/${p.id}`} style={{ textDecoration: 'none', display: 'block' }}>
-                  <FotoProduk src={p.foto_url} kategori={p.kategori} height={110} fontSize={38} />
+                  <div style={{ position: 'relative' }}>
+                    <BadgePreorder aktif={p.is_preorder} bentuk="pita" />
+                    <FotoProduk src={p.foto_url} kategori={p.kategori} height={110} fontSize={38} />
+                  </div>
                   <div style={{ padding: '10px 10px 6px' }}>
                     <div style={{ fontSize: '12px', fontWeight: '500', color: '#333', marginBottom: '4px', height: '32px', overflow: 'hidden' }}>{p.nama}</div>
                     <div style={{ fontSize: '13px', fontWeight: '600', color: '#0C447C', marginBottom: '4px' }}>{fmt(p.harga)}</div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#5a7da0' }}>
                       <span>⭐ {p.rating || '5.0'}</span>
-                      <span>{p.terjual || 0} terjual</span>
+                      {/* Stok produk PO selalu 0 karena trg_kurangi_stok
+                          sengaja melewatinya — kalau ditampilkan akan terbaca
+                          habis padahal PO-nya sedang buka */}
+                      <span>{p.is_preorder ? 'Pre-Order' : `${p.terjual || 0} terjual`}</span>
                     </div>
+                    {p.is_preorder && p.po_janji_kirim && (
+                      <div style={{ fontSize: '10px', color: WARNA_PO_TUA, marginTop: '4px', lineHeight: 1.5 }}>
+                        🚚 {janjiKirim(p.po_janji_kirim)}
+                      </div>
+                    )}
                   </div>
                 </Link>
                 <button
