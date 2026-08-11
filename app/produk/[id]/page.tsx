@@ -9,9 +9,12 @@ import FotoProduk from '../../components/FotoProduk'
 import ReviewSection from '../../components/ReviewSection'
 import Skeleton from '../../components/Skeleton'
 import BadgeOfficial from '../../components/BadgeOfficial'
+import BadgePreorder, { WARNA_PO, WARNA_PO_TUA } from '../../components/BadgePreorder'
 import { useTampilSkeleton } from '../../hooks/useSkeleton'
+import { useHitungMundur } from '../../hooks/useHitungMundur'
+import { statusPO, alasanTidakBisa, tanggalPanjang, formatSisa, type DataPO } from '../../../lib/preorder'
 
-type Produk = {
+type Produk = DataPO & {
   id: string
   nama: string
   harga: number
@@ -24,6 +27,13 @@ type Produk = {
   created_at: string
   toko: { nama_toko: string; seller_id: string; is_official?: boolean }
   users?: { angkatan: number }
+}
+
+// Satu baris dari view preorder_progress
+type ProgresPO = {
+  produk_id: string
+  terkumpul: number
+  sedang_buka: boolean
 }
 
 type Varian = {
@@ -63,6 +73,12 @@ export default function DetailProduk() {
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [varian, setVarian] = useState<Varian[]>([])
   const [varianId, setVarianId] = useState<string | null>(null)
+  const [progresPo, setProgresPo] = useState<ProgresPO | null>(null)
+
+  // Satu hitung mundur saja, dipasang ke penutupan PO. Yang dipakai dari sini
+  // bukan cuma teksnya tapi juga `sekarang` — supaya status PO dan angka yang
+  // ditampilkan selalu dihitung dari titik waktu yang sama.
+  const mundur = useHitungMundur(produk?.is_preorder ? produk.po_selesai : null)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id ?? null))
@@ -103,6 +119,18 @@ export default function DetailProduk() {
           .order('nama', { ascending: true })
 
         setVarian((v ?? []) as Varian[])
+
+        // Progres PO dibaca dari view khusus. View-nya security_invoker=false,
+        // jadi `terkumpul` menghitung pesanan semua orang, bukan cuma milik
+        // pembaca — memang itu yang mau ditampilkan.
+        if ((data as any).is_preorder) {
+          const { data: pr } = await supabase
+            .from('preorder_progress')
+            .select('produk_id, terkumpul, sedang_buka')
+            .eq('produk_id', id)
+            .maybeSingle()
+          setProgresPo((pr ?? null) as ProgresPO | null)
+        }
       }
       setLoading(false)
     }
@@ -237,8 +265,21 @@ export default function DetailProduk() {
 
   // Produk bervarian wajib dipilih dulu; produk biasa tidak berubah perilakunya
   const belumPilihVarian = punyaVarian && !varianTerpilih
-  const stokHabis = punyaVarian ? totalStokVarian <= 0 : (produk.stok ?? 0) <= 0
-  const mati = adding || belumPilihVarian || stokHabis
+
+  // Produk PO belum diproduksi, jadi stok tidak dipakai sama sekali sebagai
+  // penghalang — yang membatasi adalah periode dan kuota.
+  const po = Boolean(produk.is_preorder)
+  const terkumpul = progresPo?.terkumpul ?? 0
+  const sisaKuota = produk.po_maks != null ? Math.max(0, produk.po_maks - terkumpul) : 0
+  // Sebelum jam klien siap (mundur.sekarang masih 0) semua periode terlihat
+  // "belum dibuka". Diperlakukan sebagai belum siap supaya tombolnya tidak
+  // sempat salah label sepersekian detik.
+  const statusPo = mundur.siap
+    ? statusPO(produk, progresPo?.terkumpul ?? null, mundur.sekarang)
+    : 'buka'
+  const poBisaPesan = !po || statusPo === 'buka'
+  const stokHabis = po ? false : (punyaVarian ? totalStokVarian <= 0 : (produk.stok ?? 0) <= 0)
+  const mati = adding || belumPilihVarian || stokHabis || !poBisaPesan
 
   return (
     <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
@@ -265,8 +306,11 @@ export default function DetailProduk() {
             <h1 style={{ fontSize: '18px', fontWeight: '600', color: '#1a1a1a', margin: 0, flex: 1, paddingRight: '12px' }}>
               {produk.nama}
             </h1>
-            <span style={{ fontSize: '10px', background: '#E6F1FB', color: '#0C447C', padding: '3px 8px', borderRadius: '20px', whiteSpace: 'nowrap' }}>
-              {produk.kategori}
+            <span style={{ display: 'flex', gap: '5px', alignItems: 'center', flexShrink: 0 }}>
+              <BadgePreorder aktif={po} />
+              <span style={{ fontSize: '10px', background: '#E6F1FB', color: '#0C447C', padding: '3px 8px', borderRadius: '20px', whiteSpace: 'nowrap' }}>
+                {produk.kategori}
+              </span>
             </span>
           </div>
 
@@ -274,14 +318,112 @@ export default function DetailProduk() {
             {fmt(hargaTampil)}
           </div>
 
-          <div style={{ display: 'flex', gap: '16px', fontSize: '12px', color: '#5a7da0' }}>
+          <div style={{ display: 'flex', gap: '16px', fontSize: '12px', color: '#5a7da0', flexWrap: 'wrap' }}>
             <span>⭐ {produk.rating || '5.0'} rating</span>
-            <span>🛒 {produk.terjual || 0} terjual</span>
-            {produk.stok !== undefined && (
-              <span>📦 Stok: {punyaVarian ? totalStokVarian : produk.stok}</span>
+            {po ? (
+              <>
+                <span style={{ color: WARNA_PO_TUA, fontWeight: '600' }}>Pre-Order</span>
+                {produk.po_estimasi_kirim && <span>🚚 {produk.po_estimasi_kirim}</span>}
+              </>
+            ) : (
+              <>
+                <span>🛒 {produk.terjual || 0} terjual</span>
+                {produk.stok !== undefined && (
+                  <span>📦 Stok: {punyaVarian ? totalStokVarian : produk.stok}</span>
+                )}
+              </>
             )}
           </div>
         </div>
+
+        {/* Panel pre-order. Semua angka di sini cuma pemberitahuan awal;
+            penjaga sebenarnya tetap constraint dan RPC di server. */}
+        {po && (
+          <div style={{ background: '#fff', borderRadius: '12px', padding: '18px', border: `0.5px solid ${WARNA_PO}`, marginBottom: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+              <BadgePreorder aktif />
+              <span style={{ fontSize: '13px', fontWeight: '600', color: WARNA_PO_TUA }}>
+                {statusPo === 'buka' ? 'Sedang dibuka'
+                  : statusPo === 'belum_dibuka' ? 'Belum dibuka'
+                  : statusPo === 'kuota_penuh' ? 'Kuota penuh'
+                  : 'Sudah ditutup'}
+              </span>
+            </div>
+
+            {/* Hitung mundur. mundur.siap false = belum sempat dihitung di
+                klien, jadi jangan tampilkan apa-apa dulu daripada berkedip */}
+            {mundur.siap && statusPo === 'buka' && produk.po_selesai && (
+              <div style={{ fontSize: '13px', color: '#1a1a1a', marginBottom: '10px' }}>
+                ⏳ Ditutup dalam <strong style={{ color: WARNA_PO_TUA }}>{mundur.teks}</strong>
+                <div style={{ fontSize: '11px', color: '#5a7da0', marginTop: '2px' }}>
+                  sampai {tanggalPanjang(produk.po_selesai)}
+                </div>
+              </div>
+            )}
+            {mundur.siap && statusPo === 'belum_dibuka' && produk.po_mulai && (
+              <div style={{ fontSize: '13px', color: '#1a1a1a', marginBottom: '10px' }}>
+                🗓️ Dibuka dalam{' '}
+                <strong style={{ color: WARNA_PO_TUA }}>
+                  {formatSisa(new Date(produk.po_mulai).getTime() - mundur.sekarang)}
+                </strong>
+                <div style={{ fontSize: '11px', color: '#5a7da0', marginTop: '2px' }}>
+                  {tanggalPanjang(produk.po_mulai)}
+                </div>
+              </div>
+            )}
+
+            {produk.po_estimasi_kirim && (
+              <div style={{ fontSize: '13px', color: '#1a1a1a', marginBottom: '10px' }}>
+                🚚 Estimasi pengiriman: <strong>{produk.po_estimasi_kirim}</strong>
+              </div>
+            )}
+
+            {/* Progres ke target. Ditampilkan hanya kalau penjual memang
+                memasang target — tanpa itu bilangan pembaginya tidak ada */}
+            {produk.po_target != null && produk.po_target > 0 && (
+              <div style={{ marginBottom: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#5a7da0', marginBottom: '5px' }}>
+                  <span>
+                    <strong style={{ color: WARNA_PO_TUA, fontSize: '13px' }}>{terkumpul}</strong> dari {produk.po_target} terkumpul
+                  </span>
+                  <span>{Math.min(100, Math.round((terkumpul / produk.po_target) * 100))}%</span>
+                </div>
+                <div style={{ height: '8px', background: '#eceaf7', borderRadius: '20px', overflow: 'hidden' }}>
+                  <div style={{
+                    width: `${Math.min(100, (terkumpul / produk.po_target) * 100)}%`,
+                    height: '100%', background: WARNA_PO, borderRadius: '20px',
+                    transition: 'width 0.4s ease',
+                  }} />
+                </div>
+                {terkumpul >= produk.po_target && (
+                  <div style={{ fontSize: '11px', color: '#2e7d32', marginTop: '5px' }}>
+                    ✓ Target sudah tercapai
+                  </div>
+                )}
+              </div>
+            )}
+
+            {produk.po_maks != null && produk.po_maks > 0 && (
+              <div style={{ fontSize: '12px', color: sisaKuota > 0 ? '#5a7da0' : '#c62828', marginBottom: '10px' }}>
+                {sisaKuota > 0
+                  ? `Sisa kuota ${sisaKuota} dari ${produk.po_maks}`
+                  : 'Kuota penuh — pemesanan ditutup'}
+              </div>
+            )}
+
+            {produk.po_catatan && (
+              <div style={{ background: 'rgba(124,77,255,0.08)', borderRadius: '8px', padding: '10px 12px', fontSize: '12px', color: '#1a1a1a', lineHeight: 1.6 }}>
+                <strong style={{ color: WARNA_PO_TUA }}>Penting: </strong>
+                {produk.po_catatan}
+              </div>
+            )}
+
+            <div style={{ fontSize: '11px', color: '#5a7da0', marginTop: '12px', lineHeight: 1.6 }}>
+              Barang pre-order dibuat setelah periode pemesanan ditutup, jadi
+              pengirimannya menyusul sesuai estimasi di atas.
+            </div>
+          </div>
+        )}
 
         {/* Pemilih ukuran — hanya untuk produk yang punya varian aktif */}
         {punyaVarian && (
@@ -433,7 +575,7 @@ export default function DetailProduk() {
             onClick={handleBeliSekarang}
             disabled={mati}
             style={{
-              flex: 2, background: mati ? '#7fa8c9' : '#0C447C', color: '#fff',
+              flex: 2, background: mati ? '#7fa8c9' : (po ? WARNA_PO : '#0C447C'), color: '#fff',
               border: 'none', padding: '13px',
               borderRadius: '8px', fontSize: '13px', fontWeight: '500',
               minHeight: '44px',
@@ -442,9 +584,11 @@ export default function DetailProduk() {
           >
             {adding
               ? 'Memproses...'
-              : stokHabis ? 'Stok Habis'
-              : belumPilihVarian ? 'Pilih ukuran dulu'
-              : 'Beli Sekarang'}
+              : alasanTidakBisa(statusPo, produk.po_mulai)
+              || (stokHabis ? 'Stok Habis'
+                : belumPilihVarian ? 'Pilih ukuran dulu'
+                : po ? 'Pesan Pre-Order'
+                : 'Beli Sekarang')}
           </button>
         </div>
       </div>
