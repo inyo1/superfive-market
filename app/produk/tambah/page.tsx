@@ -8,6 +8,8 @@ import Navbar from '../../components/Navbar'
 import InputHarga from '../../components/InputHarga'
 import Tombol from '../../components/Tombol'
 import { keAngka } from '../../../lib/format'
+import EditorPreorder from '../../components/EditorPreorder'
+import { FORM_PO_KOSONG, validasiFormPO, formPOKeKolom, type FormPO } from '../../../lib/preorder'
 
 export default function TambahProduk() {
   const router = useRouter()
@@ -23,6 +25,7 @@ export default function TambahProduk() {
   const [preview, setPreview] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [pesan, setPesan] = useState('')
+  const [formPo, setFormPo] = useState<FormPO>(FORM_PO_KOSONG)
   const inputFotoRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -59,6 +62,12 @@ export default function TambahProduk() {
 
   async function handleTambah() {
     if (!nama.trim() || !harga) { setPesan('Nama dan harga wajib diisi.'); return }
+
+    // Diperiksa di sini supaya penjual dapat pesan yang jelas, bukan bunyi
+    // constraint chk_po_periode dari Postgres
+    const salahPo = validasiFormPO(formPo)
+    if (salahPo) { setPesan(salahPo); return }
+
     setLoading(true)
     setPesan('')
 
@@ -89,8 +98,11 @@ export default function TambahProduk() {
       toko_id: tokoId,
       nama, harga: keAngka(harga),
       deskripsi, kategori,
-      stok: keAngka(stok),
+      // Produk PO belum punya barang; stok dikunci 0 supaya tidak ada angka
+      // menyesatkan kalau nanti PO-nya dimatikan
+      stok: formPo.aktif ? 0 : keAngka(stok),
       foto_url,
+      ...formPOKeKolom(formPo),
     })
 
     if (error) {
@@ -98,6 +110,7 @@ export default function TambahProduk() {
     } else {
       setPesan('Produk berhasil ditambahkan!')
       setNama(''); setHarga(''); setDeskripsi(''); setStok('')
+      setFormPo(FORM_PO_KOSONG)
       hapusFoto()
     }
     setLoading(false)
@@ -180,17 +193,22 @@ export default function TambahProduk() {
             <input value={nama} onChange={e => setNama(e.target.value)} placeholder="Nama produk kamu" style={{ width: '100%', padding: '9px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
           </div>
 
-          {/* Harga & Stok */}
+          {/* Harga & Stok. Stok disembunyikan saat PO karena barangnya belum
+              ada — yang membatasi pemesanan adalah periode dan kuota. */}
           <div style={{ display: 'flex', gap: '10px', marginBottom: '12px' }}>
             <div style={{ flex: 1 }}>
               <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '4px' }}>Harga *</label>
               <InputHarga nilai={harga} onChange={setHarga} placeholder="100.000" />
             </div>
-            <div style={{ flex: 1 }}>
-              <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '4px' }}>Stok</label>
-              <input value={stok} onChange={e => setStok(e.target.value.replace(/\D/g, ''))} inputMode="numeric" pattern="[0-9]*" placeholder="10" style={{ width: '100%', padding: '11px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', minHeight: '44px' }} />
-            </div>
+            {!formPo.aktif && (
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '4px' }}>Stok</label>
+                <input value={stok} onChange={e => setStok(e.target.value.replace(/\D/g, ''))} inputMode="numeric" pattern="[0-9]*" placeholder="10" style={{ width: '100%', padding: '11px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', minHeight: '44px' }} />
+              </div>
+            )}
           </div>
+
+          <EditorPreorder nilai={formPo} onChange={setFormPo} />
 
           {/* Kategori */}
           <div style={{ marginBottom: '12px' }}>

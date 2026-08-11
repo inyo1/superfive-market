@@ -16,9 +16,12 @@ import { useTampilSkeleton } from '../hooks/useSkeleton'
 import { keAngka } from '../../lib/format'
 import EditorVarian, { muatVarian, simpanVarian, totalStok, type BarisVarian } from '../components/EditorVarian'
 import BadgePreorder, { WARNA_PO_TUA } from '../components/BadgePreorder'
+import EditorPreorder from '../components/EditorPreorder'
+import RekapPO, { type ProgresPO } from '../components/RekapPO'
+import { FORM_PO_KOSONG, formPODari, validasiFormPO, formPOKeKolom, type FormPO, type DataPO } from '../../lib/preorder'
 
 type Toko = { id: string; nama_toko: string; kategori: string; is_official: boolean }
-type Produk = { id: string; nama: string; harga: number; kategori: string; stok: number; terjual: number; rating: number; deskripsi: string; urutan: number | null; foto_url?: string | null }
+type Produk = DataPO & { id: string; nama: string; harga: number; kategori: string; stok: number; terjual: number; rating: number; deskripsi: string; urutan: number | null; foto_url?: string | null }
 
 type PesananItem = {
   id: string
@@ -78,6 +81,12 @@ export default function DashboardPage() {
   const [varian, setVarian] = useState<BarisVarian[]>([])
   const [varianIdAwal, setVarianIdAwal] = useState<string[]>([])
 
+  // Isian pre-order produk yang sedang diedit
+  const [formPo, setFormPo] = useState<FormPO>(FORM_PO_KOSONG)
+
+  // Progres PO per produk, dibaca dari view preorder_progress
+  const [progresPo, setProgresPo] = useState<Record<string, ProgresPO>>({})
+
   // Hapus konfirmasi
   const [hapusId, setHapusId] = useState<string | null>(null)
   const [menghapus, setMenghapus] = useState(false)
@@ -103,13 +112,20 @@ export default function DashboardPage() {
       // Toko resmi diurutkan sama seperti di beranda, supaya pengelola melihat
       // susunan yang sama dengan yang dilihat pengunjung
       let kueriProduk = supabase.from('produk')
-        .select('id, nama, harga, kategori, stok, terjual, rating, deskripsi, urutan, foto_url')
+        .select('id, nama, harga, kategori, stok, terjual, rating, deskripsi, urutan, foto_url, is_preorder, po_mulai, po_selesai, po_estimasi_kirim, po_target, po_maks, po_catatan')
         .eq('toko_id', tokoData.id)
 
       if (tokoData.is_official) kueriProduk = kueriProduk.order('urutan', { ascending: true })
 
       const { data: produkData } = await kueriProduk.order('created_at', { ascending: false })
       setProduk((produkData ?? []) as Produk[])
+
+      // Rekap PO seluruh produk toko ini, sekali query
+      const { data: progres } = await supabase
+        .from('preorder_progress')
+        .select('produk_id, po_selesai, po_target, po_maks, sedang_buka, terkumpul')
+        .eq('toko_id', tokoData.id)
+      setProgresPo(Object.fromEntries((progres ?? []).map((r: ProgresPO) => [r.produk_id, r])))
 
       // Pesanan milik toko ini, beserta itemnya. Satu baris pesanan = satu toko,
       // jadi cukup filter toko_id — tidak perlu menyaring per produk lagi.
@@ -136,6 +152,7 @@ export default function DashboardPage() {
     setEditData({ nama: p.nama, harga: p.harga, kategori: p.kategori, stok: p.stok, deskripsi: p.deskripsi, urutan: p.urutan, foto_url: p.foto_url })
     setEditFoto(null)
     setEditPreview(null)
+    setFormPo(formPODari(p))
 
     const v = await muatVarian(p.id)
     setVarian(v)
@@ -151,6 +168,12 @@ export default function DashboardPage() {
 
   async function simpanEdit() {
     if (!editId) return
+
+    // Diperiksa sebelum apa pun disimpan, supaya penjual dapat pesan yang
+    // jelas dan tidak ada foto terlanjur terunggah untuk data yang ditolak
+    const salahPo = validasiFormPO(formPo)
+    if (salahPo) { notif(salahPo); return }
+
     setSaving(true)
 
     let foto_url: string | null | undefined = editData.foto_url
@@ -169,17 +192,20 @@ export default function DashboardPage() {
       if (errVarian) { notif('Gagal simpan varian: ' + errVarian); setSaving(false); return }
     }
 
-    // Produk bervarian: stok induk selalu ikut jumlah stok varian aktif
-    const stokBaru = adaVarian ? totalStok(varian) : keAngka(editData.stok)
+    // Produk bervarian: stok induk selalu ikut jumlah stok varian aktif.
+    // Produk PO tidak memakai stok sama sekali, jadi dikunci 0.
+    const kolomPo = formPOKeKolom(formPo)
+    const stokBaru = formPo.aktif ? 0 : (adaVarian ? totalStok(varian) : keAngka(editData.stok))
 
     const { error } = await supabase.from('produk').update({
       nama: editData.nama, harga: keAngka(editData.harga),
       kategori: editData.kategori, stok: stokBaru,
       deskripsi: editData.deskripsi, urutan: urutanBaru, foto_url,
+      ...kolomPo,
     }).eq('id', editId)
 
     if (!error) {
-      setProduk(prev => prev.map(p => p.id === editId ? { ...p, ...editData, harga: keAngka(editData.harga), stok: stokBaru, urutan: urutanBaru, foto_url } as Produk : p))
+      setProduk(prev => prev.map(p => p.id === editId ? { ...p, ...editData, ...kolomPo, harga: keAngka(editData.harga), stok: stokBaru, urutan: urutanBaru, foto_url } as Produk : p))
       notif('Produk berhasil diperbarui!')
       setEditId(null)
     } else notif('Gagal: ' + error.message)
@@ -336,7 +362,9 @@ export default function DashboardPage() {
                 onChange={v => setEditData(prev => ({ ...prev, harga: v === '' ? undefined : Number(v) }))}
               />
             </div>
-            <div style={{ marginBottom: '10px' }}>
+            {/* Stok tidak ditampilkan untuk produk PO — barangnya belum ada,
+                yang membatasi pemesanan adalah periode dan kuota */}
+            <div style={{ marginBottom: '10px', display: formPo.aktif ? 'none' : 'block' }}>
               <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '4px' }}>Stok</label>
               <input
                 value={produkPunyaVarian ? totalStok(varian) : (editData.stok ?? '')}
@@ -364,6 +392,8 @@ export default function DashboardPage() {
             </div>
 
             <EditorVarian baris={varian} onChange={setVarian} />
+
+            <EditorPreorder nilai={formPo} onChange={setFormPo} />
             {/* Urutan hanya relevan untuk toko resmi, karena produknya yang
                 tampil di section merchandise beranda */}
             {toko?.is_official && (
@@ -530,8 +560,11 @@ export default function DashboardPage() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: '13px', fontWeight: '500', color: '#1a1a1a', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nama}</div>
                     <div style={{ fontSize: '13px', fontWeight: '600', color: '#0C447C' }}>{fmt(p.harga)}</div>
-                    <div style={{ display: 'flex', gap: '10px', fontSize: '11px', color: '#5a7da0', marginTop: '2px' }}>
-                      <span>Stok: <strong style={{ color: p.stok <= 3 ? '#e65100' : '#1a1a1a' }}>{p.stok}</strong></span>
+                    <div style={{ display: 'flex', gap: '10px', fontSize: '11px', color: '#5a7da0', marginTop: '2px', flexWrap: 'wrap' }}>
+                      {/* Stok tidak bermakna untuk produk PO — diganti lencana */}
+                      {p.is_preorder
+                        ? <BadgePreorder aktif kecil />
+                        : <span>Stok: <strong style={{ color: p.stok <= 3 ? '#e65100' : '#1a1a1a' }}>{p.stok}</strong></span>}
                       <span>Terjual: {p.terjual || 0}</span>
                       {toko?.is_official && (
                         <span style={{ color: '#8a5a05', fontWeight: '600' }}>Urutan: {p.urutan ?? 0}</span>
@@ -544,6 +577,8 @@ export default function DashboardPage() {
                     <button onClick={() => setHapusId(p.id)} style={{ background: '#fce4e4', color: '#c62828', border: 'none', padding: '5px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}>Hapus</button>
                   </div>
                 </div>
+
+                {p.is_preorder && <RekapPO progres={progresPo[p.id]} />}
               </div>
             ))}
             <div style={{ marginTop: '12px', textAlign: 'center' }}>

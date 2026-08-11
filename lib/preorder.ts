@@ -111,3 +111,90 @@ export function dariInputLokal(nilai: string): string | null {
 
 export const KOLOM_PO =
   'is_preorder, po_mulai, po_selesai, po_estimasi_kirim, po_target, po_maks, po_catatan'
+
+// ── Sisi form ───────────────────────────────────────────────────────────────
+// Isian form disimpan sebagai string apa adanya dari input, baru diubah jadi
+// nilai kolom saat disimpan. Angka kosong jadi null, bukan 0.
+
+export type FormPO = {
+  aktif: boolean
+  mulai: string          // datetime-local
+  selesai: string        // datetime-local
+  estimasi: string
+  target: string
+  maks: string
+  catatan: string
+}
+
+export const FORM_PO_KOSONG: FormPO = {
+  aktif: false, mulai: '', selesai: '', estimasi: '', target: '', maks: '', catatan: '',
+}
+
+export function formPODari(p: DataPO | null | undefined): FormPO {
+  if (!p) return FORM_PO_KOSONG
+  return {
+    aktif: Boolean(p.is_preorder),
+    mulai: keInputLokal(p.po_mulai),
+    selesai: keInputLokal(p.po_selesai),
+    estimasi: p.po_estimasi_kirim ?? '',
+    target: p.po_target != null ? String(p.po_target) : '',
+    maks: p.po_maks != null ? String(p.po_maks) : '',
+    catatan: p.po_catatan ?? '',
+  }
+}
+
+/**
+ * Cek isian sebelum dikirim. Cerminan CHECK chk_po_periode di database
+ * (kalau is_preorder, po_mulai dan po_selesai wajib dan selesai > mulai),
+ * ditambah pemeriksaan yang cuma masuk akal di sisi tampilan.
+ *
+ * Kembaliannya pesan siap tampil, atau null kalau tidak ada masalah.
+ */
+export function validasiFormPO(f: FormPO): string | null {
+  if (!f.aktif) return null
+
+  if (!f.mulai) return 'Tanggal mulai PO wajib diisi'
+  if (!f.selesai) return 'Tanggal selesai PO wajib diisi'
+
+  const mulai = new Date(f.mulai).getTime()
+  const selesai = new Date(f.selesai).getTime()
+  if (isNaN(mulai) || isNaN(selesai)) return 'Tanggal PO tidak terbaca, isi ulang'
+  if (selesai <= mulai) return 'Tanggal selesai PO harus setelah tanggal mulai'
+
+  const target = f.target.trim() === '' ? null : Number(f.target)
+  const maks = f.maks.trim() === '' ? null : Number(f.maks)
+
+  if (target !== null && (!Number.isInteger(target) || target < 1)) {
+    return 'Target minimal harus angka bulat 1 atau lebih'
+  }
+  if (maks !== null && (!Number.isInteger(maks) || maks < 1)) {
+    return 'Kuota maksimal harus angka bulat 1 atau lebih'
+  }
+  if (target !== null && maks !== null && maks < target) {
+    return 'Kuota maksimal tidak boleh lebih kecil dari target'
+  }
+
+  return null
+}
+
+/** Isian form jadi kolom produk. Panggil setelah validasiFormPO lolos. */
+export function formPOKeKolom(f: FormPO) {
+  if (!f.aktif) {
+    // Dimatikan: semua keterangan PO ikut dibersihkan supaya tidak ada sisa
+    // tanggal lama yang membingungkan kalau nanti dinyalakan lagi
+    return {
+      is_preorder: false,
+      po_mulai: null, po_selesai: null, po_estimasi_kirim: null,
+      po_target: null, po_maks: null, po_catatan: null,
+    }
+  }
+  return {
+    is_preorder: true,
+    po_mulai: dariInputLokal(f.mulai),
+    po_selesai: dariInputLokal(f.selesai),
+    po_estimasi_kirim: f.estimasi.trim() || null,
+    po_target: f.target.trim() === '' ? null : Number(f.target),
+    po_maks: f.maks.trim() === '' ? null : Number(f.maks),
+    po_catatan: f.catatan.trim() || null,
+  }
+}
