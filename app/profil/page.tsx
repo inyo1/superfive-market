@@ -30,6 +30,7 @@ export default function ProfilPage() {
   const [saving, setSaving] = useState(false)
   const [pesan, setPesan] = useState('')
   const [statusVerifikasi, setStatusVerifikasi] = useState<string | null>(null)
+  const [isInstitusi, setIsInstitusi] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -41,13 +42,14 @@ export default function ProfilPage() {
 
       const { data } = await supabase
         .from('users')
-        .select('nama, email, angkatan, avatar_url, no_hp, jalan, kelurahan, kecamatan, kota, provinsi, kode_pos, status_verifikasi')
+        .select('nama, email, angkatan, avatar_url, no_hp, jalan, kelurahan, kecamatan, kota, provinsi, kode_pos, status_verifikasi, is_institusi')
         .eq('id', user.id)
         .single()
 
       if (data) {
         setNama(data.nama ?? '')
         setStatusVerifikasi(data.status_verifikasi ?? null)
+        setIsInstitusi(Boolean(data.is_institusi))
         setAngkatan(data.angkatan ? String(data.angkatan) : '')
         setAvatarUrl(data.avatar_url ?? null)
         setNoHp(data.no_hp ?? '')
@@ -203,16 +205,20 @@ export default function ProfilPage() {
               style={{ width: '100%', padding: '10px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
           </div>
 
-          <div style={{ marginBottom: '14px' }}>
-            <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '6px' }}>Angkatan (Tahun Lulus)</label>
-            <select value={angkatan} onChange={e => setAngkatan(e.target.value)}
-              style={{ width: '100%', padding: '10px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '14px', outline: 'none', background: '#fff', boxSizing: 'border-box' }}>
-              <option value="">-- Pilih Angkatan --</option>
-              {Array.from({ length: new Date().getFullYear() - 1970 + 1 }, (_, i) => new Date().getFullYear() - i).map(y => (
-                <option key={y} value={y}>Angkatan {y}</option>
-              ))}
-            </select>
-          </div>
+          {/* Akun institusi bukan alumni perorangan — kolom angkatan tidak
+              relevan dan kalau ditampilkan hanya akan diisi asal */}
+          {!isInstitusi && (
+            <div style={{ marginBottom: '14px' }}>
+              <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '6px' }}>Angkatan (Tahun Lulus)</label>
+              <select value={angkatan} onChange={e => setAngkatan(e.target.value)}
+                style={{ width: '100%', padding: '10px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '14px', outline: 'none', background: '#fff', boxSizing: 'border-box' }}>
+                <option value="">-- Pilih Angkatan --</option>
+                {Array.from({ length: new Date().getFullYear() - 1970 + 1 }, (_, i) => new Date().getFullYear() - i).map(y => (
+                  <option key={y} value={y}>Angkatan {y}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div>
             <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '6px' }}>Email</label>

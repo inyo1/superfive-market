@@ -22,6 +22,7 @@ type ConvInfo = {
   otherAvatar: string | null
   otherVerifikasi: string | null
   otherAngkatan: number | null
+  otherInstitusi: boolean
   produkNama: string | null
 }
 
@@ -87,13 +88,14 @@ export default function ChatRoom() {
 
       const otherId = conv.buyer_id === user.id ? conv.seller_id : conv.buyer_id
       const { data: profile } = await supabase
-        .from('alumni_publik').select('nama, avatar_url, status_verifikasi, angkatan').eq('id', otherId).single()
+        .from('alumni_publik').select('nama, avatar_url, status_verifikasi, angkatan, is_institusi').eq('id', otherId).single()
 
       setConvInfo({
         otherNama: profile?.nama ?? null,
         otherAvatar: profile?.avatar_url ?? null,
         otherVerifikasi: profile?.status_verifikasi ?? null,
         otherAngkatan: profile?.angkatan ?? null,
+        otherInstitusi: Boolean(profile?.is_institusi),
         produkNama: (conv.produk as any)?.nama ?? null,
       })
 
@@ -212,7 +214,7 @@ export default function ChatRoom() {
               {convInfo?.otherNama || 'Alumni'}
             </span>
             <BadgeVerifikasi status={convInfo?.otherVerifikasi} size={13} />
-            <BadgeAngkatan angkatan={convInfo?.otherAngkatan} kecil />
+            <BadgeAngkatan angkatan={convInfo?.otherAngkatan} institusi={convInfo?.otherInstitusi} kecil />
           </div>
           {convInfo?.produkNama && (
             <div style={{ fontSize: '11px', color: '#5a7da0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

@@ -21,7 +21,7 @@ type Toko = {
   kategori: string
   deskripsi?: string
   is_official?: boolean
-  users: { nama: string | null; angkatan: number | null; status_verifikasi: string | null } | null
+  users: { nama: string | null; angkatan: number | null; status_verifikasi: string | null; is_institusi: boolean } | null
 }
 
 type Produk = {
@@ -89,7 +89,7 @@ export default function TokoPage() {
       // foreign key ke users tidak lagi bisa dipakai sejak users ditutup.
       const { data: penjual } = await supabase
         .from('alumni_publik')
-        .select('nama, angkatan, status_verifikasi')
+        .select('nama, angkatan, status_verifikasi, is_institusi')
         .eq('id', tokoData.seller_id)
         .single()
 
@@ -282,7 +282,7 @@ export default function TokoPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', fontSize: '12px', color: '#B5D4F4' }}>
                   <span>{toko.users?.nama || 'Alumni'}</span>
                   <BadgeVerifikasi status={toko.users?.status_verifikasi} size={13} />
-                  <BadgeAngkatan angkatan={toko.users?.angkatan} />
+                  <BadgeAngkatan angkatan={toko.users?.angkatan} institusi={toko.users?.is_institusi} />
                 </div>
               )}
             </div>

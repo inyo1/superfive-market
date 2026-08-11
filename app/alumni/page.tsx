@@ -58,7 +58,14 @@ export default function AlumniPage() {
       const [usersRes, tokoRes, produkRes] = await Promise.all([
         // alumni_publik: view aman berisi kolom yang boleh dilihat publik.
         // Tabel users sekarang hanya bisa dibaca pemiliknya sendiri dan admin.
-        supabase.from('alumni_publik').select('id, nama, angkatan, avatar_url, status_verifikasi'),
+        //
+        // Akun institusi dikecualikan: ini direktori alumni perorangan, dan
+        // akun tanpa angkatan di sini terbaca seperti data yang belum lengkap.
+        // Total dan pengelompokan angkatan otomatis ikut bersih karena
+        // keduanya dihitung dari hasil query ini.
+        supabase.from('alumni_publik')
+          .select('id, nama, angkatan, avatar_url, status_verifikasi')
+          .eq('is_institusi', false),
         supabase.from('toko').select('id, seller_id'),
         supabase.from('produk').select('toko_id'),
       ])

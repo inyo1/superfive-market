@@ -97,8 +97,12 @@ export default function Home() {
           .eq('toko.is_official', false),
         supabase.from('toko').select('*', { count: 'exact', head: true }),
         // Hitung dari view publik — tabel users tidak lagi bisa dibaca umum,
-        // kalau tetap dari sana angkanya jadi 0 untuk pengunjung
-        supabase.from('alumni_publik').select('*', { count: 'exact', head: true }),
+        // kalau tetap dari sana angkanya jadi 0 untuk pengunjung.
+        // Akun institusi tidak ikut, supaya angkanya cocok dengan isi
+        // direktori alumni.
+        supabase.from('alumni_publik')
+          .select('*', { count: 'exact', head: true })
+          .eq('is_institusi', false),
         supabase.from('produk')
           .select('id, nama, harga, kategori, foto_url, terjual, rating, toko!inner(nama_toko, is_official)')
           .eq('toko.is_official', false)

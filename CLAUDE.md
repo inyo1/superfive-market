@@ -61,7 +61,7 @@ Profil alumni. `id` sama dengan `auth.users.id`.
 `jalan` · `kelurahan` · `kecamatan` · `kota` · `provinsi` · `kode_pos` ·
 `status_verifikasi`✳ text (default `menunggu`) · `bukti_alumni_url` ·
 `catatan_pendaftar` · `diverifikasi_at` · `diverifikasi_oleh` uuid ·
-`alasan_tolak` · `created_at`
+`alasan_tolak` · `is_institusi`✳ bool (default false) · `created_at`
 
 Alamat disimpan terpisah per bagian, lalu dirangkai jadi satu string saat checkout
 (lihat `buildAlamat` di [app/checkout/page.tsx](app/checkout/page.tsx)).
@@ -77,17 +77,41 @@ Alamat disimpan terpisah per bagian, lalu dirangkai jadi satu string saat checko
 `menunggu` | `terverifikasi` | `ditolak`.
 
 Trigger `jaga_field_sensitif` mengembalikan diam-diam nilai `role`,
-`status_verifikasi`, `diverifikasi_at`, `diverifikasi_oleh`, dan `alasan_tolak`
-ke nilai lama kalau yang mengubah bukan admin — tidak melempar error, hanya
-tidak berubah. Karena itu client **tidak perlu** dan **tidak boleh** menulis
-kolom-kolom itu; pakai RPC `verifikasi_alumni`.
+`status_verifikasi`, `diverifikasi_at`, `diverifikasi_oleh`, `alasan_tolak`,
+dan `is_institusi` ke nilai lama kalau yang mengubah bukan admin — tidak
+melempar error, hanya tidak berubah. Karena itu client **tidak perlu** dan
+**tidak boleh** menulis kolom-kolom itu; pakai RPC `verifikasi_alumni`.
+
+### Akun institusi (`is_institusi`)
+
+Menandai akun yang **bukan alumni perorangan** — toko resmi, panitia, dan
+sejenisnya. Akun seperti ini dikecualikan dari:
+
+- **Direktori alumni** (`/alumni`) — query wajib `.eq('is_institusi', false)`
+- **Hitungan ALUMNI** di hero beranda
+- **Pengelompokan dan filter angkatan**, karena keduanya dihitung dari hasil
+  query direktori
+- **Badge angkatan** di mana pun. Komponen
+  [BadgeAngkatan](app/components/BadgeAngkatan.tsx) mengembalikan `null` kalau
+  prop `institusi` bernilai true, jadi aturannya dijaga di satu tempat, bukan
+  diulang di tiap pemanggil
+- **Penanda "Seangkatan denganmu"**, bahkan kalau kolom `angkatan`-nya suatu
+  saat kebetulan terisi
+
+Alasannya: akun institusi tidak punya angkatan yang bermakna, dan menampilkan
+angkatan kosong membuatnya terbaca seperti data yang belum lengkap.
+
+Setiap query yang mengambil `angkatan` untuk ditampilkan harus ikut mengambil
+`is_institusi` dan meneruskannya ke `BadgeAngkatan`. Di konteks toko resmi,
+gantinya adalah lencana OFFICIAL dari
+[BadgeOfficial](app/components/BadgeOfficial.tsx).
 
 ### `alumni_publik` (VIEW)
 View baca-saja berisi kolom `users` yang aman dilihat siapa pun, termasuk
 pengunjung yang belum login.
 
 `id` · `nama` · `angkatan` · `avatar_url` · `foto_url` · `is_seller` ·
-`status_verifikasi` · `created_at`
+`status_verifikasi` · `is_institusi` · `created_at`
 
 Cara pakainya sama seperti tabel biasa:
 `supabase.from('alumni_publik').select('id, nama, angkatan, status_verifikasi')`

@@ -20,7 +20,7 @@ type Produk = {
   terjual: number
   rating: number
   foto_url?: string | null
-  toko: { nama_toko: string; is_official: boolean; users: { angkatan: number; status_verifikasi: string | null } | null } | null
+  toko: { nama_toko: string; is_official: boolean; users: { angkatan: number; status_verifikasi: string | null; is_institusi: boolean } | null } | null
   users: { angkatan: number }
 }
 
@@ -64,11 +64,11 @@ export default function ProdukPage() {
       data.map((p: any) => p.toko?.seller_id).filter(Boolean)
     )] as string[]
 
-    let penjualById: Record<string, { angkatan: number | null; status_verifikasi: string | null }> = {}
+    let penjualById: Record<string, { angkatan: number | null; status_verifikasi: string | null; is_institusi: boolean }> = {}
     if (sellerIds.length > 0) {
       const { data: penjual } = await supabase
         .from('alumni_publik')
-        .select('id, angkatan, status_verifikasi')
+        .select('id, angkatan, status_verifikasi, is_institusi')
         .in('id', sellerIds)
       penjualById = Object.fromEntries((penjual ?? []).map(u => [u.id, u]))
     }
@@ -180,7 +180,7 @@ export default function ProdukPage() {
                             jadi angkatan diganti lencana OFFICIAL */}
                         {p.toko.is_official
                           ? <BadgeOfficial aktif kecil />
-                          : <BadgeAngkatan angkatan={p.toko.users?.angkatan} kecil />}
+                          : <BadgeAngkatan angkatan={p.toko.users?.angkatan} institusi={p.toko.users?.is_institusi} kecil />}
                       </div>
                     </div>
                   )}

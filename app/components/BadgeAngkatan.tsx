@@ -8,8 +8,8 @@ import { supabase } from '../../lib/supabase'
 
 const EMAS = '#EF9F27'
 
-/** Angkatan milik pengguna yang sedang login. null kalau belum login atau
- *  belum mengisi angkatan. Di-cache satu kali per sesi halaman. */
+/** Angkatan milik pengguna yang sedang login. null kalau belum login, belum
+ *  mengisi angkatan, atau akunnya institusi. Di-cache satu kali per sesi. */
 let cacheAngkatan: number | null | undefined
 let janjiAngkatan: Promise<number | null> | null = null
 
@@ -21,8 +21,10 @@ async function ambilAngkatanSaya(): Promise<number | null> {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { cacheAngkatan = null; return null }
     const { data } = await supabase
-      .from('users').select('angkatan').eq('id', user.id).single()
-    const nilai: number | null = data?.angkatan ?? null
+      .from('users').select('angkatan, is_institusi').eq('id', user.id).single()
+    // Akun institusi tidak punya angkatan yang bermakna, jadi dianggap null —
+    // dengan begitu penanda "seangkatan" tidak akan pernah cocok untuknya
+    const nilai: number | null = data?.is_institusi ? null : (data?.angkatan ?? null)
     cacheAngkatan = nilai
     return nilai
   })()
@@ -44,13 +46,21 @@ export function useAngkatanSaya() {
 
 type Props = {
   angkatan: number | null | undefined
+  /** Akun institusi — toko resmi, panitia, dan sejenisnya. Bukan alumni
+   *  perorangan, jadi angkatan tidak pernah ditampilkan untuknya. */
+  institusi?: boolean | null
   /** Sembunyikan kalau angkatan belum diisi, bukan menampilkan strip */
   sembunyikanKosong?: boolean
   kecil?: boolean
 }
 
-export default function BadgeAngkatan({ angkatan, sembunyikanKosong = true, kecil = false }: Props) {
+export default function BadgeAngkatan({ angkatan, institusi = false, sembunyikanKosong = true, kecil = false }: Props) {
   const angkatanSaya = useAngkatanSaya()
+
+  // Dijaga di sini, bukan di tiap pemanggil: sekali akun ditandai institusi,
+  // badge angkatan dan penanda seangkatan mati di seluruh aplikasi — termasuk
+  // kalau kolom angkatannya suatu saat kebetulan terisi.
+  if (institusi) return null
 
   if (!angkatan) {
     if (sembunyikanKosong) return null

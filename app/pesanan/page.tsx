@@ -66,7 +66,7 @@ export default function PesananPage() {
   const tampilSkeleton = useTampilSkeleton(loading)
   const [pesan, setPesan] = useState('')
   const [prosesId, setProsesId] = useState<string | null>(null)
-  const [angkatanPenjual, setAngkatanPenjual] = useState<Record<string, number | null>>({})
+  const [profilPenjual, setProfilPenjual] = useState<Record<string, { angkatan: number | null; is_institusi: boolean }>>({})
 
   useEffect(() => {
     async function load() {
@@ -91,8 +91,8 @@ export default function PesananPage() {
       const sellerIds = [...new Set(baris.map(p => p.toko?.seller_id).filter(Boolean))] as string[]
       if (sellerIds.length > 0) {
         const { data: penjual } = await supabase
-          .from('alumni_publik').select('id, angkatan').in('id', sellerIds)
-        setAngkatanPenjual(Object.fromEntries((penjual ?? []).map(u => [u.id, u.angkatan])))
+          .from('alumni_publik').select('id, angkatan, is_institusi').in('id', sellerIds)
+        setProfilPenjual(Object.fromEntries((penjual ?? []).map(u => [u.id, { angkatan: u.angkatan, is_institusi: u.is_institusi }])))
       }
       setLoading(false)
     }
@@ -237,7 +237,7 @@ export default function PesananPage() {
                     <span style={{ fontSize: '12px', color: '#5a7da0' }}>🏪 Toko tidak diketahui</span>
                   )}
                   {p.toko?.seller_id && (
-                    <BadgeAngkatan angkatan={angkatanPenjual[p.toko.seller_id]} kecil />
+                    <BadgeAngkatan angkatan={profilPenjual[p.toko.seller_id]?.angkatan} institusi={profilPenjual[p.toko.seller_id]?.is_institusi} kecil />
                   )}
                 </div>
               </div>

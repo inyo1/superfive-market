@@ -54,7 +54,7 @@ function fmtTgl(s: string) {
 
 export default function ReviewSection({ produkId }: { produkId: string }) {
   const [reviews, setReviews] = useState<Review[]>([])
-  const [angkatanPengulas, setAngkatanPengulas] = useState<Record<string, number | null>>({})
+  const [profilPengulas, setProfilPengulas] = useState<Record<string, { angkatan: number | null; is_institusi: boolean }>>({})
   const [loading, setLoading] = useState(true)
   const tampilSkeleton = useTampilSkeleton(loading)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
@@ -90,8 +90,8 @@ export default function ReviewSection({ produkId }: { produkId: string }) {
       const ids = [...new Set(data.map(r => r.user_id).filter(Boolean))]
       if (ids.length > 0) {
         const { data: profil } = await supabase
-          .from('alumni_publik').select('id, angkatan').in('id', ids)
-        setAngkatanPengulas(Object.fromEntries((profil ?? []).map(p => [p.id, p.angkatan])))
+          .from('alumni_publik').select('id, angkatan, is_institusi').in('id', ids)
+        setProfilPengulas(Object.fromEntries((profil ?? []).map(p => [p.id, { angkatan: p.angkatan, is_institusi: p.is_institusi }])))
       }
     }
     setLoading(false)
@@ -309,7 +309,7 @@ export default function ReviewSection({ produkId }: { produkId: string }) {
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
                       <span style={{ fontSize: '12px', fontWeight: '500', color: '#1a1a1a' }}>{r.nama_reviewer}</span>
-                      <BadgeAngkatan angkatan={angkatanPengulas[r.user_id]} kecil />
+                      <BadgeAngkatan angkatan={profilPengulas[r.user_id]?.angkatan} institusi={profilPengulas[r.user_id]?.is_institusi} kecil />
                     </div>
                     <div style={{ fontSize: '10px', color: '#5a7da0' }}>{fmtTgl(r.created_at)}</div>
                   </div>

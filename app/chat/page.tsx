@@ -17,6 +17,7 @@ type ConvDisplay = {
   otherAvatar: string | null
   otherVerifikasi: string | null
   otherAngkatan: number | null
+  otherInstitusi: boolean
   lastMessage: string | null
   lastMessageAt: string | null
   unread: number
@@ -72,7 +73,7 @@ export default function ChatListPage() {
       const otherIds = rawConvs.map(c => c.buyer_id === user.id ? c.seller_id : c.buyer_id)
       const { data: profiles } = await supabase
         .from('alumni_publik')
-        .select('id, nama, avatar_url, status_verifikasi, angkatan')
+        .select('id, nama, avatar_url, status_verifikasi, angkatan, is_institusi')
         .in('id', [...new Set(otherIds)])
 
       const profileMap = Object.fromEntries((profiles ?? []).map(p => [p.id, p]))
@@ -99,6 +100,7 @@ export default function ChatListPage() {
           otherAvatar: p?.avatar_url ?? null,
           otherVerifikasi: p?.status_verifikasi ?? null,
           otherAngkatan: p?.angkatan ?? null,
+          otherInstitusi: Boolean(p?.is_institusi),
           lastMessage: c.last_message,
           lastMessageAt: c.last_message_at,
           unread: unreadByConv[c.id] ?? 0,
@@ -151,7 +153,7 @@ export default function ChatListPage() {
                         {c.otherNama || 'Alumni'}
                       </span>
                       <BadgeVerifikasi status={c.otherVerifikasi} size={13} />
-                      <BadgeAngkatan angkatan={c.otherAngkatan} kecil />
+                      <BadgeAngkatan angkatan={c.otherAngkatan} institusi={c.otherInstitusi} kecil />
                     </div>
                     <div style={{ fontSize: '11px', color: '#9ab4cc', flexShrink: 0, marginLeft: '8px' }}>
                       {timeAgo(c.lastMessageAt)}
