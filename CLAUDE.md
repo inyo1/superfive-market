@@ -189,17 +189,22 @@ Tiga CHECK:
 |---|---|
 | `chk_produk_valid` | `toko_id IS NOT NULL AND harga IS NOT NULL AND harga > 0` |
 | `chk_po_periode` | kalau `is_preorder`: `po_mulai` dan `po_selesai` wajib, dan `po_selesai > po_mulai` |
-| `chk_po_janji_kirim` | kalau `is_preorder`: `po_janji_kirim` wajib dan `po_janji_kirim > po_selesai::date` |
+| `chk_po_janji_kirim` | kalau `is_preorder`: `po_janji_kirim` wajib dan `po_janji_kirim > (po_selesai AT TIME ZONE 'Asia/Jakarta')::date` |
 
 `chk_produk_valid` sudah tervalidasi penuh, jadi produk yatim tanpa toko atau tanpa
 harga tidak bisa masuk lagi. Secara tipe kolomnya masih `nullable`, tapi datanya
 dijamin terisi oleh CHECK.
 
-Soal `chk_po_janji_kirim`: `po_selesai::date` dihitung memakai zona waktu server,
-yaitu **UTC**. Validasi di klien harus memakai tanggal UTC dari `po_selesai`,
-bukan tanggal lokal peramban, kalau tidak pesan errornya bisa berbeda dengan yang
-diterima database. Sudah ditangani `validasiFormPO()` di
-[lib/preorder.ts](lib/preorder.ts) — pakai itu, jangan menulis ulang.
+Soal `chk_po_janji_kirim`: zona waktunya **dipatok WIB**, bukan mengikuti setelan
+`TimeZone` sesi. Itu disengaja — `::date` polos bisa berubah artinya tanpa ada
+yang menyentuh kode, dan pembatalan otomatis nanti juga akan berbasis WIB, jadi
+keduanya harus memakai kalender yang sama.
+
+Konsekuensinya untuk klien: pembandingnya adalah tanggal WIB dari `po_selesai`,
+bukan UTC dan bukan pula zona waktu peramban. Pakai `tanggalWIB()` dan
+`validasiFormPO()` di [lib/preorder.ts](lib/preorder.ts), jangan menulis ulang —
+keduanya memakai `Intl` dengan `timeZone: 'Asia/Jakarta'` supaya penjual yang
+sedang di luar negeri tetap dinilai dengan aturan yang sama seperti database.
 
 ### Pre-Order
 

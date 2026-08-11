@@ -159,20 +159,40 @@ export function formPODari(p: DataPO | null | undefined): FormPO {
   }
 }
 
+const ZONA = 'Asia/Jakarta'
+
+// en-CA memberi format YYYY-MM-DD, sama persis dengan bentuk kolom date
+const formatYMD = new Intl.DateTimeFormat('en-CA', {
+  timeZone: ZONA, year: 'numeric', month: '2-digit', day: '2-digit',
+})
+
 /**
- * Tanggal kalender po_selesai menurut database. Constraint membandingkan
- * po_janji_kirim dengan po_selesai::date, dan zona waktu server UTC — jadi
- * pembandingnya harus tanggal UTC, bukan tanggal lokal peramban.
+ * Tanggal kalender WIB dari sebuah waktu. Constraint chk_po_janji_kirim
+ * membandingkan dengan `(po_selesai AT TIME ZONE 'Asia/Jakarta')::date`,
+ * jadi pembandingnya harus kalender WIB — bukan UTC, dan bukan pula zona
+ * waktu peramban, supaya penjual yang sedang di luar negeri tetap dinilai
+ * dengan aturan yang sama seperti di database.
+ *
+ * Untuk penjual di WIB hasilnya sama dengan tanggal yang terlihat di form.
  */
-function tanggalSelesaiDiServer(selesaiLokal: string): string | null {
-  const d = new Date(selesaiLokal)
-  return isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10)
+export function tanggalWIB(waktu: string | Date | null | undefined): string | null {
+  if (!waktu) return null
+  const d = waktu instanceof Date ? waktu : new Date(waktu)
+  return isNaN(d.getTime()) ? null : formatYMD.format(d)
+}
+
+/** "2026-09-30" → "2026-10-01". Aman melewati akhir bulan dan tahun kabisat. */
+export function tanggalBesok(ymd: string): string {
+  const [t, b, h] = ymd.split('-').map(Number)
+  const d = new Date(Date.UTC(t, b - 1, h + 1))
+  return d.toISOString().slice(0, 10)
 }
 
 /**
  * Cek isian sebelum dikirim. Cerminan dua CHECK di database:
  * chk_po_periode (po_mulai dan po_selesai wajib, selesai > mulai) dan
- * chk_po_janji_kirim (po_janji_kirim wajib dan > po_selesai::date),
+ * chk_po_janji_kirim (po_janji_kirim wajib dan lebih besar dari
+ * (po_selesai AT TIME ZONE 'Asia/Jakarta')::date),
  * ditambah pemeriksaan yang cuma masuk akal di sisi tampilan.
  *
  * Kembaliannya pesan siap tampil, atau null kalau tidak ada masalah.
@@ -189,7 +209,7 @@ export function validasiFormPO(f: FormPO): string | null {
   if (selesai <= mulai) return 'Tanggal selesai PO harus setelah tanggal mulai'
 
   if (!f.janji) return 'Tanggal janji kirim wajib diisi untuk produk pre-order'
-  const batasSelesai = tanggalSelesaiDiServer(f.selesai)
+  const batasSelesai = tanggalWIB(f.selesai)
   if (batasSelesai && f.janji <= batasSelesai) {
     return 'Tanggal janji kirim harus setelah PO ditutup — barang baru dibuat sesudah periode pemesanan berakhir'
   }

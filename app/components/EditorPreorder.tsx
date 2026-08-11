@@ -1,6 +1,6 @@
 'use client'
 import { WARNA_PO, WARNA_PO_TUA } from './BadgePreorder'
-import type { FormPO } from '../../lib/preorder'
+import { tanggalWIB, tanggalBesok, type FormPO } from '../../lib/preorder'
 
 // Bagian pre-order di form produk. Dipakai form tambah maupun form edit di
 // dashboard, supaya aturannya tidak bercabang jadi dua versi.
@@ -26,15 +26,10 @@ type Props = {
 export default function EditorPreorder({ nilai, onChange }: Props) {
   const ubah = (bagian: Partial<FormPO>) => onChange({ ...nilai, ...bagian })
 
-  // Batas bawah pemilih tanggal: sehari setelah PO ditutup. Dihitung dari
-  // tanggal UTC-nya karena itu yang dipakai constraint di database.
-  const minJanji = (() => {
-    if (!nilai.selesai) return undefined
-    const d = new Date(nilai.selesai)
-    if (isNaN(d.getTime())) return undefined
-    d.setUTCDate(d.getUTCDate() + 1)
-    return d.toISOString().slice(0, 10)
-  })()
+  // Batas bawah pemilih tanggal: sehari setelah tanggal PO ditutup menurut
+  // kalender WIB — kalender yang sama dengan chk_po_janji_kirim di database.
+  const tutupWIB = tanggalWIB(nilai.selesai)
+  const minJanji = tutupWIB ? tanggalBesok(tutupWIB) : undefined
 
   return (
     <div style={{
