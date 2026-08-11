@@ -265,7 +265,10 @@ export default function PesananPage() {
                       )}
                       {item.varian_nama && (
                         <div style={{ fontSize: '11px', color: '#0C447C', fontWeight: '600' }}>
-                          Ukuran {item.varian_nama}
+                          {/* Snapshot dari create_pesanan sudah berisi tipe
+                              varian, misalnya "Ukuran XXL" — jangan diberi
+                              awalan lagi */}
+                          {item.varian_nama}
                         </div>
                       )}
                       {/* Diambil dari snapshot di pesanan_items, bukan dari

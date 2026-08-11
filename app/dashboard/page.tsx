@@ -648,7 +648,9 @@ export default function DashboardPage() {
                               fontSize: '10px', fontWeight: '700',
                               padding: '2px 7px', borderRadius: '4px',
                             }}>
-                              Ukuran {item.varian_nama}
+                              {/* Snapshot dari create_pesanan sudah berisi
+                                  tipe varian, misalnya "Ukuran XXL" */}
+                              {item.varian_nama}
                             </span>
                           )}
                           {/* Snapshot PO saat pesanan dibuat, bukan status
