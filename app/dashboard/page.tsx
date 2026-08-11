@@ -15,6 +15,7 @@ import Tombol from '../components/Tombol'
 import { useTampilSkeleton } from '../hooks/useSkeleton'
 import { keAngka } from '../../lib/format'
 import EditorVarian, { muatVarian, simpanVarian, totalStok, type BarisVarian } from '../components/EditorVarian'
+import BadgePreorder, { WARNA_PO_TUA } from '../components/BadgePreorder'
 
 type Toko = { id: string; nama_toko: string; kategori: string; is_official: boolean }
 type Produk = { id: string; nama: string; harga: number; kategori: string; stok: number; terjual: number; rating: number; deskripsi: string; urutan: number | null; foto_url?: string | null }
@@ -28,6 +29,8 @@ type PesananItem = {
   subtotal: number
   foto_url: string | null
   varian_nama: string | null
+  is_preorder: boolean | null
+  po_estimasi_kirim: string | null
 }
 
 type Pesanan = {
@@ -111,7 +114,7 @@ export default function DashboardPage() {
       // Pesanan milik toko ini, beserta itemnya. Satu baris pesanan = satu toko,
       // jadi cukup filter toko_id — tidak perlu menyaring per produk lagi.
       const { data: pesananData, error: errPesanan } = await supabase.from('pesanan')
-        .select('id, nomor_pesanan, penerima_nama, penerima_hp, alamat_kirim, metode_bayar, total, status, payment_status, no_resi, kurir, created_at, dikirim_at, paid_at, pesanan_items(id, produk_id, nama_produk, harga, qty, subtotal, foto_url, varian_nama)')
+        .select('id, nomor_pesanan, penerima_nama, penerima_hp, alamat_kirim, metode_bayar, total, status, payment_status, no_resi, kurir, created_at, dikirim_at, paid_at, pesanan_items(id, produk_id, nama_produk, harga, qty, subtotal, foto_url, varian_nama, is_preorder, po_estimasi_kirim)')
         .eq('toko_id', tokoData.id)
         .order('created_at', { ascending: false })
 
@@ -611,6 +614,18 @@ export default function DashboardPage() {
                               padding: '2px 7px', borderRadius: '4px',
                             }}>
                               Ukuran {item.varian_nama}
+                            </span>
+                          )}
+                          {/* Snapshot PO saat pesanan dibuat, bukan status
+                              produk sekarang — supaya riwayat tetap utuh */}
+                          {item.is_preorder && (
+                            <span style={{ display: 'block', marginTop: '3px' }}>
+                              <BadgePreorder aktif kecil />
+                              {item.po_estimasi_kirim && (
+                                <span style={{ fontSize: '10px', color: WARNA_PO_TUA, marginLeft: '5px' }}>
+                                  🚚 {item.po_estimasi_kirim}
+                                </span>
+                              )}
                             </span>
                           )}
                         </span>

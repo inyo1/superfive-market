@@ -10,6 +10,7 @@ import Skeleton, { DaftarSkeletonPesanan } from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
 import BadgeAngkatan from '../components/BadgeAngkatan'
 import { useTampilSkeleton } from '../hooks/useSkeleton'
+import BadgePreorder, { WARNA_PO_TUA } from '../components/BadgePreorder'
 
 type PesananItem = {
   id: string
@@ -20,6 +21,8 @@ type PesananItem = {
   subtotal: number
   foto_url: string | null
   varian_nama: string | null
+  is_preorder: boolean | null
+  po_estimasi_kirim: string | null
 }
 
 type Pesanan = {
@@ -79,7 +82,7 @@ export default function PesananPage() {
       // RLS sudah membatasi ke pesanan milik sendiri, eq buyer_id dipasang
       // supaya niatnya eksplisit dan query tetap benar kalau policy berubah.
       const { data, error } = await supabase.from('pesanan')
-        .select('id, nomor_pesanan, toko_id, total, ongkir, status, payment_status, metode_bayar, no_resi, kurir, alamat_kirim, created_at, dikirim_at, toko(nama_toko, seller_id), pesanan_items(id, produk_id, nama_produk, harga, qty, subtotal, foto_url, varian_nama)')
+        .select('id, nomor_pesanan, toko_id, total, ongkir, status, payment_status, metode_bayar, no_resi, kurir, alamat_kirim, created_at, dikirim_at, toko(nama_toko, seller_id), pesanan_items(id, produk_id, nama_produk, harga, qty, subtotal, foto_url, varian_nama, is_preorder, po_estimasi_kirim)')
         .eq('buyer_id', user.id)
         .order('created_at', { ascending: false })
 
@@ -262,6 +265,19 @@ export default function PesananPage() {
                       {item.varian_nama && (
                         <div style={{ fontSize: '11px', color: '#0C447C', fontWeight: '600' }}>
                           Ukuran {item.varian_nama}
+                        </div>
+                      )}
+                      {/* Diambil dari snapshot di pesanan_items, bukan dari
+                          produk — riwayat tidak boleh berubah kalau penjual
+                          mematikan PO belakangan */}
+                      {item.is_preorder && (
+                        <div style={{ margin: '2px 0' }}>
+                          <BadgePreorder aktif kecil />
+                          {item.po_estimasi_kirim && (
+                            <span style={{ fontSize: '10px', color: WARNA_PO_TUA, marginLeft: '5px' }}>
+                              🚚 {item.po_estimasi_kirim}
+                            </span>
+                          )}
                         </div>
                       )}
                       <div style={{ fontSize: '11px', color: '#5a7da0' }}>{fmt(item.harga)} × {item.qty}</div>
