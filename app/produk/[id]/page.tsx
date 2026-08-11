@@ -472,7 +472,9 @@ export default function DetailProduk() {
 
             {varianTerpilih && varianTerpilih.harga_tambahan > 0 && (
               <div style={{ fontSize: '11px', color: '#5a7da0', marginTop: '8px' }}>
-                Ukuran {varianTerpilih.nama} +{fmt(varianTerpilih.harga_tambahan)} dari harga dasar.
+                {/* Pakai tipe dari datanya, bukan kata "Ukuran" yang dipatok —
+                    sama seperti judul pemilih di atas */}
+                {varianTerpilih.tipe} {varianTerpilih.nama} +{fmt(varianTerpilih.harga_tambahan)} dari harga dasar.
               </div>
             )}
           </div>
