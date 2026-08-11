@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase'
 import FotoProduk from './FotoProduk'
 import BadgePreorder, { WARNA_PO, WARNA_PO_TUA } from './BadgePreorder'
 import { useHitungMundur } from '../hooks/useHitungMundur'
-import { tanggalPanjang } from '../../lib/preorder'
+import { tanggalPanjang, janjiKirim } from '../../lib/preorder'
 
 // "Pre-Order Sedang Dibuka" di beranda. Hilang sama sekali kalau tidak ada
 // PO yang sedang berjalan — tidak ada kerangka kosong dan tidak ada skeleton,
@@ -20,7 +20,6 @@ type BarisPO = {
   po_selesai: string | null
   po_target: number | null
   po_maks: number | null
-  po_estimasi_kirim: string | null
   terkumpul: number
 }
 
@@ -29,6 +28,7 @@ type Produk = {
   harga: number
   kategori: string
   foto_url: string | null
+  po_janji_kirim: string | null
   toko: { nama_toko: string; is_official: boolean } | null
 }
 
@@ -44,7 +44,7 @@ export default function SectionPreorder() {
     async function muat() {
       const { data } = await supabase
         .from('preorder_progress')
-        .select('produk_id, nama, po_selesai, po_target, po_maks, po_estimasi_kirim, terkumpul')
+        .select('produk_id, nama, po_selesai, po_target, po_maks, terkumpul')
         .eq('sedang_buka', true)
         .order('po_selesai', { ascending: true })
         .limit(6)
@@ -52,12 +52,12 @@ export default function SectionPreorder() {
       const rows = (data ?? []) as BarisPO[]
       if (rows.length === 0) return
 
-      // View PO tidak memuat harga dan foto, jadi diambil sekali dari produk.
-      // toko!inner supaya merchandise resmi tetap punya rak sendiri dan tidak
-      // ikut muncul di sini.
+      // View PO tidak memuat harga, foto, maupun janji kirim, jadi ketiganya
+      // diambil sekali dari produk. toko!inner supaya merchandise resmi tetap
+      // punya rak sendiri dan tidak ikut muncul di sini.
       const { data: prod } = await supabase
         .from('produk')
-        .select('id, harga, kategori, foto_url, toko!inner(nama_toko, is_official)')
+        .select('id, harga, kategori, foto_url, po_janji_kirim, toko!inner(nama_toko, is_official)')
         .in('id', rows.map(r => r.produk_id))
         .eq('toko.is_official', false)
 
@@ -141,12 +141,11 @@ function KartuPO({ baris, produk }: { baris: BarisPO; produk: Produk }) {
           </div>
         )}
 
-        {baris.po_estimasi_kirim && (
+        {produk.po_janji_kirim ? (
           <div style={{ fontSize: '10px', color: '#9ab4cc', marginTop: '4px' }}>
-            🚚 {baris.po_estimasi_kirim}
+            🚚 {janjiKirim(produk.po_janji_kirim)}
           </div>
-        )}
-        {!baris.po_estimasi_kirim && baris.po_selesai && (
+        ) : baris.po_selesai && (
           <div style={{ fontSize: '10px', color: '#9ab4cc', marginTop: '4px' }}>
             Tutup {tanggalPanjang(baris.po_selesai)}
           </div>

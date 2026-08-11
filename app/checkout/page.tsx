@@ -9,6 +9,7 @@ import Tombol from '../components/Tombol'
 import BadgePreorder, { WARNA_PO_TUA } from '../components/BadgePreorder'
 import PeringatanCampuranPO from '../components/PeringatanCampuranPO'
 import { useInfoPO } from '../hooks/useInfoPO'
+import { janjiKirim } from '../../lib/preorder'
 
 const metodeBayar = [
   { id: 'transfer_bca', label: 'Transfer BCA', icon: '🏦', info: 'BCA 1234567890 a/n Superfive Market' },
@@ -307,9 +308,9 @@ export default function CheckoutPage() {
                 {infoPo[item.id]?.is_preorder && (
                   <div style={{ margin: '2px 0' }}>
                     <BadgePreorder aktif kecil />
-                    {infoPo[item.id]?.po_estimasi_kirim && (
+                    {infoPo[item.id]?.po_janji_kirim && (
                       <span style={{ fontSize: '10px', color: WARNA_PO_TUA, marginLeft: '5px' }}>
-                        🚚 {infoPo[item.id].po_estimasi_kirim}
+                        🚚 {janjiKirim(infoPo[item.id].po_janji_kirim)}
                       </span>
                     )}
                   </div>

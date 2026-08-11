@@ -8,7 +8,7 @@ import { supabase } from '../../lib/supabase'
 
 export type InfoPO = {
   is_preorder: boolean
-  po_estimasi_kirim: string | null
+  po_janji_kirim: string | null
 }
 
 export function useInfoPO(produkIds: string[]) {
@@ -28,14 +28,14 @@ export function useInfoPO(produkIds: string[]) {
     let batal = false
     supabase
       .from('produk')
-      .select('id, is_preorder, po_estimasi_kirim')
+      .select('id, is_preorder, po_janji_kirim')
       .in('id', ids)
       .then(({ data }) => {
         if (batal || !data) return
         setInfo(Object.fromEntries(
           data.map((p: InfoPO & { id: string }) => [p.id, {
             is_preorder: Boolean(p.is_preorder),
-            po_estimasi_kirim: p.po_estimasi_kirim,
+            po_janji_kirim: p.po_janji_kirim,
           }])
         ))
       })

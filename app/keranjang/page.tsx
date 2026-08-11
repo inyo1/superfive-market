@@ -12,6 +12,7 @@ import { useToast } from '../context/ToastContext'
 import BadgePreorder, { WARNA_PO_TUA } from '../components/BadgePreorder'
 import PeringatanCampuranPO from '../components/PeringatanCampuranPO'
 import { useInfoPO } from '../hooks/useInfoPO'
+import { janjiKirim } from '../../lib/preorder'
 
 const emojiKategori: Record<string, string> = {
   Teknologi: '💻', Fashion: '👗', Kuliner: '🍱',
@@ -139,9 +140,9 @@ export default function KeranjangPage() {
                 {infoPo[item.id]?.is_preorder && (
                   <div style={{ marginBottom: '3px' }}>
                     <BadgePreorder aktif kecil />
-                    {infoPo[item.id]?.po_estimasi_kirim && (
+                    {infoPo[item.id]?.po_janji_kirim && (
                       <div style={{ fontSize: '10px', color: WARNA_PO_TUA, marginTop: '2px' }}>
-                        🚚 {infoPo[item.id].po_estimasi_kirim}
+                        🚚 {janjiKirim(infoPo[item.id].po_janji_kirim)}
                       </div>
                     )}
                   </div>

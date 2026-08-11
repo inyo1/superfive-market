@@ -20,7 +20,8 @@ export default function PeringatanCampuranPO({ tampil }: { tampil: boolean }) {
     }}>
       <strong style={{ color: WARNA_PO_TUA }}>Pengiriman terpisah. </strong>
       Keranjangmu berisi barang siap kirim dan barang pre-order. Barang siap
-      kirim dikirim lebih dulu, yang pre-order menyusul sesuai estimasinya.
+      kirim dikirim lebih dulu, yang pre-order menyusul sesuai tanggal janji
+      kirimnya.
     </div>
   )
 }

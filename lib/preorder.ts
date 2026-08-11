@@ -6,7 +6,7 @@ export type DataPO = {
   is_preorder?: boolean | null
   po_mulai?: string | null
   po_selesai?: string | null
-  po_estimasi_kirim?: string | null
+  po_janji_kirim?: string | null
   po_target?: number | null
   po_maks?: number | null
   po_catatan?: string | null
@@ -85,6 +85,22 @@ export function tanggalPanjang(iso: string | null | undefined): string {
   })
 }
 
+/**
+ * Janji kirim untuk ditampilkan: "Dikirim 28 September 2026".
+ *
+ * po_janji_kirim bertipe date, jadi nilainya "2026-09-28" tanpa zona waktu.
+ * Diurai manual, bukan lewat new Date(string) — string date polos dianggap
+ * UTC oleh JavaScript, dan di WIB itu bisa mundur sehari.
+ */
+export function janjiKirim(tanggal: string | null | undefined): string | null {
+  if (!tanggal) return null
+  const [t, b, h] = tanggal.slice(0, 10).split('-').map(Number)
+  if (!t || !b || !h) return null
+  return 'Dikirim ' + new Date(t, b - 1, h).toLocaleDateString('id-ID', {
+    day: 'numeric', month: 'long', year: 'numeric',
+  })
+}
+
 /** 14 Agu 2026, 17.00 */
 export function tanggalSingkat(iso: string | null | undefined): string {
   if (!iso) return '-'
@@ -110,7 +126,7 @@ export function dariInputLokal(nilai: string): string | null {
 }
 
 export const KOLOM_PO =
-  'is_preorder, po_mulai, po_selesai, po_estimasi_kirim, po_target, po_maks, po_catatan'
+  'is_preorder, po_mulai, po_selesai, po_janji_kirim, po_target, po_maks, po_catatan'
 
 // ── Sisi form ───────────────────────────────────────────────────────────────
 // Isian form disimpan sebagai string apa adanya dari input, baru diubah jadi
@@ -120,14 +136,14 @@ export type FormPO = {
   aktif: boolean
   mulai: string          // datetime-local
   selesai: string        // datetime-local
-  estimasi: string
+  janji: string        // date, "2026-09-28"
   target: string
   maks: string
   catatan: string
 }
 
 export const FORM_PO_KOSONG: FormPO = {
-  aktif: false, mulai: '', selesai: '', estimasi: '', target: '', maks: '', catatan: '',
+  aktif: false, mulai: '', selesai: '', janji: '', target: '', maks: '', catatan: '',
 }
 
 export function formPODari(p: DataPO | null | undefined): FormPO {
@@ -136,7 +152,7 @@ export function formPODari(p: DataPO | null | undefined): FormPO {
     aktif: Boolean(p.is_preorder),
     mulai: keInputLokal(p.po_mulai),
     selesai: keInputLokal(p.po_selesai),
-    estimasi: p.po_estimasi_kirim ?? '',
+    janji: p.po_janji_kirim ? p.po_janji_kirim.slice(0, 10) : '',
     target: p.po_target != null ? String(p.po_target) : '',
     maks: p.po_maks != null ? String(p.po_maks) : '',
     catatan: p.po_catatan ?? '',
@@ -144,8 +160,19 @@ export function formPODari(p: DataPO | null | undefined): FormPO {
 }
 
 /**
- * Cek isian sebelum dikirim. Cerminan CHECK chk_po_periode di database
- * (kalau is_preorder, po_mulai dan po_selesai wajib dan selesai > mulai),
+ * Tanggal kalender po_selesai menurut database. Constraint membandingkan
+ * po_janji_kirim dengan po_selesai::date, dan zona waktu server UTC — jadi
+ * pembandingnya harus tanggal UTC, bukan tanggal lokal peramban.
+ */
+function tanggalSelesaiDiServer(selesaiLokal: string): string | null {
+  const d = new Date(selesaiLokal)
+  return isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10)
+}
+
+/**
+ * Cek isian sebelum dikirim. Cerminan dua CHECK di database:
+ * chk_po_periode (po_mulai dan po_selesai wajib, selesai > mulai) dan
+ * chk_po_janji_kirim (po_janji_kirim wajib dan > po_selesai::date),
  * ditambah pemeriksaan yang cuma masuk akal di sisi tampilan.
  *
  * Kembaliannya pesan siap tampil, atau null kalau tidak ada masalah.
@@ -160,6 +187,12 @@ export function validasiFormPO(f: FormPO): string | null {
   const selesai = new Date(f.selesai).getTime()
   if (isNaN(mulai) || isNaN(selesai)) return 'Tanggal PO tidak terbaca, isi ulang'
   if (selesai <= mulai) return 'Tanggal selesai PO harus setelah tanggal mulai'
+
+  if (!f.janji) return 'Tanggal janji kirim wajib diisi untuk produk pre-order'
+  const batasSelesai = tanggalSelesaiDiServer(f.selesai)
+  if (batasSelesai && f.janji <= batasSelesai) {
+    return 'Tanggal janji kirim harus setelah PO ditutup — barang baru dibuat sesudah periode pemesanan berakhir'
+  }
 
   const target = f.target.trim() === '' ? null : Number(f.target)
   const maks = f.maks.trim() === '' ? null : Number(f.maks)
@@ -184,7 +217,7 @@ export function formPOKeKolom(f: FormPO) {
     // tanggal lama yang membingungkan kalau nanti dinyalakan lagi
     return {
       is_preorder: false,
-      po_mulai: null, po_selesai: null, po_estimasi_kirim: null,
+      po_mulai: null, po_selesai: null, po_janji_kirim: null,
       po_target: null, po_maks: null, po_catatan: null,
     }
   }
@@ -192,7 +225,7 @@ export function formPOKeKolom(f: FormPO) {
     is_preorder: true,
     po_mulai: dariInputLokal(f.mulai),
     po_selesai: dariInputLokal(f.selesai),
-    po_estimasi_kirim: f.estimasi.trim() || null,
+    po_janji_kirim: f.janji || null,
     po_target: f.target.trim() === '' ? null : Number(f.target),
     po_maks: f.maks.trim() === '' ? null : Number(f.maks),
     po_catatan: f.catatan.trim() || null,

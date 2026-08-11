@@ -12,7 +12,7 @@ import BadgeOfficial from '../../components/BadgeOfficial'
 import BadgePreorder, { WARNA_PO, WARNA_PO_TUA } from '../../components/BadgePreorder'
 import { useTampilSkeleton } from '../../hooks/useSkeleton'
 import { useHitungMundur } from '../../hooks/useHitungMundur'
-import { statusPO, alasanTidakBisa, tanggalPanjang, formatSisa, type DataPO } from '../../../lib/preorder'
+import { statusPO, alasanTidakBisa, tanggalPanjang, formatSisa, janjiKirim, type DataPO } from '../../../lib/preorder'
 
 type Produk = DataPO & {
   id: string
@@ -323,7 +323,7 @@ export default function DetailProduk() {
             {po ? (
               <>
                 <span style={{ color: WARNA_PO_TUA, fontWeight: '600' }}>Pre-Order</span>
-                {produk.po_estimasi_kirim && <span>🚚 {produk.po_estimasi_kirim}</span>}
+                {produk.po_janji_kirim && <span>🚚 {janjiKirim(produk.po_janji_kirim)}</span>}
               </>
             ) : (
               <>
@@ -372,9 +372,13 @@ export default function DetailProduk() {
               </div>
             )}
 
-            {produk.po_estimasi_kirim && (
+            {produk.po_janji_kirim && (
               <div style={{ fontSize: '13px', color: '#1a1a1a', marginBottom: '10px' }}>
-                🚚 Estimasi pengiriman: <strong>{produk.po_estimasi_kirim}</strong>
+                🚚 <strong>{janjiKirim(produk.po_janji_kirim)}</strong>
+                <div style={{ fontSize: '11px', color: '#5a7da0', marginTop: '2px' }}>
+                  Kalau lewat tanggal ini barangmu belum dikirim, pesanan
+                  dibatalkan dan dananya dikembalikan.
+                </div>
               </div>
             )}
 
@@ -420,7 +424,7 @@ export default function DetailProduk() {
 
             <div style={{ fontSize: '11px', color: '#5a7da0', marginTop: '12px', lineHeight: 1.6 }}>
               Barang pre-order dibuat setelah periode pemesanan ditutup, jadi
-              pengirimannya menyusul sesuai estimasi di atas.
+              pengirimannya menyusul sesuai tanggal janji kirim di atas.
             </div>
           </div>
         )}

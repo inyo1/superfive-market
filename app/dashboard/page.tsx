@@ -18,7 +18,7 @@ import EditorVarian, { muatVarian, simpanVarian, totalStok, type BarisVarian } f
 import BadgePreorder, { WARNA_PO_TUA } from '../components/BadgePreorder'
 import EditorPreorder from '../components/EditorPreorder'
 import RekapPO, { type ProgresPO } from '../components/RekapPO'
-import { FORM_PO_KOSONG, formPODari, validasiFormPO, formPOKeKolom, type FormPO, type DataPO } from '../../lib/preorder'
+import { FORM_PO_KOSONG, formPODari, validasiFormPO, formPOKeKolom, janjiKirim, type FormPO, type DataPO } from '../../lib/preorder'
 
 type Toko = { id: string; nama_toko: string; kategori: string; is_official: boolean }
 type Produk = DataPO & { id: string; nama: string; harga: number; kategori: string; stok: number; terjual: number; rating: number; deskripsi: string; urutan: number | null; foto_url?: string | null }
@@ -33,7 +33,7 @@ type PesananItem = {
   foto_url: string | null
   varian_nama: string | null
   is_preorder: boolean | null
-  po_estimasi_kirim: string | null
+  po_janji_kirim: string | null
 }
 
 type Pesanan = {
@@ -112,7 +112,7 @@ export default function DashboardPage() {
       // Toko resmi diurutkan sama seperti di beranda, supaya pengelola melihat
       // susunan yang sama dengan yang dilihat pengunjung
       let kueriProduk = supabase.from('produk')
-        .select('id, nama, harga, kategori, stok, terjual, rating, deskripsi, urutan, foto_url, is_preorder, po_mulai, po_selesai, po_estimasi_kirim, po_target, po_maks, po_catatan')
+        .select('id, nama, harga, kategori, stok, terjual, rating, deskripsi, urutan, foto_url, is_preorder, po_mulai, po_selesai, po_janji_kirim, po_target, po_maks, po_catatan')
         .eq('toko_id', tokoData.id)
 
       if (tokoData.is_official) kueriProduk = kueriProduk.order('urutan', { ascending: true })
@@ -130,7 +130,7 @@ export default function DashboardPage() {
       // Pesanan milik toko ini, beserta itemnya. Satu baris pesanan = satu toko,
       // jadi cukup filter toko_id — tidak perlu menyaring per produk lagi.
       const { data: pesananData, error: errPesanan } = await supabase.from('pesanan')
-        .select('id, nomor_pesanan, penerima_nama, penerima_hp, alamat_kirim, metode_bayar, total, status, payment_status, no_resi, kurir, created_at, dikirim_at, paid_at, pesanan_items(id, produk_id, nama_produk, harga, qty, subtotal, foto_url, varian_nama, is_preorder, po_estimasi_kirim)')
+        .select('id, nomor_pesanan, penerima_nama, penerima_hp, alamat_kirim, metode_bayar, total, status, payment_status, no_resi, kurir, created_at, dikirim_at, paid_at, pesanan_items(id, produk_id, nama_produk, harga, qty, subtotal, foto_url, varian_nama, is_preorder, po_janji_kirim)')
         .eq('toko_id', tokoData.id)
         .order('created_at', { ascending: false })
 
@@ -656,9 +656,9 @@ export default function DashboardPage() {
                           {item.is_preorder && (
                             <span style={{ display: 'block', marginTop: '3px' }}>
                               <BadgePreorder aktif kecil />
-                              {item.po_estimasi_kirim && (
+                              {item.po_janji_kirim && (
                                 <span style={{ fontSize: '10px', color: WARNA_PO_TUA, marginLeft: '5px' }}>
-                                  🚚 {item.po_estimasi_kirim}
+                                  🚚 {janjiKirim(item.po_janji_kirim)}
                                 </span>
                               )}
                             </span>

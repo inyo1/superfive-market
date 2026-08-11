@@ -26,6 +26,16 @@ type Props = {
 export default function EditorPreorder({ nilai, onChange }: Props) {
   const ubah = (bagian: Partial<FormPO>) => onChange({ ...nilai, ...bagian })
 
+  // Batas bawah pemilih tanggal: sehari setelah PO ditutup. Dihitung dari
+  // tanggal UTC-nya karena itu yang dipakai constraint di database.
+  const minJanji = (() => {
+    if (!nilai.selesai) return undefined
+    const d = new Date(nilai.selesai)
+    if (isNaN(d.getTime())) return undefined
+    d.setUTCDate(d.getUTCDate() + 1)
+    return d.toISOString().slice(0, 10)
+  })()
+
   return (
     <div style={{
       border: `0.5px solid ${nilai.aktif ? WARNA_PO : '#c5d9ef'}`,
@@ -77,14 +87,26 @@ export default function EditorPreorder({ nilai, onChange }: Props) {
           </div>
 
           <div>
-            <label style={gayaLabel}>Estimasi pengiriman</label>
+            <label style={gayaLabel}>Janji kirim *</label>
             <input
-              value={nilai.estimasi}
-              onChange={e => ubah({ estimasi: e.target.value })}
-              placeholder="Contoh: Kirim akhir September 2026"
-              maxLength={80}
+              type="date"
+              value={nilai.janji}
+              // Tidak boleh sama dengan hari PO ditutup; batas bawahnya
+              // sehari sesudahnya, sama seperti CHECK di database
+              min={minJanji}
+              onChange={e => ubah({ janji: e.target.value })}
               style={gayaInput}
             />
+            <div style={{
+              marginTop: '6px', padding: '8px 10px', borderRadius: '6px',
+              background: 'rgba(124,77,255,0.1)',
+              fontSize: '11px', color: '#1a1a1a', lineHeight: 1.6,
+            }}>
+              <strong style={{ color: WARNA_PO_TUA }}>Ini janji kepada pembeli. </strong>
+              Kalau pesanan belum dikirim sampai tanggal ini, sistem akan
+              membatalkannya dan dana pembeli dikembalikan. Beri jarak yang
+              masuk akal dari tanggal PO ditutup.
+            </div>
           </div>
 
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>

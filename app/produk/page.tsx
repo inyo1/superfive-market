@@ -10,6 +10,7 @@ import EmptyState from '../components/EmptyState'
 import BadgeAngkatan from '../components/BadgeAngkatan'
 import BadgeOfficial from '../components/BadgeOfficial'
 import BadgePreorder, { WARNA_PO_TUA } from '../components/BadgePreorder'
+import { janjiKirim } from '../../lib/preorder'
 import { useTampilSkeleton } from '../hooks/useSkeleton'
 
 type Produk = {
@@ -21,7 +22,7 @@ type Produk = {
   terjual: number
   rating: number
   is_preorder: boolean
-  po_estimasi_kirim: string | null
+  po_janji_kirim: string | null
   foto_url?: string | null
   toko: { nama_toko: string; is_official: boolean; users: { angkatan: number; status_verifikasi: string | null; is_institusi: boolean } | null } | null
   users: { angkatan: number }
@@ -168,9 +169,9 @@ export default function ProdukPage() {
                         tidak bermakna — diganti keterangan pre-order */}
                     <span>{p.is_preorder ? 'Pre-Order' : `${p.terjual || 0} terjual`}</span>
                   </div>
-                  {p.is_preorder && p.po_estimasi_kirim && (
+                  {p.is_preorder && p.po_janji_kirim && (
                     <div style={{ fontSize: '10px', color: WARNA_PO_TUA, marginBottom: '6px', lineHeight: 1.5 }}>
-                      🚚 {p.po_estimasi_kirim}
+                      🚚 {janjiKirim(p.po_janji_kirim)}
                     </div>
                   )}
                   <div style={{ fontSize: '10px', background: '#E6F1FB', color: '#0C447C', padding: '2px 6px', borderRadius: '4px', display: 'inline-block' }}>
