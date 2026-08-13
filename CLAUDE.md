@@ -516,6 +516,33 @@ Tiga tenggat dijalankan tugas harian, bukan oleh aplikasi:
 Yang tetap 6 hari untuk konfirmasi pembeli juga ada di klien sebagai
 `HARI_SELESAI_OTOMATIS`; kalau angkanya diubah di database, ubah di sana juga.
 
+### Tenggat kirim longgar — ini disengaja
+
+**Tenggat kirim tidak berlaku pada detiknya, dan itu memang dikehendaki.**
+Bukan efek samping dari cron yang jalan sekali sehari — jangan "diperbaiki".
+
+Tugas harian jalan pukul 05:05 WIB, jadi penjual yang `batas_kirim`-nya jatuh
+tengah malam masih bisa menyelamatkan pesanannya sampai pagi. Alasannya
+memaafkan keterlambatan kecil: penjual rumahan yang baru selesai mengemas lewat
+tengah malam tidak kehilangan seluruh pesanannya padahal barangnya sudah jadi.
+
+Tenggangnya berhenti di **`batas_kirim + 30 jam`**. Lewat dari itu
+`ubah_status_pesanan` menolak `'dikirim'` dengan pesan *"Batas waktu pengiriman
+sudah terlampaui jauh. Pesanan ini akan dibatalkan sistem."* Batas itu ada
+supaya kalau cron pernah gagal atau dimatikan, pesanan yang telat berhari-hari
+tidak ikut lolos begitu cron hidup lagi.
+
+Konsekuensinya untuk UI: **tampilkan tenggat efektif, bukan `batas_kirim`
+mentah.** Penjual yang melihat "batas 23:59" akan panik padahal masih punya
+lima jam. Hitungannya ada di `tenggatEfektif()` di
+[lib/statusPesanan.ts](lib/statusPesanan.ts) — jangan disebar ulang.
+
+Satu jebakan di situ: tenggat efektif **bukan selalu "hari berikutnya"**. Kalau
+`batas_kirim` jatuh sebelum pukul 05:05 WIB, cron hari itu juga yang
+menyapunya. Pesanan PO memang selalu 23:59:59 WIB sehingga selalu ke besok,
+tapi pesanan barang ready memakai `now() + 3 hari` dan jamnya bisa berapa saja
+— menganggapnya selalu besok akan menjanjikan 24 jam yang tidak ada.
+
 ## RPC yang Tersedia
 
 ### `create_pesanan` — satu-satunya cara membuat pesanan
@@ -605,6 +632,9 @@ boleh mengulang validasinya** — tampilkan `error.message` apa adanya:
 - `Hanya penjual yang bisa memproses pesanan` · `Pesanan harus lunas dulu sebelum diproses`
 - `Hanya penjual yang bisa mengirim pesanan` · `Pesanan belum siap dikirim`
 - `Nomor resi wajib diisi saat menandai pesanan dikirim`
+- `Batas waktu pengiriman sudah terlampaui jauh. Pesanan ini akan dibatalkan sistem.`
+  — muncul kalau lewat `batas_kirim + 30 jam`, lihat
+  [Tenggat kirim longgar](#tenggat-kirim-longgar--ini-disengaja)
 - `Hanya pembeli yang bisa menyelesaikan pesanan` · `Pesanan belum dikirim`
 
 Kembaliannya cuma `{ok, status}` — cap waktu dan `batas_kirim` diisi di dalam
@@ -647,11 +677,13 @@ UI" — jalankan lewat SQL editor sebagai `postgres` kalau perlu.
 Fungsinya mengerjakan tiga tenggat di tabel [Tenggat otomatis](#tenggat-otomatis)
 dan mengembalikan ringkasan `{waktu, kadaluarsa, telat_kirim, selesai_otomatis}`.
 
-Konsekuensi yang perlu diingat saat membuat UI: **tenggat tidak berlaku pada
-detik yang tepat.** Pesanan yang lewat tenggat pukul 10:00 baru benar-benar
-dibatalkan pada 05:05 WIB keesokan harinya. Jadi jangan menampilkan status
-seolah-olah sudah berubah hanya karena jam klien sudah lewat — baca statusnya
-dari database.
+Karena tugasnya jalan sekali sehari, tenggat tidak berlaku pada detiknya —
+itu disengaja, lihat [Tenggat kirim longgar](#tenggat-kirim-longgar--ini-disengaja).
+Dua akibatnya untuk UI:
+
+- **Jangan menampilkan status seolah-olah sudah berubah** hanya karena jam
+  klien sudah lewat tenggat. Baca statusnya dari database
+- Untuk tenggat kirim, tampilkan hasil `tenggatEfektif()`, bukan `batas_kirim`
 
 ### `verifikasi_alumni` — hanya admin
 
