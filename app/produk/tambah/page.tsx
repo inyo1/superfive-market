@@ -9,7 +9,7 @@ import InputHarga from '../../components/InputHarga'
 import Tombol from '../../components/Tombol'
 import { keAngka } from '../../../lib/format'
 import EditorPreorder from '../../components/EditorPreorder'
-import { FORM_PO_KOSONG, validasiFormPO, formPOKeKolom, type FormPO } from '../../../lib/preorder'
+import { FORM_PO_KOSONG, validasiFormPO, formPOKeKolom, formPOAktif, type FormPO } from '../../../lib/preorder'
 
 export default function TambahProduk() {
   const router = useRouter()
@@ -100,7 +100,7 @@ export default function TambahProduk() {
       deskripsi, kategori,
       // Produk PO belum punya barang; stok dikunci 0 supaya tidak ada angka
       // menyesatkan kalau nanti PO-nya dimatikan
-      stok: formPo.aktif ? 0 : keAngka(stok),
+      stok: formPOAktif(formPo) ? 0 : keAngka(stok),
       foto_url,
       ...formPOKeKolom(formPo),
     })
@@ -193,22 +193,24 @@ export default function TambahProduk() {
             <input value={nama} onChange={e => setNama(e.target.value)} placeholder="Nama produk kamu" style={{ width: '100%', padding: '9px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
           </div>
 
-          {/* Harga & Stok. Stok disembunyikan saat PO karena barangnya belum
-              ada — yang membatasi pemesanan adalah periode dan kuota. */}
+          {/* Status barang ditaruh sebelum harga, karena pilihannya yang
+              menentukan apakah kolom stok muncul */}
+          <EditorPreorder nilai={formPo} onChange={setFormPo} />
+
+          {/* Kolom stok hanya untuk ready stock — barang pre-order belum ada
+              wujudnya, yang membatasi pemesanan adalah periode dan kuota */}
           <div style={{ display: 'flex', gap: '10px', marginBottom: '12px' }}>
             <div style={{ flex: 1 }}>
               <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '4px' }}>Harga *</label>
               <InputHarga nilai={harga} onChange={setHarga} placeholder="100.000" />
             </div>
-            {!formPo.aktif && (
+            {formPo.status === 'ready' && (
               <div style={{ flex: 1 }}>
                 <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '4px' }}>Stok</label>
                 <input value={stok} onChange={e => setStok(e.target.value.replace(/\D/g, ''))} inputMode="numeric" pattern="[0-9]*" placeholder="10" style={{ width: '100%', padding: '11px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', minHeight: '44px' }} />
               </div>
             )}
           </div>
-
-          <EditorPreorder nilai={formPo} onChange={setFormPo} />
 
           {/* Kategori */}
           <div style={{ marginBottom: '12px' }}>

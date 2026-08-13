@@ -132,24 +132,35 @@ export const KOLOM_PO =
 // Isian form disimpan sebagai string apa adanya dari input, baru diubah jadi
 // nilai kolom saat disimpan. Angka kosong jadi null, bukan 0.
 
+/**
+ * Status ketersediaan barang. String kosong berarti penjual belum memilih —
+ * itu keadaan awal yang disengaja untuk produk baru, supaya tidak ada produk
+ * berstatus ready hanya karena penjual melewatkan pilihannya.
+ */
+export type StatusBarang = '' | 'ready' | 'preorder'
+
 export type FormPO = {
-  aktif: boolean
+  status: StatusBarang
   mulai: string          // datetime-local
   selesai: string        // datetime-local
-  janji: string        // date, "2026-09-28"
+  janji: string          // date, "2026-09-28"
   target: string
   maks: string
   catatan: string
 }
 
 export const FORM_PO_KOSONG: FormPO = {
-  aktif: false, mulai: '', selesai: '', janji: '', target: '', maks: '', catatan: '',
+  status: '', mulai: '', selesai: '', janji: '', target: '', maks: '', catatan: '',
 }
 
+/**
+ * Isian form dari produk yang sudah ada. Produk lama selalu punya status yang
+ * jelas karena `is_preorder` NOT NULL — yang kosong hanya produk baru.
+ */
 export function formPODari(p: DataPO | null | undefined): FormPO {
   if (!p) return FORM_PO_KOSONG
   return {
-    aktif: Boolean(p.is_preorder),
+    status: p.is_preorder ? 'preorder' : 'ready',
     mulai: keInputLokal(p.po_mulai),
     selesai: keInputLokal(p.po_selesai),
     janji: p.po_janji_kirim ? p.po_janji_kirim.slice(0, 10) : '',
@@ -157,6 +168,11 @@ export function formPODari(p: DataPO | null | undefined): FormPO {
     maks: p.po_maks != null ? String(p.po_maks) : '',
     catatan: p.po_catatan ?? '',
   }
+}
+
+/** Ringkas untuk pemanggil yang cuma perlu tahu ini PO atau bukan. */
+export function formPOAktif(f: FormPO) {
+  return f.status === 'preorder'
 }
 
 const ZONA = 'Asia/Jakarta'
@@ -198,7 +214,10 @@ export function tanggalBesok(ymd: string): string {
  * Kembaliannya pesan siap tampil, atau null kalau tidak ada masalah.
  */
 export function validasiFormPO(f: FormPO): string | null {
-  if (!f.aktif) return null
+  // Status wajib dipilih. Tidak ada nilai bawaan supaya penjual menyatakan
+  // ketersediaan barangnya secara sadar.
+  if (f.status === '') return 'Pilih dulu status barang: Ready Stock atau Pre-Order'
+  if (f.status !== 'preorder') return null
 
   if (!f.mulai) return 'Tanggal mulai PO wajib diisi'
   if (!f.selesai) return 'Tanggal selesai PO wajib diisi'
@@ -232,9 +251,9 @@ export function validasiFormPO(f: FormPO): string | null {
 
 /** Isian form jadi kolom produk. Panggil setelah validasiFormPO lolos. */
 export function formPOKeKolom(f: FormPO) {
-  if (!f.aktif) {
-    // Dimatikan: semua keterangan PO ikut dibersihkan supaya tidak ada sisa
-    // tanggal lama yang membingungkan kalau nanti dinyalakan lagi
+  if (f.status !== 'preorder') {
+    // Ready stock: semua keterangan PO ikut dibersihkan supaya tidak ada sisa
+    // tanggal lama yang membingungkan kalau nanti diubah jadi PO lagi
     return {
       is_preorder: false,
       po_mulai: null, po_selesai: null, po_janji_kirim: null,

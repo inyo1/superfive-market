@@ -1,12 +1,14 @@
 'use client'
 import { WARNA_PO, WARNA_PO_TUA } from './BadgePreorder'
-import { tanggalWIB, tanggalBesok, type FormPO } from '../../lib/preorder'
+import { tanggalWIB, tanggalBesok, type FormPO, type StatusBarang } from '../../lib/preorder'
 
-// Bagian pre-order di form produk. Dipakai form tambah maupun form edit di
-// dashboard, supaya aturannya tidak bercabang jadi dua versi.
+// Pilihan status barang di form produk. Dipakai form tambah maupun form edit
+// di dashboard, supaya aturannya tidak bercabang jadi dua versi.
 //
-// Semua isian rinci baru muncul setelah sakelar utama dinyalakan — kalau
-// mati, form produk terlihat persis seperti sebelum fitur PO ada.
+// Sengaja radio, bukan saklar: pre-order bukan fitur tambahan yang diaktifkan,
+// melainkan pernyataan tentang barangnya. Keduanya setara dan tidak ada yang
+// terpilih dari awal, jadi produk baru tidak bisa berstatus ready hanya karena
+// penjual melewatkan bagian ini — `validasiFormPO` menolak kalau masih kosong.
 
 const gayaLabel: React.CSSProperties = {
   display: 'block', fontSize: '11px', color: '#5a7da0', marginBottom: '4px',
@@ -31,33 +33,38 @@ export default function EditorPreorder({ nilai, onChange }: Props) {
   const tutupWIB = tanggalWIB(nilai.selesai)
   const minJanji = tutupWIB ? tanggalBesok(tutupWIB) : undefined
 
+  const po = nilai.status === 'preorder'
+
   return (
     <div style={{
-      border: `0.5px solid ${nilai.aktif ? WARNA_PO : '#c5d9ef'}`,
+      border: `0.5px solid ${po ? WARNA_PO : '#c5d9ef'}`,
       borderRadius: '10px',
       padding: '14px',
-      background: nilai.aktif ? 'rgba(124,77,255,0.05)' : '#fff',
+      background: po ? 'rgba(124,77,255,0.05)' : '#fff',
       marginBottom: '12px',
     }}>
-      <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer' }}>
-        <input
-          type="checkbox"
-          checked={nilai.aktif}
-          onChange={e => ubah({ aktif: e.target.checked })}
-          style={{ width: '18px', height: '18px', marginTop: '1px', accentColor: WARNA_PO, cursor: 'pointer' }}
-        />
-        <span>
-          <span style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: nilai.aktif ? WARNA_PO_TUA : '#1a1a1a' }}>
-            Jual sebagai Pre-Order
-          </span>
-          <span style={{ display: 'block', fontSize: '11px', color: '#5a7da0', marginTop: '2px', lineHeight: 1.5 }}>
-            Barang belum ada stoknya. Pembeli memesan dulu dalam periode
-            tertentu, barangnya dibuat setelah periode ditutup.
-          </span>
-        </span>
-      </label>
+      <div style={{ fontSize: '12px', color: '#5a7da0', marginBottom: '10px' }}>
+        Status barang *
+      </div>
 
-      {nilai.aktif && (
+      <div role="radiogroup" aria-label="Status barang" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <PilihanStatus
+          nilai="ready"
+          terpilih={nilai.status}
+          onPilih={s => ubah({ status: s })}
+          judul="Ready Stock"
+          keterangan="Barang sudah ada, dikirim setelah pesanan masuk."
+        />
+        <PilihanStatus
+          nilai="preorder"
+          terpilih={nilai.status}
+          onPilih={s => ubah({ status: s })}
+          judul="Pre-Order"
+          keterangan="Barang dibuat setelah pesanan, ada waktu tunggu."
+        />
+      </div>
+
+      {po && (
         <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
 
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
@@ -150,11 +157,50 @@ export default function EditorPreorder({ nilai, onChange }: Props) {
           </div>
 
           <div style={{ fontSize: '11px', color: '#5a7da0', lineHeight: 1.6 }}>
-            Selama PO aktif, stok tidak dipakai — jumlah pesanan yang masuk
+            Produk pre-order tidak memakai stok — jumlah pesanan yang masuk
             dihitung otomatis dan bisa dilihat di tab Ringkasan.
           </div>
         </div>
       )}
     </div>
+  )
+}
+
+// Satu baris pilihan. Seluruh kotaknya bisa diklik karena dibungkus <label>,
+// jadi sasaran sentuhnya lebar dan tetap satu kontrol bagi pembaca layar.
+function PilihanStatus({ nilai, terpilih, onPilih, judul, keterangan }: {
+  nilai: Exclude<StatusBarang, ''>
+  terpilih: StatusBarang
+  onPilih: (s: StatusBarang) => void
+  judul: string
+  keterangan: string
+}) {
+  const aktif = terpilih === nilai
+  const warna = nilai === 'preorder' ? WARNA_PO : '#0C447C'
+
+  return (
+    <label style={{
+      display: 'flex', alignItems: 'flex-start', gap: '10px',
+      padding: '11px 12px', borderRadius: '8px', cursor: 'pointer',
+      border: `1px solid ${aktif ? warna : '#c5d9ef'}`,
+      background: aktif ? '#fff' : 'transparent',
+    }}>
+      <input
+        type="radio"
+        name="status-barang"
+        value={nilai}
+        checked={aktif}
+        onChange={() => onPilih(nilai)}
+        style={{ width: '17px', height: '17px', marginTop: '1px', accentColor: warna, cursor: 'pointer', flexShrink: 0 }}
+      />
+      <span>
+        <span style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: aktif ? warna : '#1a1a1a' }}>
+          {judul}
+        </span>
+        <span style={{ display: 'block', fontSize: '11px', color: '#5a7da0', marginTop: '2px', lineHeight: 1.5 }}>
+          {keterangan}
+        </span>
+      </span>
+    </label>
   )
 }

@@ -18,7 +18,7 @@ import EditorVarian, { muatVarian, simpanVarian, totalStok, type BarisVarian } f
 import BadgePreorder, { WARNA_PO_TUA } from '../components/BadgePreorder'
 import EditorPreorder from '../components/EditorPreorder'
 import RekapPO, { type ProgresPO } from '../components/RekapPO'
-import { FORM_PO_KOSONG, formPODari, validasiFormPO, formPOKeKolom, janjiKirim, type FormPO, type DataPO } from '../../lib/preorder'
+import { FORM_PO_KOSONG, formPODari, validasiFormPO, formPOKeKolom, formPOAktif, janjiKirim, type FormPO, type DataPO } from '../../lib/preorder'
 
 type Toko = { id: string; nama_toko: string; kategori: string; is_official: boolean }
 type Produk = DataPO & { id: string; nama: string; harga: number; kategori: string; stok: number; terjual: number; rating: number; deskripsi: string; urutan: number | null; foto_url?: string | null }
@@ -195,7 +195,7 @@ export default function DashboardPage() {
     // Produk bervarian: stok induk selalu ikut jumlah stok varian aktif.
     // Produk PO tidak memakai stok sama sekali, jadi dikunci 0.
     const kolomPo = formPOKeKolom(formPo)
-    const stokBaru = formPo.aktif ? 0 : (adaVarian ? totalStok(varian) : keAngka(editData.stok))
+    const stokBaru = formPOAktif(formPo) ? 0 : (adaVarian ? totalStok(varian) : keAngka(editData.stok))
 
     const { error } = await supabase.from('produk').update({
       nama: editData.nama, harga: keAngka(editData.harga),
@@ -362,9 +362,13 @@ export default function DashboardPage() {
                 onChange={v => setEditData(prev => ({ ...prev, harga: v === '' ? undefined : Number(v) }))}
               />
             </div>
-            {/* Stok tidak ditampilkan untuk produk PO — barangnya belum ada,
-                yang membatasi pemesanan adalah periode dan kuota */}
-            <div style={{ marginBottom: '10px', display: formPo.aktif ? 'none' : 'block' }}>
+            {/* Status barang ditaruh sebelum stok, karena pilihannya yang
+                menentukan apakah kolom stok muncul */}
+            <EditorPreorder nilai={formPo} onChange={setFormPo} />
+
+            {/* Kolom stok hanya untuk ready stock — barang pre-order belum ada
+                wujudnya, yang membatasi pemesanan adalah periode dan kuota */}
+            <div style={{ marginBottom: '10px', display: formPo.status === 'ready' ? 'block' : 'none' }}>
               <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '4px' }}>Stok</label>
               <input
                 value={produkPunyaVarian ? totalStok(varian) : (editData.stok ?? '')}
@@ -393,7 +397,6 @@ export default function DashboardPage() {
 
             <EditorVarian baris={varian} onChange={setVarian} />
 
-            <EditorPreorder nilai={formPo} onChange={setFormPo} />
             {/* Urutan hanya relevan untuk toko resmi, karena produknya yang
                 tampil di section merchandise beranda */}
             {toko?.is_official && (
