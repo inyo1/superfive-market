@@ -11,7 +11,6 @@ import SearchOverlay from './SearchOverlay'
 const links = [
   { href: '/', label: 'Beranda' },
   { href: '/produk', label: 'Produk' },
-  { href: '/preorder', label: 'Pre-Order' },
   { href: '/alumni', label: 'Alumni' },
   { href: '/about', label: 'Tentang Kami' },
 ]

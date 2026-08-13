@@ -131,17 +131,15 @@ export default function BottomNav() {
         { href: '/pesanan', label: 'Pesanan Saya', ikon: '🧾' },
         { href: '/toko/saya', label: 'Toko Saya', ikon: '🏪' },
         { href: '/dashboard', label: 'Dashboard Seller', ikon: '📊' },
-        { href: '/preorder', label: 'Pre-Order', ikon: '📅' },
         { href: '/alumni', label: 'Direktori Alumni', ikon: '🎓' },
         { href: '/about', label: 'Tentang Kami', ikon: 'ℹ️' },
       ]
     : [
-        { href: '/preorder', label: 'Pre-Order', ikon: '📅' },
         { href: '/alumni', label: 'Direktori Alumni', ikon: '🎓' },
         { href: '/about', label: 'Tentang Kami', ikon: 'ℹ️' },
       ]
 
-  const akunAktif = sheetTerbuka || ['/profil', '/pesanan', '/toko', '/dashboard', '/preorder', '/alumni', '/about', '/admin']
+  const akunAktif = sheetTerbuka || ['/profil', '/pesanan', '/toko', '/dashboard', '/alumni', '/about', '/admin']
     .some(p => pathname.startsWith(p))
 
   return (
