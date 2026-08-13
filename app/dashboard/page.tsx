@@ -266,8 +266,9 @@ export default function DashboardPage() {
   }
 
   // Pembatalan punya RPC sendiri karena ikut membuat antrean refund kalau
-  // pesanannya sudah lunas. p_oleh_sistem sengaja tidak pernah dikirim —
-  // itu jalur untuk tugas terjadwal, bukan untuk pengguna.
+  // pesanannya sudah lunas. Jalur sistem terpisah di batalkan_pesanan_sistem,
+  // yang tidak diberi EXECUTE ke siapa pun — jadi tidak ada yang bisa
+  // dipanggil dari sini selain jalur pengguna ini.
   async function batalkanPesanan(id: string) {
     const alasan = alasanBatal.trim()
     if (!alasan) { notif('Gagal: alasan pembatalan wajib diisi'); return }
