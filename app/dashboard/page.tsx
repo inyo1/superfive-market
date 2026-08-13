@@ -718,18 +718,42 @@ export default function DashboardPage() {
                     {kirimId === p.id ? (
                       <div style={{ background: '#f0f5fb', borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         <div style={{ fontSize: '12px', fontWeight: '600', color: '#0C447C' }}>Detail Pengiriman</div>
-                        <input
-                          value={kurir}
-                          onChange={e => setKurir(e.target.value)}
-                          placeholder="Kurir — misal JNE, J&T, SiCepat"
-                          style={{ width: '100%', padding: '8px 10px', border: '0.5px solid #c5d9ef', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box', background: '#fff' }}
-                        />
-                        <input
-                          value={noResi}
-                          onChange={e => setNoResi(e.target.value)}
-                          placeholder="Nomor resi"
-                          style={{ width: '100%', padding: '8px 10px', border: '0.5px solid #c5d9ef', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box', background: '#fff' }}
-                        />
+
+                        <div>
+                          <label htmlFor={`resi-${p.id}`} style={{ display: 'block', fontSize: '11px', color: '#5a7da0', marginBottom: '4px' }}>
+                            Nomor resi *
+                          </label>
+                          <input
+                            id={`resi-${p.id}`}
+                            value={noResi}
+                            onChange={e => setNoResi(e.target.value)}
+                            placeholder="Contoh: JP1234567890"
+                            autoComplete="off"
+                            style={{ width: '100%', padding: '10px', border: '0.5px solid #c5d9ef', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box', background: '#fff', minHeight: '40px' }}
+                          />
+                        </div>
+
+                        <div>
+                          <label htmlFor={`kurir-${p.id}`} style={{ display: 'block', fontSize: '11px', color: '#5a7da0', marginBottom: '4px' }}>
+                            Kurir <span style={{ color: '#9ab4cc' }}>(opsional)</span>
+                          </label>
+                          <input
+                            id={`kurir-${p.id}`}
+                            value={kurir}
+                            onChange={e => setKurir(e.target.value)}
+                            placeholder="Misal JNE, J&T, SiCepat"
+                            autoComplete="off"
+                            style={{ width: '100%', padding: '10px', border: '0.5px solid #c5d9ef', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box', background: '#fff', minHeight: '40px' }}
+                          />
+                        </div>
+
+                        {/* Bukan sekadar aturan form: tanpa resi, RPC-nya
+                            menolak dan pesanan tidak berpindah status */}
+                        <div style={{ fontSize: '11px', color: '#5a7da0', lineHeight: 1.5 }}>
+                          Nomor resi wajib diisi — pesanan tidak bisa ditandai
+                          dikirim tanpa itu, karena pembeli memakainya untuk
+                          melacak paket.
+                        </div>
                         <div style={{ display: 'flex', gap: '8px' }}>
                           <button
                             onClick={tutupKirim}
@@ -739,8 +763,14 @@ export default function DashboardPage() {
                           </button>
                           <button
                             onClick={() => konfirmasiKirim(p.id)}
-                            disabled={sedangProses}
-                            style={{ flex: 2, background: sedangProses ? '#7fa8c9' : '#0C447C', color: '#fff', border: 'none', padding: '8px', borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: sedangProses ? 'not-allowed' : 'pointer' }}
+                            disabled={sedangProses || !noResi.trim()}
+                            style={{
+                              flex: 2,
+                              background: sedangProses || !noResi.trim() ? '#7fa8c9' : '#0C447C',
+                              color: '#fff', border: 'none', padding: '8px',
+                              borderRadius: '6px', fontSize: '12px', fontWeight: '600',
+                              cursor: sedangProses || !noResi.trim() ? 'not-allowed' : 'pointer',
+                            }}
                           >
                             {sedangProses ? 'Menyimpan...' : 'Tandai Dikirim'}
                           </button>
