@@ -329,15 +329,24 @@ menghasilkan 3 baris `pesanan` dengan `group_id` yang sama.
 `diskon` int (0) · `total` int · `metode_bayar` · `status` (default `menunggu`) ·
 `payment_status` (default `menunggu`) · `midtrans_order_id` · `snap_token` ·
 `paid_at` · `kurir` · `no_resi` · `penerima_nama` · `penerima_hp` ·
-`alamat_kirim` · `catatan` · `dikirim_at` · `selesai_at` · `dibatalkan_at` ·
-`alasan_batal` · `po_batas_kirim` **date** · `created_at` · `updated_at`
+`alamat_kirim` · `catatan` · `diproses_at` · `dikirim_at` · `selesai_at` ·
+`dibatalkan_at` · `alasan_batal` · `po_batas_kirim` **date** ·
+`batas_kirim` timestamptz · `created_at` · `updated_at`
 
 `produk_id` masih ada sebagai sisa skema lama — **jangan dipakai**, item pesanan
 sekarang ada di `pesanan_items`.
 
-`po_batas_kirim` diisi `create_pesanan` dengan janji kirim **terjauh** di antara
-item pesanan itu. Gunanya untuk pembatalan otomatis pesanan PO yang telat —
-mekanismenya **belum ada**, kolomnya belum dipakai UI mana pun.
+Dua kolom tenggat, jangan tertukar:
+
+- **`po_batas_kirim`** (date) diisi `create_pesanan` dengan janji kirim
+  **terjauh** di antara item pesanan itu. Ini bahan mentah, bukan tenggat aktif
+- **`batas_kirim`** (timestamptz) itu tenggat yang benar-benar dipakai tugas
+  harian. Diisi saat pembayaran dikonfirmasi, bukan saat pesanan dibuat —
+  hitungannya baru bermakna setelah uangnya masuk
+
+Semua cap waktu (`paid_at`, `diproses_at`, `dikirim_at`, `selesai_at`,
+`dibatalkan_at`) diisi RPC atau trigger. **Jangan pernah menulisnya dari
+client.**
 
 ### `pesanan_items`
 Snapshot produk saat pesanan dibuat, supaya riwayat tidak berubah kalau penjual
@@ -387,6 +396,31 @@ sendiri sehingga tidak perlu penggabungan itu:
 - [dashboard penjual](app/dashboard/page.tsx) → [RekapPO](app/components/RekapPO.tsx)
   — sekali query untuk seluruh produk toko, disaring `.eq('toko_id', ...)`
 
+### `refund`
+Antrean pengembalian dana. Barisnya **dibuat otomatis** saat pesanan yang sudah
+lunas dibatalkan — tidak pernah dari client.
+
+`id`✳ · `pesanan_id`✳ → pesanan.id · `nominal`✳ int (CHECK > 0) · `alasan`✳ text ·
+`status`✳ text (default `menunggu`) · `metode` · `bukti_url` · `catatan` ·
+`diproses_oleh` uuid → users.id · `created_at`✳ · `selesai_at`
+
+```
+status refund: menunggu | diproses | selesai | gagal
+```
+
+- `alasan` **NOT NULL**, dan isinya alasan pembatalan yang diketik penjual atau
+  pembeli. Karena itu pembatalan di UI wajib meminta alasan — tanpa itu
+  insert-nya gagal dan seluruh pembatalan ikut batal
+- Index unik parsial `uq_refund_terbuka` pada `(pesanan_id) WHERE status IN
+  ('menunggu','diproses')` menjaga satu pesanan tidak punya dua refund terbuka
+  sekaligus. RPC pembatalan memakai `ON CONFLICT DO NOTHING`, jadi memanggilnya
+  dua kali tidak menggandakan antrean
+- RLS menyala. Ada **dua policy dan keduanya SELECT**: `refund_baca_pembeli` dan
+  `refund_baca_penjual`. **Tidak ada policy tulis sama sekali** — jangan mencoba
+  INSERT/UPDATE dari client, termasuk dari halaman admin nanti; itu harus lewat
+  RPC baru
+- Grant untuk `anon` dan `authenticated` hanya SELECT — sudah diverifikasi
+
 ### `reviews`
 `id`✳ · `produk_id` · `user_id` → auth.users.id · `nama_reviewer` · `rating` int
 (CHECK 1–5) · `komentar` · `created_at` — unik `(produk_id, user_id)`
@@ -431,6 +465,56 @@ payment_status: menunggu | lunas | gagal | kadaluarsa | refund
 
 Keduanya default `menunggu`. Jangan pakai `pending`, `dikonfirmasi`, `paid`, atau
 variasi Inggris lain.
+
+## Mesin Status Pesanan
+
+**Status pesanan hanya berpindah lewat RPC.** Tidak pernah lewat UPDATE
+langsung dari client — bukan karena RLS melarang (policy UPDATE-nya masih ada
+untuk pihak terkait), tapi karena semua aturan siapa-boleh-apa, pengisian cap
+waktu, tenggat, dan antrean refund ada di dalam fungsi. UPDATE langsung akan
+melewati semuanya dan meninggalkan baris setengah jadi.
+
+Perpindahan yang sah:
+
+| Dari | Ke | Oleh | Syarat |
+|---|---|---|---|
+| `menunggu` | `dibayar` | penjual | — |
+| `dibayar` | `diproses` | penjual | — |
+| `dibayar` / `diproses` | `dikirim` | penjual | **nomor resi wajib** |
+| `dikirim` | `selesai` | **pembeli** | — |
+| `menunggu` / `dibayar` / `diproses` | `dibatalkan` | pembeli atau penjual | alasan wajib |
+
+Dua hal yang mudah salah dikira:
+
+- `diproses` **boleh dilewati** — penjual bisa langsung mengirim setelah lunas
+- `selesai` **tidak bisa dilakukan penjual**. Hanya pembeli, atau tugas harian
+- Pesanan yang sudah `dikirim` **tidak bisa dibatalkan** siapa pun; barang yang
+  terlanjur jalan itu urusan komplain, bukan pembatalan
+
+Cerminannya di klien ada di `aksiPenjual()` dan `bisaDiterimaPembeli()` di
+[lib/statusPesanan.ts](lib/statusPesanan.ts). Itu **hanya** untuk menyembunyikan
+tombol yang pasti ditolak — bukan sumber kebenaran, dan tidak boleh dipakai
+untuk menyimpulkan apa pun yang tidak ditanyakan ke server.
+
+### Tenggat otomatis
+
+Tiga tenggat dijalankan tugas harian, bukan oleh aplikasi:
+
+| Keadaan | Tenggat | Akibat |
+|---|---|---|
+| `menunggu` belum dibayar | 24 jam sejak `created_at` | dibatalkan, **tanpa** refund — tidak ada uang masuk |
+| `dibayar` / `diproses` belum dikirim | lewat `batas_kirim` | dibatalkan **+ antrean refund** |
+| `dikirim` tanpa konfirmasi pembeli | 6 hari sejak `dikirim_at` | `selesai` otomatis |
+
+`batas_kirim` diisi `ubah_status_pesanan` saat pembayaran dikonfirmasi:
+
+- pesanan PO → `po_batas_kirim + 1 hari`, dipatok **akhir hari WIB**
+  (`23:59:59 Asia/Jakarta`). Satu hari itu tenggang, supaya janji kirim
+  tanggal X tidak lewat tepat pada dini hari tanggal X
+- pesanan barang ready → `now() + 3 hari`
+
+Yang tetap 6 hari untuk konfirmasi pembeli juga ada di klien sebagai
+`HARI_SELESAI_OTOMATIS`; kalau angkanya diubah di database, ubah di sana juga.
 
 ## RPC yang Tersedia
 
@@ -498,6 +582,76 @@ Yang dijaga versi sekarang (v7):
   `IS NOT DISTINCT FROM` sehingga `toko_id` NULL pun tetap cocok, dan di akhir
   jumlah item tersimpan dibandingkan dengan jumlah baris keranjang — kalau tidak
   sama, seluruh transaksi dibatalkan.
+
+### `ubah_status_pesanan` — satu-satunya pintu perpindahan status
+
+```ts
+const { error } = await supabase.rpc('ubah_status_pesanan', {
+  p_pesanan_id:  id,
+  p_status_baru: 'dikirim',
+  p_no_resi:     resi,          // wajib saat 'dikirim', selain itu null
+  p_kurir:       kurir ?? null, // opsional
+})
+// data: { ok: true, status: '...' }
+```
+
+Semua aturan di tabel [Mesin Status Pesanan](#mesin-status-pesanan) sudah
+divalidasi di dalamnya, termasuk siapa yang berhak. **UI tidak perlu dan tidak
+boleh mengulang validasinya** — tampilkan `error.message` apa adanya:
+
+- `Harus login` · `Pesanan tidak ditemukan` · `Kamu tidak berhak mengubah pesanan ini`
+- `Hanya penjual yang bisa menandai pembayaran diterima`
+- `Pesanan ini sudah tidak menunggu pembayaran`
+- `Hanya penjual yang bisa memproses pesanan` · `Pesanan harus lunas dulu sebelum diproses`
+- `Hanya penjual yang bisa mengirim pesanan` · `Pesanan belum siap dikirim`
+- `Nomor resi wajib diisi saat menandai pesanan dikirim`
+- `Hanya pembeli yang bisa menyelesaikan pesanan` · `Pesanan belum dikirim`
+
+Kembaliannya cuma `{ok, status}` — cap waktu dan `batas_kirim` diisi di dalam
+fungsi. Kalau UI perlu nilainya, **baca ulang barisnya**, jangan menebak.
+
+### `batalkan_pesanan` — pembeli atau penjual
+
+```ts
+const { error } = await supabase.rpc('batalkan_pesanan', {
+  p_pesanan_id: id,
+  p_alasan:     alasan,   // wajib, ikut tersimpan di baris refund
+})
+// data: { ok: true, refund: boolean }
+```
+
+Kalau `payment_status` sudah `lunas`, fungsi ini sekalian mengubahnya jadi
+`refund` dan membuat baris di tabel `refund`. Karena `refund.alasan` NOT NULL,
+alasan kosong membuat seluruh pembatalan gagal — UI wajib memintanya.
+
+**Hanya dua parameter.** Versi lama sempat punya `p_oleh_sistem`; itu sudah
+dibuang, lihat catatannya di aturan hak akses di bawah.
+
+### Fungsi yang TIDAK boleh dipanggil dari aplikasi
+
+- `batalkan_pesanan_sistem(uuid, text)` — jalur pembatalan oleh sistem
+- `jalankan_tugas_pesanan()` — tugas harian
+
+Keduanya sengaja **tidak diberi EXECUTE ke `anon` maupun `authenticated`**.
+Jangan coba memanggilnya, dan jangan menambahkan grant supaya "bisa dites dari
+UI" — jalankan lewat SQL editor sebagai `postgres` kalau perlu.
+
+## Tugas Terjadwal
+
+`pg_cron` aktif. Satu job:
+
+| Job | Jadwal | Perintah |
+|---|---|---|
+| `tugas-pesanan-harian` | `5 22 * * *` UTC = **05:05 WIB** tiap hari | `select public.jalankan_tugas_pesanan();` |
+
+Fungsinya mengerjakan tiga tenggat di tabel [Tenggat otomatis](#tenggat-otomatis)
+dan mengembalikan ringkasan `{waktu, kadaluarsa, telat_kirim, selesai_otomatis}`.
+
+Konsekuensi yang perlu diingat saat membuat UI: **tenggat tidak berlaku pada
+detik yang tepat.** Pesanan yang lewat tenggat pukul 10:00 baru benar-benar
+dibatalkan pada 05:05 WIB keesokan harinya. Jadi jangan menampilkan status
+seolah-olah sudah berubah hanya karena jam klien sudah lewat — baca statusnya
+dari database.
 
 ### `verifikasi_alumni` — hanya admin
 
@@ -611,8 +765,8 @@ memang normal dan ditahan oleh RLS; semua tabel di project ini punya
 `authenticated` punya INSERT/UPDATE/DELETE di sebuah tabel — periksa dulu
 policy-nya. Untuk view, tidak ada yang menahan.
 
-Sudah diverifikasi: `alumni_publik` dan `preorder_progress` sama-sama hanya
-memberi SELECT ke `anon` dan `authenticated`.
+Sudah diverifikasi: `alumni_publik`, `preorder_progress`, dan tabel `refund`
+sama-sama hanya memberi SELECT ke `anon` dan `authenticated`.
 
 Default privileges di project ini sudah dikunci, tapi tetap **verifikasi tiap
 kali** membuat objek baru:
@@ -623,10 +777,62 @@ where table_schema='public' and table_name='nama_objek'
   and grantee in ('anon','authenticated');
 ```
 
-Hal yang sama berlaku untuk fungsi: fungsi trigger tidak perlu bisa dipanggil
-lewat REST. `EXECUTE` untuk enam fungsi trigger di project ini sudah dicabut
-dari `anon` dan `authenticated`; hanya `create_pesanan`, `verifikasi_alumni`,
-dan `is_admin` yang boleh dipanggil pengguna login.
+## ATURAN: Hak EXECUTE Fungsi Baru
+
+Tepat **lima** fungsi yang boleh dipanggil pengguna login, dan tidak satu pun
+boleh dipanggil `anon`:
+
+```
+create_pesanan · ubah_status_pesanan · batalkan_pesanan
+verifikasi_alumni · is_admin
+```
+
+Semua sisanya — fungsi trigger, `batalkan_pesanan_sistem`, dan
+`jalankan_tugas_pesanan` — tidak punya EXECUTE untuk `anon` maupun
+`authenticated`. Sudah diverifikasi dengan `has_function_privilege`.
+
+### `REVOKE ... FROM anon, authenticated` TIDAK CUKUP
+
+Ini jebakan yang sudah memakan korban di project ini. Postgres memberi
+`EXECUTE` ke **PUBLIC** untuk setiap fungsi baru, dan `anon` mewarisi lewat
+PUBLIC. Mencabut dari `anon` dan `authenticated` saja tidak menyentuh hibah
+PUBLIC itu, jadi fungsinya **tetap bisa dipanggil lewat REST** meski sudah
+"dicabut".
+
+Pola yang benar, dua langkah:
+
+```sql
+revoke all on function public.nama_fungsi(arg types) from public;
+grant execute on function public.nama_fungsi(arg types) to authenticated;
+```
+
+Lalu **wajib verifikasi**, jangan percaya pada REVOKE saja:
+
+```sql
+select proname,
+       has_function_privilege('anon', oid, 'EXECUTE') as anon_bisa,
+       has_function_privilege('authenticated', oid, 'EXECUTE') as auth_bisa
+from pg_proc where pronamespace = 'public'::regnamespace order by proname;
+```
+
+`anon_bisa` harus `false` untuk **semua** baris. Bisa juga dilihat dari
+`pg_proc.proacl`: kalau di sana ada entri tanpa nama peran (`=X/postgres`),
+itu hibah PUBLIC yang masih menempel.
+
+### Kewenangan sistem harus dari hak akses, bukan dari argumen
+
+`batalkan_pesanan` sempat punya parameter ketiga `p_oleh_sistem boolean`, dan
+penjaganya berbunyi "kalau `p_oleh_sistem` true maka `auth.uid()` harus NULL".
+
+Itu rapuh, dan bocor persis lewat celah PUBLIC di atas: `auth.uid()` juga NULL
+untuk `anon`. Jadi pengunjung yang belum login memenuhi syarat "sistem" —
+sakelar kewenangan yang dititipkan di parameter dilewati begitu saja.
+
+Sekarang jalur sistem dipisah jadi fungsi tersendiri
+(`batalkan_pesanan_sistem`) yang tidak diberi EXECUTE ke siapa pun. Yang
+membedakan sistem dari pengguna adalah **hak akses**, bukan nilai argumen.
+Kalau nanti ada jalur istimewa lain, ikuti pola yang sama: fungsi terpisah,
+tanpa grant — jangan tambahkan flag.
 
 ## ATURAN: Perubahan Skema Database
 
@@ -735,9 +941,14 @@ Kalau butuh memastikan sesuatu di sisi data, pakai Supabase MCP untuk `SELECT`
   dan `Cannot create components during render` di Navbar. Jangan dikerjakan
   sepotong — kerjakan sekaligus dalam satu pekerjaan tersendiri.
 - Tabel `ulasan` dan `chat` sudah tidak terpakai tapi belum dihapus.
-- `pesanan.po_batas_kirim` sudah terisi tapi belum ada mekanisme pembatalan
-  otomatis dan belum dipakai UI. Ini satu-satunya bagian janji kirim yang
-  belum bekerja.
+- **Antrean refund belum punya panel admin.** Barisnya tercipta sendiri saat
+  pesanan lunas dibatalkan, pembeli dan penjual bisa melihat statusnya, tapi
+  belum ada siapa pun yang bisa menandainya `selesai`. Semua refund akan
+  menumpuk di status `menunggu` sampai panelnya dibuat — dan karena `refund`
+  tidak punya policy tulis, panel itu harus lewat RPC baru, bukan UPDATE dari
+  client.
+- Buku besar penjual belum ada.
+- Kontribusi kas 5% belum ada.
 - Seluruh fitur verifikasi alumni (halaman admin, /verifikasi, badge, banner)
   dan konfirmasi pembayaran manual belum diuji manual di browser
   (per 10 Agustus 2026).
