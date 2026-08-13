@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
-import { STATUS_PESANAN, warnaStatus, labelStatus, warnaPembayaran, labelPembayaran } from '../../lib/statusPesanan'
+import { STATUS_PESANAN, warnaStatus, labelStatus, warnaPembayaran, labelPembayaran, bisaDiterimaPembeli, HARI_SELESAI_OTOMATIS } from '../../lib/statusPesanan'
 import Navbar from '../components/Navbar'
 import FotoProduk from '../components/FotoProduk'
 import Skeleton, { DaftarSkeletonPesanan } from '../components/Skeleton'
@@ -60,6 +60,16 @@ const LABEL_TAB: Record<Tab, string> = {
 function fmt(n: number) { return 'Rp ' + (n || 0).toLocaleString('id-ID') }
 function fmtTgl(s: string) {
   return new Date(s).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+// Tanggal pesanan ditutup sendiri oleh tugas harian kalau pembeli tidak
+// pernah mengonfirmasi. Perkiraan, karena tugasnya berjalan sekali sehari.
+function batasOtomatis(dikirimAt: string | null): string | null {
+  if (!dikirimAt) return null
+  const d = new Date(dikirimAt)
+  if (isNaN(d.getTime())) return null
+  d.setDate(d.getDate() + HARI_SELESAI_OTOMATIS)
+  return fmtTgl(d.toISOString())
 }
 
 export default function PesananPage() {
@@ -319,7 +329,7 @@ export default function PesananPage() {
               </div>
 
               {/* Konfirmasi barang sampai — hanya saat pesanan dalam pengiriman */}
-              {p.status === 'dikirim' && (
+              {bisaDiterimaPembeli(p.status) && (
                 <div style={{ padding: '0 14px 14px' }}>
                   <button
                     onClick={() => terimaPesanan(p.id)}
@@ -333,8 +343,17 @@ export default function PesananPage() {
                   >
                     {prosesId === p.id ? 'Menyimpan...' : '✓ Pesanan Diterima'}
                   </button>
-                  <div style={{ fontSize: '11px', color: '#5a7da0', textAlign: 'center', marginTop: '6px' }}>
+                  <div style={{ fontSize: '11px', color: '#5a7da0', textAlign: 'center', marginTop: '6px', lineHeight: 1.6 }}>
                     Klik kalau barang sudah sampai di tanganmu.
+                    {/* Bukan ancaman, tapi hak pembeli untuk tahu: kalau lupa
+                        mengonfirmasi, pesanan ditutup sendiri oleh sistem */}
+                    <br />
+                    Kalau tidak dikonfirmasi, pesanan selesai otomatis{' '}
+                    {HARI_SELESAI_OTOMATIS} hari setelah dikirim
+                    {batasOtomatis(p.dikirim_at) && (
+                      <> — sekitar <strong>{batasOtomatis(p.dikirim_at)}</strong></>
+                    )}
+                    .
                   </div>
                 </div>
               )}
