@@ -8,21 +8,48 @@ export const STATUS_PESANAN = [
 
 export type StatusPesanan = (typeof STATUS_PESANAN)[number]
 
-// Urutan maju yang bisa dijalankan penjual. 'dibatalkan' di luar alur ini
-// karena bisa terjadi dari status mana pun sebelum selesai.
+// Urutan maju. 'dibatalkan' di luar alur ini karena bisa terjadi dari status
+// mana pun sebelum barang jalan.
 export const ALUR_STATUS: StatusPesanan[] = [
   'menunggu', 'dibayar', 'diproses', 'dikirim', 'selesai',
 ]
 
-export function statusBerikutnya(status: string): StatusPesanan | null {
-  const i = ALUR_STATUS.indexOf(status as StatusPesanan)
-  if (i === -1 || i === ALUR_STATUS.length - 1) return null
-  return ALUR_STATUS[i + 1]
+/**
+ * Perpindahan yang boleh dijalankan PENJUAL dari sebuah status.
+ *
+ * Cerminan `ubah_status_pesanan` di database — bukan aturan tersendiri.
+ * Gunanya hanya supaya tombol yang pasti ditolak tidak ditampilkan; yang
+ * memutuskan tetap server, dan pesan errornya ditampilkan apa adanya.
+ *
+ * Perhatikan dua hal yang berbeda dari alur lurus:
+ * - 'diproses' boleh dilewati, penjual bisa langsung mengirim setelah lunas
+ * - 'selesai' TIDAK ada di sini sama sekali; hanya pembeli yang boleh
+ */
+export function aksiPenjual(status: string): StatusPesanan[] {
+  switch (status) {
+    case 'menunggu': return ['dibayar']
+    case 'dibayar':  return ['diproses', 'dikirim']
+    case 'diproses': return ['dikirim']
+    default:         return []
+  }
 }
 
+/** Pembeli menutup pesanannya sendiri, hanya setelah barang dikirim. */
+export function bisaDiterimaPembeli(status: string) {
+  return status === 'dikirim'
+}
+
+/**
+ * `batalkan_pesanan` menolak yang sudah selesai, sudah dibatalkan, dan yang
+ * sudah dikirim — barang yang terlanjur jalan itu urusan komplain, bukan
+ * pembatalan.
+ */
 export function bisaDibatalkan(status: string) {
   return status === 'menunggu' || status === 'dibayar' || status === 'diproses'
 }
+
+/** Berapa lama pesanan yang sudah dikirim ditutup sendiri oleh sistem. */
+export const HARI_SELESAI_OTOMATIS = 6
 
 const WARNA: Record<string, { bg: string; color: string }> = {
   menunggu:   { bg: '#fff8e1', color: '#f57f17' },
@@ -80,12 +107,13 @@ export const LABEL_STATUS: Record<string, string> = {
   dibatalkan: 'Dibatalkan',
 }
 
-// Label tombol aksi penjual, per status tujuan
+// Label tombol aksi penjual, per status tujuan.
+// 'dibayar' sekalian menandai pembayaran lunas — di database keduanya satu
+// langkah, jadi tidak ada lagi tombol pembayaran yang terpisah.
 export const AKSI_STATUS: Record<string, string> = {
-  dibayar:  'Tandai Sudah Dibayar',
+  dibayar:  '💰 Tandai Sudah Dibayar',
   diproses: 'Proses Pesanan',
   dikirim:  'Kirim Pesanan',
-  selesai:  'Tandai Selesai',
 }
 
 export function labelStatus(status: string) {

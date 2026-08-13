@@ -103,21 +103,24 @@ export default function PesananPage() {
     load()
   }, [])
 
-  // Pembeli menutup pesanan yang sudah sampai. Kolom terjual dan selesai_at
-  // diisi trigger database, jadi cukup kirim status-nya saja.
+  // Pembeli menutup pesanan yang sudah sampai. Lewat RPC, bukan UPDATE
+  // langsung: yang menentukan siapa boleh dan dari status mana adalah
+  // `ubah_status_pesanan`, dan 'selesai' memang hanya untuk pembeli.
   async function terimaPesanan(id: string) {
     setProsesId(id)
     try {
-      const { data, error } = await supabase.from('pesanan')
-        .update({ status: 'selesai' })
-        .eq('id', id)
-        .select('id, status')
-        .single()
-
+      const { error } = await supabase.rpc('ubah_status_pesanan', {
+        p_pesanan_id: id,
+        p_status_baru: 'selesai',
+      })
       if (error) throw new Error(error.message)
-      if (!data) throw new Error('Pesanan tidak ditemukan')
 
-      setPesanan(prev => prev.map(p => p.id === id ? { ...p, status: data.status } : p))
+      const { data } = await supabase.from('pesanan')
+        .select('id, status, selesai_at')
+        .eq('id', id)
+        .maybeSingle()
+
+      setPesanan(prev => prev.map(p => p.id === id ? { ...p, status: data?.status ?? 'selesai' } : p))
       setPesan('Terima kasih! Pesanan ditandai selesai.')
     } catch (e) {
       setPesan('Gagal menyelesaikan pesanan: ' + (e instanceof Error ? e.message : 'coba lagi'))

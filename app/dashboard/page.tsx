@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 import { uploadFotoProduk } from '../../lib/uploadFoto'
-import { statusBerikutnya, bisaDibatalkan, warnaStatus, labelStatus, warnaPembayaran, labelPembayaran, AKSI_STATUS } from '../../lib/statusPesanan'
+import { aksiPenjual, bisaDibatalkan, warnaStatus, labelStatus, warnaPembayaran, labelPembayaran, AKSI_STATUS } from '../../lib/statusPesanan'
 import Navbar from '../components/Navbar'
 import FotoProduk from '../components/FotoProduk'
 import Skeleton, { DaftarSkeletonPesanan } from '../components/Skeleton'
@@ -96,6 +96,11 @@ export default function DashboardPage() {
   const [kurir, setKurir] = useState('')
   const [noResi, setNoResi] = useState('')
   const [prosesId, setProsesId] = useState<string | null>(null)
+
+  // Pembatalan wajib menyebut alasan: kalau pesanannya lunas, alasan itu ikut
+  // tersimpan di baris refund dan dibaca pembeli
+  const [batalId, setBatalId] = useState<string | null>(null)
+  const [alasanBatal, setAlasanBatal] = useState('')
 
   // Pesan
   const [pesan, setPesan] = useState('')
@@ -223,25 +228,34 @@ export default function DashboardPage() {
     setHapusId(null)
   }
 
-  // Satu pintu untuk semua perubahan status. Kolom terjual & selesai_at diisi
-  // trigger database, jadi tidak pernah ditulis dari sini.
-  async function ubahStatus(id: string, status: string, extra: Record<string, unknown> = {}) {
+  // Baca ulang satu baris pesanan setelah RPC. RPC hanya mengembalikan
+  // {ok, status}, sementara cap waktu dan batas_kirim diisi di dalam sana —
+  // menebak nilainya di klien akan meleset.
+  async function segarkanPesanan(id: string) {
+    const { data } = await supabase.from('pesanan')
+      .select('id, status, payment_status, paid_at, no_resi, kurir, dikirim_at, batas_kirim, alasan_batal')
+      .eq('id', id)
+      .maybeSingle()
+    if (data) setPesanan(prev => prev.map(p => p.id === id ? { ...p, ...data } : p))
+  }
+
+  // Satu-satunya pintu perpindahan status. Siapa boleh apa dan perpindahan
+  // mana yang sah sudah diputuskan `ubah_status_pesanan`; di sini tidak ada
+  // validasi yang mengulanginya, dan pesan errornya ditampilkan apa adanya.
+  async function ubahStatus(id: string, status: string, resi?: string, kurirNama?: string) {
     setProsesId(id)
     try {
-      const { data, error } = await supabase.from('pesanan')
-        .update({ status, ...extra })
-        .eq('id', id)
-        .select('id, status, no_resi, kurir, dikirim_at')
-        .single()
-
+      const { error } = await supabase.rpc('ubah_status_pesanan', {
+        p_pesanan_id: id,
+        p_status_baru: status,
+        p_no_resi: resi ?? null,
+        p_kurir: kurirNama ?? null,
+      })
       if (error) throw new Error(error.message)
-      if (!data) throw new Error('Pesanan tidak ditemukan atau kamu tidak punya akses')
 
-      setPesanan(prev => prev.map(p => p.id === id ? { ...p, ...data } : p))
+      await segarkanPesanan(id)
       notif(`Status pesanan diubah jadi "${status}".`)
-      setKirimId(null)
-      setKurir('')
-      setNoResi('')
+      tutupKirim()
     } catch (e) {
       notif('Gagal ubah status: ' + (e instanceof Error ? e.message : 'coba lagi'))
     } finally {
@@ -249,43 +263,49 @@ export default function DashboardPage() {
     }
   }
 
-  // Pembayaran masih transfer manual, jadi penjual yang mengonfirmasi sendiri
-  // setelah dana masuk. Terpisah dari status pengiriman.
-  async function tandaiLunas(id: string) {
+  // Pembatalan punya RPC sendiri karena ikut membuat antrean refund kalau
+  // pesanannya sudah lunas. p_oleh_sistem sengaja tidak pernah dikirim —
+  // itu jalur untuk tugas terjadwal, bukan untuk pengguna.
+  async function batalkanPesanan(id: string) {
+    const alasan = alasanBatal.trim()
+    if (!alasan) { notif('Gagal: alasan pembatalan wajib diisi'); return }
+
     setProsesId(id)
     try {
-      const { data, error } = await supabase.from('pesanan')
-        .update({ payment_status: 'lunas', paid_at: new Date().toISOString() })
-        .eq('id', id)
-        .select('id, payment_status, paid_at')
-        .single()
-
+      const { error } = await supabase.rpc('batalkan_pesanan', {
+        p_pesanan_id: id,
+        p_alasan: alasan,
+      })
       if (error) throw new Error(error.message)
-      if (!data) throw new Error('Pesanan tidak ditemukan atau kamu tidak punya akses')
 
-      setPesanan(prev => prev.map(p => p.id === id ? { ...p, ...data } : p))
-      notif('Pembayaran ditandai lunas.')
+      await segarkanPesanan(id)
+      notif('Pesanan dibatalkan.')
+      setBatalId(null)
+      setAlasanBatal('')
     } catch (e) {
-      notif('Gagal tandai lunas: ' + (e instanceof Error ? e.message : 'coba lagi'))
+      notif('Gagal membatalkan: ' + (e instanceof Error ? e.message : 'coba lagi'))
     } finally {
       setProsesId(null)
     }
   }
 
   function mulaiKirim(p: Pesanan) {
+    setBatalId(null)
     setKirimId(p.id)
     setKurir(p.kurir ?? '')
     setNoResi(p.no_resi ?? '')
   }
 
+  function tutupKirim() {
+    setKirimId(null)
+    setKurir('')
+    setNoResi('')
+  }
+
+  // Resi wajib karena database menolak tanpa itu; kurir boleh kosong.
   function konfirmasiKirim(id: string) {
-    if (!kurir.trim()) { notif('Gagal: kurir wajib diisi'); return }
     if (!noResi.trim()) { notif('Gagal: nomor resi wajib diisi'); return }
-    ubahStatus(id, 'dikirim', {
-      kurir: kurir.trim(),
-      no_resi: noResi.trim(),
-      dikirim_at: new Date().toISOString(),
-    })
+    ubahStatus(id, 'dikirim', noResi.trim(), kurir.trim() || undefined)
   }
 
   // Statistik
@@ -604,7 +624,7 @@ export default function DashboardPage() {
                 onAksi={() => setTab('produk')}
               />
             ) : pesanan.map(p => {
-              const berikutnya = statusBerikutnya(p.status)
+              const aksi = aksiPenjual(p.status)
               const sedangProses = prosesId === p.id
               return (
                 <div key={p.id} style={{ background: '#fff', borderRadius: '10px', border: '0.5px solid #c5d9ef', marginBottom: '10px', overflow: 'hidden' }}>
@@ -688,21 +708,6 @@ export default function DashboardPage() {
                       {p.paid_at && ` · dibayar ${fmtTgl(p.paid_at)}`}
                     </div>
 
-                    {/* Konfirmasi pembayaran manual, terpisah dari alur pengiriman */}
-                    {p.payment_status === 'menunggu' && p.status !== 'dibatalkan' && (
-                      <button
-                        onClick={() => tandaiLunas(p.id)}
-                        disabled={sedangProses}
-                        style={{
-                          width: '100%', background: '#e8f5e9', color: '#2e7d32',
-                          border: '0.5px solid #a5d6a7', padding: '9px',
-                          borderRadius: '6px', fontSize: '12px', fontWeight: '600',
-                          cursor: sedangProses ? 'not-allowed' : 'pointer',
-                        }}
-                      >
-                        {sedangProses ? 'Menyimpan...' : '💰 Tandai Sudah Dibayar'}
-                      </button>
-                    )}
                     {p.no_resi && (
                       <div style={{ fontSize: '11px', color: '#e65100', background: '#fff3e0', padding: '6px 10px', borderRadius: '6px' }}>
                         🚚 {p.kurir ?? 'Kurir'} · Resi <strong>{p.no_resi}</strong>
@@ -727,7 +732,7 @@ export default function DashboardPage() {
                         />
                         <div style={{ display: 'flex', gap: '8px' }}>
                           <button
-                            onClick={() => setKirimId(null)}
+                            onClick={tutupKirim}
                             style={{ flex: 1, background: '#fff', color: '#5a7da0', border: '0.5px solid #c5d9ef', padding: '8px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}
                           >
                             Batal
@@ -741,29 +746,73 @@ export default function DashboardPage() {
                           </button>
                         </div>
                       </div>
-                    ) : (
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        {berikutnya && (
+                    ) : batalId === p.id ? (
+                      <div style={{ background: '#fff5f5', borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px', border: '0.5px solid #f09595' }}>
+                        <div style={{ fontSize: '12px', fontWeight: '600', color: '#c62828' }}>Batalkan pesanan ini?</div>
+                        <div style={{ fontSize: '11px', color: '#5a7da0', lineHeight: 1.5 }}>
+                          {p.payment_status === 'lunas'
+                            ? 'Pesanan sudah lunas — pembatalan otomatis membuat antrean pengembalian dana, dan alasan di bawah akan terbaca pembeli.'
+                            : 'Alasan di bawah akan terbaca pembeli.'}
+                        </div>
+                        <input
+                          value={alasanBatal}
+                          onChange={e => setAlasanBatal(e.target.value)}
+                          placeholder="Alasan — misal stok habis"
+                          maxLength={200}
+                          style={{ width: '100%', padding: '8px 10px', border: '0.5px solid #c5d9ef', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box', background: '#fff' }}
+                        />
+                        <div style={{ display: 'flex', gap: '8px' }}>
                           <button
-                            onClick={() => berikutnya === 'dikirim' ? mulaiKirim(p) : ubahStatus(p.id, berikutnya)}
-                            disabled={sedangProses}
-                            style={{ flex: 2, background: sedangProses ? '#7fa8c9' : '#0C447C', color: '#fff', border: 'none', padding: '9px', borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: sedangProses ? 'not-allowed' : 'pointer' }}
+                            onClick={() => { setBatalId(null); setAlasanBatal('') }}
+                            style={{ flex: 1, background: '#fff', color: '#5a7da0', border: '0.5px solid #c5d9ef', padding: '8px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}
                           >
-                            {sedangProses ? 'Memproses...' : (AKSI_STATUS[berikutnya] ?? berikutnya)}
+                            Jangan
                           </button>
-                        )}
+                          <button
+                            onClick={() => batalkanPesanan(p.id)}
+                            disabled={sedangProses}
+                            style={{ flex: 2, background: sedangProses ? '#e0a5a5' : '#c62828', color: '#fff', border: 'none', padding: '8px', borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: sedangProses ? 'not-allowed' : 'pointer' }}
+                          >
+                            {sedangProses ? 'Membatalkan...' : 'Ya, batalkan'}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        {/* Daftar aksi datang dari mesin status di database.
+                            Dari 'dibayar' ada dua jalan: proses dulu, atau
+                            langsung kirim. */}
+                        {aksi.map((tujuan, i) => (
+                          <button
+                            key={tujuan}
+                            onClick={() => tujuan === 'dikirim' ? mulaiKirim(p) : ubahStatus(p.id, tujuan)}
+                            disabled={sedangProses}
+                            style={{
+                              flex: i === 0 ? 2 : 1, minWidth: '120px',
+                              background: sedangProses ? '#7fa8c9' : (i === 0 ? '#0C447C' : '#fff'),
+                              color: sedangProses ? '#fff' : (i === 0 ? '#fff' : '#0C447C'),
+                              border: i === 0 ? 'none' : '1px solid #0C447C',
+                              padding: '9px', borderRadius: '6px', fontSize: '12px', fontWeight: '600',
+                              cursor: sedangProses ? 'not-allowed' : 'pointer',
+                            }}
+                          >
+                            {sedangProses ? 'Memproses...' : (AKSI_STATUS[tujuan] ?? tujuan)}
+                          </button>
+                        ))}
                         {bisaDibatalkan(p.status) && (
                           <button
-                            onClick={() => ubahStatus(p.id, 'dibatalkan', { dibatalkan_at: new Date().toISOString() })}
+                            onClick={() => { setKirimId(null); setBatalId(p.id); setAlasanBatal('') }}
                             disabled={sedangProses}
-                            style={{ flex: 1, background: '#fce4e4', color: '#c62828', border: 'none', padding: '9px', borderRadius: '6px', fontSize: '12px', cursor: sedangProses ? 'not-allowed' : 'pointer' }}
+                            style={{ flex: 1, minWidth: '90px', background: '#fce4e4', color: '#c62828', border: 'none', padding: '9px', borderRadius: '6px', fontSize: '12px', cursor: sedangProses ? 'not-allowed' : 'pointer' }}
                           >
                             Batalkan
                           </button>
                         )}
-                        {!berikutnya && !bisaDibatalkan(p.status) && (
+                        {aksi.length === 0 && !bisaDibatalkan(p.status) && (
                           <div style={{ flex: 1, textAlign: 'center', fontSize: '12px', color: '#5a7da0', padding: '9px' }}>
-                            {labelStatus(p.status)}
+                            {p.status === 'dikirim'
+                              ? 'Menunggu pembeli mengonfirmasi penerimaan'
+                              : labelStatus(p.status)}
                           </div>
                         )}
                       </div>
