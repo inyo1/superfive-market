@@ -1,6 +1,7 @@
 // Kosakata status dijaga CHECK constraint di database — nilai di luar daftar ini
 // akan ditolak Postgres. Jangan tambah nilai baru di sini tanpa mengubah
 // constraint-nya dulu (lihat aturan skema di CLAUDE.md).
+import { tanggalWIB } from './preorder'
 
 export const STATUS_PESANAN = [
   'menunggu', 'dibayar', 'diproses', 'dikirim', 'selesai', 'dibatalkan',
@@ -50,6 +51,73 @@ export function bisaDibatalkan(status: string) {
 
 /** Berapa lama pesanan yang sudah dikirim ditutup sendiri oleh sistem. */
 export const HARI_SELESAI_OTOMATIS = 6
+
+// ── Tenggat kirim efektif ───────────────────────────────────────────────────
+//
+// `batas_kirim` bukan detik matinya pesanan. Yang membatalkan pesanan telat
+// adalah tugas harian, dan tugas itu jalan sekali sehari pukul 05:05 WIB. Jadi
+// penjual yang tenggatnya jatuh tengah malam sebenarnya masih punya waktu
+// sampai pagi.
+//
+// Kelonggaran itu disengaja: penjual rumahan yang baru selesai mengemas lewat
+// tengah malam tidak kehilangan seluruh pesanannya padahal barangnya sudah
+// jadi. Karena itu UI menampilkan waktu efektif ini, bukan `batas_kirim`
+// mentah — kalau yang mentah yang ditampilkan, penjual panik padahal masih
+// punya beberapa jam.
+//
+// Tenggangnya tidak tak terbatas: `ubah_status_pesanan` menolak 'dikirim'
+// begitu lewat `batas_kirim + 30 jam`. Itu jaring pengaman kalau cron pernah
+// gagal atau dimatikan — tanpa itu, pesanan yang telat berhari-hari ikut lolos
+// begitu cron hidup lagi.
+
+const JAM_CRON_WIB = 5
+const MENIT_CRON_WIB = 5
+const JAM_TENGGANG_MAKS = 30
+
+// WIB tetap UTC+7 sepanjang tahun, tidak ada DST — jadi aman menghitung
+// instannya lewat Date.UTC dengan jam digeser mundur 7.
+const OFFSET_WIB = 7
+
+/**
+ * Kapan pesanan ini benar-benar hangus: jalannya cron pertama setelah
+ * `batas_kirim`, dibatasi `batas_kirim + 30 jam`.
+ *
+ * Perhatikan ini bukan selalu "hari berikutnya". Kalau `batas_kirim` jatuh
+ * sebelum pukul 05:05 WIB, cron hari itu juga yang menyapunya. Pesanan PO
+ * memang selalu jatuh 23:59:59 WIB sehingga selalu ke besok, tapi pesanan
+ * barang ready memakai `now() + 3 hari` dan jamnya bisa berapa saja.
+ */
+export function tenggatEfektif(batasKirim: string | null | undefined): Date | null {
+  if (!batasKirim) return null
+  const batas = new Date(batasKirim)
+  if (isNaN(batas.getTime())) return null
+
+  const ymd = tanggalWIB(batas)
+  if (!ymd) return null
+  const [tahun, bulan, hari] = ymd.split('-').map(Number)
+
+  // 05:05 WIB pada tanggal WIB-nya batas_kirim
+  let cron = new Date(Date.UTC(tahun, bulan - 1, hari, JAM_CRON_WIB - OFFSET_WIB, MENIT_CRON_WIB))
+  // Sudah lewat? Berarti yang menyapunya cron besok. WIB tanpa DST, jadi
+  // menambah 24 jam persis benar.
+  if (cron.getTime() <= batas.getTime()) {
+    cron = new Date(cron.getTime() + 24 * 3600_000)
+  }
+
+  const maks = new Date(batas.getTime() + JAM_TENGGANG_MAKS * 3600_000)
+  return cron.getTime() < maks.getTime() ? cron : maks
+}
+
+const formatWaktuWIB = new Intl.DateTimeFormat('id-ID', {
+  timeZone: 'Asia/Jakarta',
+  day: 'numeric', month: 'short',
+  hour: '2-digit', minute: '2-digit',
+})
+
+/** "15 Agu 05.05 WIB" — selalu dalam WIB, bukan zona peramban. */
+export function waktuWIB(d: Date): string {
+  return formatWaktuWIB.format(d) + ' WIB'
+}
 
 const WARNA: Record<string, { bg: string; color: string }> = {
   menunggu:   { bg: '#fff8e1', color: '#f57f17' },
