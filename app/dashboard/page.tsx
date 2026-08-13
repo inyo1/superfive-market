@@ -18,6 +18,7 @@ import EditorVarian, { muatVarian, simpanVarian, totalStok, type BarisVarian } f
 import BadgePreorder, { WARNA_PO_TUA } from '../components/BadgePreorder'
 import EditorPreorder from '../components/EditorPreorder'
 import RekapPO, { type ProgresPO } from '../components/RekapPO'
+import TenggatKirim from '../components/TenggatKirim'
 import { FORM_PO_KOSONG, formPODari, validasiFormPO, formPOKeKolom, formPOAktif, janjiKirim, type FormPO, type DataPO } from '../../lib/preorder'
 
 type Toko = { id: string; nama_toko: string; kategori: string; is_official: boolean }
@@ -51,6 +52,7 @@ type Pesanan = {
   created_at: string
   dikirim_at: string | null
   paid_at: string | null
+  batas_kirim: string | null
   pesanan_items: PesananItem[]
 }
 
@@ -135,7 +137,7 @@ export default function DashboardPage() {
       // Pesanan milik toko ini, beserta itemnya. Satu baris pesanan = satu toko,
       // jadi cukup filter toko_id — tidak perlu menyaring per produk lagi.
       const { data: pesananData, error: errPesanan } = await supabase.from('pesanan')
-        .select('id, nomor_pesanan, penerima_nama, penerima_hp, alamat_kirim, metode_bayar, total, status, payment_status, no_resi, kurir, created_at, dikirim_at, paid_at, pesanan_items(id, produk_id, nama_produk, harga, qty, subtotal, foto_url, varian_nama, is_preorder, po_janji_kirim)')
+        .select('id, nomor_pesanan, penerima_nama, penerima_hp, alamat_kirim, metode_bayar, total, status, payment_status, no_resi, kurir, created_at, dikirim_at, paid_at, batas_kirim, pesanan_items(id, produk_id, nama_produk, harga, qty, subtotal, foto_url, varian_nama, is_preorder, po_janji_kirim)')
         .eq('toko_id', tokoData.id)
         .order('created_at', { ascending: false })
 
@@ -707,6 +709,13 @@ export default function DashboardPage() {
                       💳 {(p.metode_bayar ?? '-').replace(/_/g, ' ')}
                       {p.paid_at && ` · dibayar ${fmtTgl(p.paid_at)}`}
                     </div>
+
+                    {/* Tenggat kirim hanya relevan selama barangnya belum
+                        jalan. Lewat tenggat, sistem membatalkan pesanan dan
+                        mengembalikan dana — penjual kehilangan penjualannya. */}
+                    {['dibayar', 'diproses'].includes(p.status) && (
+                      <TenggatKirim batasKirim={p.batas_kirim} />
+                    )}
 
                     {p.no_resi && (
                       <div style={{ fontSize: '11px', color: '#e65100', background: '#fff3e0', padding: '6px 10px', borderRadius: '6px' }}>

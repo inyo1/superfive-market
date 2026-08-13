@@ -40,8 +40,35 @@ type Pesanan = {
   alamat_kirim: string | null
   created_at: string
   dikirim_at: string | null
+  dibatalkan_at: string | null
+  alasan_batal: string | null
   toko: { nama_toko: string | null; seller_id: string | null } | null
   pesanan_items: PesananItem[]
+}
+
+// Baris antrean pengembalian dana. Dibuat `batalkan_pesanan` kalau pesanannya
+// sudah lunas. RLS mengizinkan pembeli membaca miliknya sendiri; tidak ada
+// policy tulis sama sekali, jadi halaman ini murni membaca.
+type Refund = {
+  pesanan_id: string
+  nominal: number
+  status: string
+  created_at: string
+  selesai_at: string | null
+}
+
+const LABEL_REFUND: Record<string, string> = {
+  menunggu: 'Menunggu diproses',
+  diproses: 'Sedang diproses',
+  selesai:  'Sudah dikembalikan',
+  gagal:    'Gagal diproses',
+}
+
+const WARNA_REFUND: Record<string, string> = {
+  menunggu: '#f57f17',
+  diproses: '#1565c0',
+  selesai:  '#2e7d32',
+  gagal:    '#c62828',
 }
 
 const TABS = ['semua', ...STATUS_PESANAN] as const
@@ -81,6 +108,7 @@ export default function PesananPage() {
   const [pesan, setPesan] = useState('')
   const [prosesId, setProsesId] = useState<string | null>(null)
   const [profilPenjual, setProfilPenjual] = useState<Record<string, { angkatan: number | null; is_institusi: boolean }>>({})
+  const [refund, setRefund] = useState<Record<string, Refund>>({})
 
   useEffect(() => {
     async function load() {
@@ -93,13 +121,24 @@ export default function PesananPage() {
       // RLS sudah membatasi ke pesanan milik sendiri, eq buyer_id dipasang
       // supaya niatnya eksplisit dan query tetap benar kalau policy berubah.
       const { data, error } = await supabase.from('pesanan')
-        .select('id, nomor_pesanan, toko_id, total, ongkir, status, payment_status, metode_bayar, no_resi, kurir, alamat_kirim, created_at, dikirim_at, toko(nama_toko, seller_id), pesanan_items(id, produk_id, nama_produk, harga, qty, subtotal, foto_url, varian_nama, is_preorder, po_janji_kirim)')
+        .select('id, nomor_pesanan, toko_id, total, ongkir, status, payment_status, metode_bayar, no_resi, kurir, alamat_kirim, created_at, dikirim_at, dibatalkan_at, alasan_batal, toko(nama_toko, seller_id), pesanan_items(id, produk_id, nama_produk, harga, qty, subtotal, foto_url, varian_nama, is_preorder, po_janji_kirim)')
         .eq('buyer_id', user.id)
         .order('created_at', { ascending: false })
 
       if (error) setPesan('Gagal memuat pesanan: ' + error.message)
       const baris = (data ?? []) as unknown as Pesanan[]
       setPesanan(baris)
+
+      // Antrean pengembalian dana untuk pesanan yang dibatalkan. Diambil
+      // sekali untuk semua, bukan satu query per kartu.
+      const idBatal = baris.filter(p => p.status === 'dibatalkan').map(p => p.id)
+      if (idBatal.length > 0) {
+        const { data: refundData } = await supabase
+          .from('refund')
+          .select('pesanan_id, nominal, status, created_at, selesai_at')
+          .in('pesanan_id', idBatal)
+        setRefund(Object.fromEntries(((refundData ?? []) as Refund[]).map(r => [r.pesanan_id, r])))
+      }
 
       // Angkatan penjual untuk badge, diambil dari view publik
       const sellerIds = [...new Set(baris.map(p => p.toko?.seller_id).filter(Boolean))] as string[]
@@ -314,6 +353,39 @@ export default function PesananPage() {
                   <div style={{ fontSize: '13px', fontWeight: '700', color: '#e65100', fontFamily: 'monospace' }}>
                     {p.no_resi}
                   </div>
+                </div>
+              )}
+
+              {/* Pesanan dibatalkan: alasannya, dan kalau uangnya sudah masuk,
+                  status pengembaliannya. Pembeli harus bisa melihat haknya
+                  tercatat, bukan cuma tahu pesanannya hilang. */}
+              {p.status === 'dibatalkan' && (
+                <div style={{ margin: '10px 14px 0', background: '#fce4e4', borderRadius: '8px', padding: '10px 12px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#c62828', marginBottom: '2px' }}>
+                    Pesanan dibatalkan
+                    {p.dibatalkan_at && ` · ${fmtTgl(p.dibatalkan_at)}`}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#1a1a1a', lineHeight: 1.6 }}>
+                    {p.alasan_batal || 'Tanpa keterangan.'}
+                  </div>
+
+                  {refund[p.id] ? (
+                    <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #f09595' }}>
+                      <div style={{ fontSize: '11px', color: '#5a7da0', marginBottom: '2px' }}>
+                        Pengembalian dana {fmt(refund[p.id].nominal)}
+                      </div>
+                      <div style={{ fontSize: '12px', fontWeight: '700', color: WARNA_REFUND[refund[p.id].status] ?? '#5a7da0' }}>
+                        {LABEL_REFUND[refund[p.id].status] ?? refund[p.id].status}
+                        {refund[p.id].selesai_at && ` · ${fmtTgl(refund[p.id].selesai_at!)}`}
+                      </div>
+                    </div>
+                  ) : p.payment_status === 'refund' && (
+                    // payment_status sudah refund tapi barisnya belum terbaca —
+                    // jangan diam, pembeli perlu tahu haknya tetap tercatat
+                    <div style={{ marginTop: '8px', fontSize: '11px', color: '#5a7da0' }}>
+                      Pengembalian dana sedang disiapkan.
+                    </div>
+                  )}
                 </div>
               )}
 
