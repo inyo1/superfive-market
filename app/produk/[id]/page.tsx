@@ -322,7 +322,14 @@ export default function DetailProduk() {
             <span>⭐ {produk.rating || '5.0'} rating</span>
             {po ? (
               <>
-                <span style={{ color: WARNA_PO_TUA, fontWeight: '600' }}>Pre-Order</span>
+                {/* Kata "Pre-Order" tidak diulang di sini: lencananya ada tepat
+                    di atas dan panel PO tepat di bawah. Slotnya diisi jumlah
+                    pesanan yang sudah masuk, atau dikosongkan kalau belum ada */}
+                {terkumpul > 0 && (
+                  <span style={{ color: WARNA_PO_TUA, fontWeight: '600' }}>
+                    🛒 {terkumpul} dipesan
+                  </span>
+                )}
                 {produk.po_janji_kirim && <span>🚚 {janjiKirim(produk.po_janji_kirim)}</span>}
               </>
             ) : (
