@@ -39,7 +39,6 @@ app/
   dashboard/         dashboard penjual (produk & pesanan masuk)
   keranjang/         keranjang belanja
   pesanan/           riwayat pesanan pembeli
-  preorder/          semua PO, dikelompokkan per periode
   produk/            daftar produk + /produk/[id] detail + /produk/tambah
   profil/            profil & alamat pengguna
   toko/              /toko/[id] halaman toko + /toko/saya
@@ -47,7 +46,7 @@ app/
   components/
     Badge*           BadgeAngkatan, BadgeOfficial, BadgePreorder, BadgeVerifikasi
     Editor*          EditorVarian, EditorPreorder — dipakai form tambah & edit
-    Section*         SectionOfficial (karosel merch), SectionPreorder (beranda)
+    SectionOfficial  karosel merchandise resmi di beranda
     RekapPO          ringkasan PO satu produk untuk penjual
     PeringatanCampuranPO   peringatan keranjang campur PO + siap kirim
     lainnya          Navbar, BottomNav, FotoProduk, ReviewSection,
@@ -158,8 +157,8 @@ Dua hal yang perlu diingat:
 `is_official` menandai toko resmi INILIMA. Pengaruhnya ke UI besar:
 
 - produknya **tidak muncul** di etalase umum `/produk`, tidak ikut hitungan
-  PRODUK di hero beranda, dan tidak ikut section Produk Terbaru maupun
-  `/preorder` — semuanya menyaring dengan `toko!inner(...)` + `.eq('toko.is_official', false)`
+  PRODUK di hero beranda, dan tidak ikut section Produk Terbaru — semuanya
+  menyaring dengan `toko!inner(...)` + `.eq('toko.is_official', false)`
 - gantinya punya rak sendiri: carousel di [SectionOfficial](app/components/SectionOfficial.tsx),
   diurutkan `produk.urutan` menaik
 - tetap muncul di pencarian, dengan lencana OFFICIAL dan diletakkan paling atas
@@ -208,17 +207,65 @@ sedang di luar negeri tetap dinilai dengan aturan yang sama seperti database.
 
 ### Pre-Order
 
+#### PO adalah status barang, bukan kategori
+
+Ini keputusan bentuk yang menentukan segalanya di bawahnya. Penjual memilih
+**Ready Stock** atau **Pre-Order** saat memasang produk — itu pernyataan tentang
+barangnya, bukan fitur yang diaktifkan.
+
+Konsekuensinya: produk PO **tidak punya halaman atau section tersendiri**, dan
+itu disengaja. Penjelajahan terjadi di tempat orang memang mencari barang —
+`/produk`, `/toko/[id]`, dan pencarian — dan produk PO muncul berdampingan
+dengan produk biasa di sana, cukup dibedakan penandanya.
+
+**Jangan membangun ulang halaman `/preorder` atau komponen `SectionPreorder`.**
+Keduanya pernah ada dan sengaja dibongkar (commit `c699b18`): memberi PO rak
+sendiri membuatnya terbaca seperti kategori terpisah, padahal statusnya melekat
+pada produk, bukan menggantikan tempat produk itu berada.
+
+Yang tetap ada dan memang dipakai: [BadgePreorder](app/components/BadgePreorder.tsx),
+[EditorPreorder](app/components/EditorPreorder.tsx), [RekapPO](app/components/RekapPO.tsx),
+[useHitungMundur](app/hooks/useHitungMundur.ts), [lib/preorder.ts](lib/preorder.ts),
+dan panel PO di halaman detail produk.
+
+#### Memilih status di form produk
+
+Radio dua pilihan setara, **bukan** saklar — lihat
+[EditorPreorder](app/components/EditorPreorder.tsx):
+
+```ts
+type StatusBarang = '' | 'ready' | 'preorder'   // FormPO.status
+```
+
+- **Tidak ada nilai awal.** String kosong berarti penjual belum memilih, dan
+  `validasiFormPO()` menolaknya sebelum apa pun disimpan. Tanpa ini akan ada
+  produk berstatus ready hanya karena penjual tidak pernah memikirkannya
+- Produk yang sudah ada selalu punya status jelas, karena `produk.is_preorder`
+  NOT NULL — `formPODari()` memetakannya ke `'ready'` / `'preorder'`
+- **Pemilih status diletakkan DI ATAS kolom stok** di form tambah maupun form
+  edit dashboard. Kolom stok muncul-hilang mengikuti pilihan, jadi kontrolnya
+  harus berada di atas yang dikendalikan — kalau dibalik, form terlihat
+  kehilangan kolom tanpa sebab yang terlihat
+
+#### Janji kirim
+
 `po_janji_kirim` bukan sekadar keterangan. Tanggal itu janji ke pembeli dan akan
 dipakai sistem untuk membatalkan pesanan yang telat serta mengembalikan dana —
 karena itu tipenya `date` dan bukan teks bebas, supaya bisa dibandingkan.
 
-Aturan tampilan yang berlaku di semua halaman:
+#### Aturan tampilan di semua permukaan
 
 - Lencana ungu PRE-ORDER dari [BadgePreorder](app/components/BadgePreorder.tsx).
   `bentuk="pita"` di kartu produk, lencana biasa di tempat sempit
 - **Jangan pernah menampilkan angka stok produk PO.** `trg_kurangi_stok` sengaja
   melewati produk PO, jadi stoknya selalu 0 dan akan terbaca "habis" padahal
-  PO-nya sedang buka. Ganti dengan teks "Pre-Order"
+  PO-nya sedang buka
+- **Kartu produk** (`/produk`, `/toko/[id]`, Produk Terbaru di beranda,
+  pencarian): teks `"Pre-Order"` menggantikan `"N terjual"`. Di kartu tidak ada
+  panel yang menjelaskan apa pun, jadi katanya masih perlu di sana
+- **Detail produk**: slot yang sama diisi `"N dipesan"` dari `terkumpul`, dan
+  dikosongkan kalau masih nol. Kata "Pre-Order" tidak diulang di situ karena
+  lencananya ada tepat di atas dan panel PO tepat di bawahnya
 - Format tanggal janji kirim lewat `janjiKirim()` di
   [lib/preorder.ts](lib/preorder.ts) → "Dikirim 28 September 2026". Fungsinya
   mengurai string date secara manual, karena `new Date('2026-09-28')` dianggap
@@ -315,7 +362,7 @@ Rekap satu baris per produk PO. Sumber tunggal untuk semua tampilan progres —
 jangan menghitung ulang dari `pesanan_items` sendiri.
 
 `produk_id` · `nama` · `toko_id` · `po_mulai` · `po_selesai` · `po_target` ·
-`po_maks` · `sedang_buka` bool · `terkumpul` int
+`po_maks` · `po_janji_kirim` date · `sedang_buka` bool · `terkumpul` int
 
 - `sedang_buka` = `now() >= po_mulai AND now() <= po_selesai`, dihitung di
   database. Itu sebabnya jam peramban pengunjung tidak pernah ikut menentukan
@@ -328,10 +375,17 @@ jangan menghitung ulang dari `pesanan_items` sendiri.
   `pesanan_items` dibatasi RLS
 - Hak `anon` dan `authenticated` hanya SELECT — sudah diverifikasi
 
-View ini **tidak memuat harga, foto, maupun `po_janji_kirim`**. Pola yang dipakai
-[SectionPreorder](app/components/SectionPreorder.tsx) dan
-[/preorder](app/preorder/page.tsx): query view dulu, kumpulkan `produk_id`, lalu
-sekali ke `produk` dengan `.in('id', ids)` dan `toko!inner`, gabung di JavaScript.
+View ini **tidak memuat harga maupun foto**. Kalau butuh keduanya, query view
+dulu, kumpulkan `produk_id`, lalu sekali ke `produk` dengan `.in('id', ids)` dan
+`toko!inner`, gabung di JavaScript.
+
+Yang membacanya sekarang cuma dua, dan keduanya sudah punya baris `produk`-nya
+sendiri sehingga tidak perlu penggabungan itu:
+
+- [detail produk](app/produk/[id]/page.tsx) — `terkumpul` dan `sedang_buka`
+  untuk panel PO
+- [dashboard penjual](app/dashboard/page.tsx) → [RekapPO](app/components/RekapPO.tsx)
+  — sekali query untuk seluruh produk toko, disaring `.eq('toko_id', ...)`
 
 ### `reviews`
 `id`✳ · `produk_id` · `user_id` → auth.users.id · `nama_reviewer` · `rating` int
@@ -681,15 +735,13 @@ Kalau butuh memastikan sesuatu di sisi data, pakai Supabase MCP untuk `SELECT`
   dan `Cannot create components during render` di Navbar. Jangan dikerjakan
   sepotong — kerjakan sekaligus dalam satu pekerjaan tersendiri.
 - Tabel `ulasan` dan `chat` sudah tidak terpakai tapi belum dihapus.
-- Kolom `produk.po_estimasi_kirim` dan `pesanan_items.po_estimasi_kirim` sudah
-  tidak dipakai kode mana pun, tapi masih ada di database dan masih ditulis
-  `create_pesanan`. View `preorder_progress` juga masih menyeleksinya.
-  Pembuangannya menunggu Inyo (per 12 Agustus 2026).
 - `pesanan.po_batas_kirim` sudah terisi tapi belum ada mekanisme pembatalan
-  otomatis dan belum dipakai UI.
+  otomatis dan belum dipakai UI. Ini satu-satunya bagian janji kirim yang
+  belum bekerja.
 - Seluruh fitur verifikasi alumni (halaman admin, /verifikasi, badge, banner)
   dan konfirmasi pembayaran manual belum diuji manual di browser
   (per 10 Agustus 2026).
-- **Seluruh fitur pre-order belum pernah diuji dengan data sungguhan** — sampai
-  12 Agustus 2026 belum ada satu pun produk `is_preorder = true` di database,
-  jadi semua tampilan PO baru terbukti benar secara tipe dan lint saja.
+- Fitur pre-order baru diuji dengan **satu** produk PO di database (per
+  13 Agustus 2026). Yang belum pernah terlihat dengan data sungguhan: periode
+  yang belum dibuka dan yang sudah ditutup, kuota penuh, serta tampilan
+  progres saat target tercapai.
