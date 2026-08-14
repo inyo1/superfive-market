@@ -23,7 +23,12 @@ type Toko = {
   kategori: string
   deskripsi?: string
   is_official?: boolean
-  users: { nama: string | null; angkatan: number | null } | null
+  users: {
+    nama: string | null
+    angkatan: number | null
+    is_institusi: boolean | null
+    alumni_terverifikasi: boolean | null
+  } | null
 }
 
 type Produk = {
@@ -91,15 +96,22 @@ export default function TokoPage() {
 
       // Data penjual diambil terpisah dari view alumni_publik — embed lewat
       // foreign key ke users tidak lagi bisa dipakai sejak users ditutup.
-      // maybeSingle: pemilik toko resmi itu akun institusi dan memang tidak
-      // punya baris di view alumni — bukan keadaan salah
-      const { data: penjual } = await supabase
-        .from('alumni_publik')
-        .select('nama, angkatan')
-        .eq('id', tokoData.seller_id)
-        .maybeSingle()
+      // Nama dan status alumni dari pengguna_publik (semua akun aktif),
+      // angkatan dari alumni_publik. Pemilik toko resmi itu akun institusi:
+      // dia punya baris di view pertama, tidak di yang kedua.
+      const [profilRes, angkatanRes] = await Promise.all([
+        supabase.from('pengguna_publik')
+          .select('nama, is_institusi, alumni_terverifikasi')
+          .eq('id', tokoData.seller_id).maybeSingle(),
+        supabase.from('alumni_publik').select('angkatan')
+          .eq('id', tokoData.seller_id).maybeSingle(),
+      ])
 
-      setToko({ ...tokoData, users: penjual ?? null } as any)
+      const penjual = profilRes.data
+        ? { ...profilRes.data, angkatan: angkatanRes.data?.angkatan ?? null }
+        : null
+
+      setToko({ ...tokoData, users: penjual } as any)
       setNamaBaru(tokoData.nama_toko)
       setDeskripsiBaru(tokoData.deskripsi ?? '')
 
@@ -287,8 +299,8 @@ export default function TokoPage() {
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', fontSize: '12px', color: '#B5D4F4' }}>
                   <span>{toko.users?.nama || 'Penjual'}</span>
-                  <BadgeVerifikasi alumni={Boolean(toko.users)} size={13} />
-                  <BadgeAngkatan angkatan={toko.users?.angkatan} />
+                  <BadgeVerifikasi alumni={toko.users?.alumni_terverifikasi} size={13} />
+                  <BadgeAngkatan angkatan={toko.users?.angkatan} institusi={toko.users?.is_institusi} />
                 </div>
               )}
             </div>

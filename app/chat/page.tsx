@@ -15,8 +15,8 @@ type ConvDisplay = {
   otherId: string
   otherNama: string | null
   otherAvatar: string | null
-  /** Ada barisnya di alumni_publik — artinya alumni terverifikasi */
   otherAlumni: boolean
+  otherInstitusi: boolean
   otherAngkatan: number | null
   lastMessage: string | null
   lastMessageAt: string | null
@@ -70,13 +70,22 @@ export default function ChatListPage() {
 
       if (!rawConvs?.length) { setLoading(false); return }
 
-      const otherIds = rawConvs.map(c => c.buyer_id === user.id ? c.seller_id : c.buyer_id)
-      const { data: profiles } = await supabase
-        .from('alumni_publik')
-        .select('id, nama, avatar_url, angkatan')
-        .in('id', [...new Set(otherIds)])
+      const otherIds = [...new Set(rawConvs.map(c => c.buyer_id === user.id ? c.seller_id : c.buyer_id))]
 
-      const profileMap = Object.fromEntries((profiles ?? []).map(p => [p.id, p]))
+      // Dua view, dua tujuan yang berbeda:
+      //   pengguna_publik → identitas semua akun aktif, alumni maupun bukan.
+      //                     Ini yang membuat nama pembeli biasa terbaca.
+      //   alumni_publik   → khusus urusan alumni; angkatan hanya ada di sini,
+      //                     dan yang bukan alumni memang tidak punya barisnya.
+      const [profilRes, angkatanRes] = await Promise.all([
+        supabase.from('pengguna_publik')
+          .select('id, nama, avatar_url, is_institusi, alumni_terverifikasi')
+          .in('id', otherIds),
+        supabase.from('alumni_publik').select('id, angkatan').in('id', otherIds),
+      ])
+
+      const profileMap = Object.fromEntries((profilRes.data ?? []).map(p => [p.id, p]))
+      const angkatanMap = Object.fromEntries((angkatanRes.data ?? []).map(a => [a.id, a.angkatan]))
 
       const { data: unreadMsgs } = await supabase
         .from('messages')
@@ -98,11 +107,9 @@ export default function ChatListPage() {
           otherId,
           otherNama: p?.nama ?? null,
           otherAvatar: p?.avatar_url ?? null,
-          // Lawan bicara yang bukan alumni terverifikasi — pembeli biasa,
-          // akun institusi, atau yang pengajuannya belum diputus — memang
-          // tidak punya baris di view publik, jadi namanya tidak terbaca.
-          otherAlumni: Boolean(p),
-          otherAngkatan: p?.angkatan ?? null,
+          otherAlumni: Boolean(p?.alumni_terverifikasi),
+          otherInstitusi: Boolean(p?.is_institusi),
+          otherAngkatan: angkatanMap[otherId] ?? null,
           lastMessage: c.last_message,
           lastMessageAt: c.last_message_at,
           unread: unreadByConv[c.id] ?? 0,
@@ -155,7 +162,7 @@ export default function ChatListPage() {
                         {c.otherNama || 'Pengguna'}
                       </span>
                       <BadgeVerifikasi alumni={c.otherAlumni} size={13} />
-                      <BadgeAngkatan angkatan={c.otherAngkatan} kecil />
+                      <BadgeAngkatan angkatan={c.otherAngkatan} institusi={c.otherInstitusi} kecil />
                     </div>
                     <div style={{ fontSize: '11px', color: '#9ab4cc', flexShrink: 0, marginLeft: '8px' }}>
                       {timeAgo(c.lastMessageAt)}

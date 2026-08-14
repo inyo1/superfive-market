@@ -110,12 +110,14 @@ export default function ReviewSection({ produkId }: { produkId: string }) {
     setSubmitting(true)
     setPesan('')
 
+    // Dari pengguna_publik, bukan users: yang menulis ulasan sekarang bisa
+    // siapa saja, jadi jangan pula jatuh ke kata "Alumni" kalau namanya kosong.
     const { data: userData } = await supabase
-      .from('users')
+      .from('pengguna_publik')
       .select('nama')
       .eq('id', currentUserId)
-      .single()
-    const namaReviewer = userData?.nama ?? 'Alumni'
+      .maybeSingle()
+    const namaReviewer = userData?.nama ?? 'Pengguna'
 
     let error: any = null
 

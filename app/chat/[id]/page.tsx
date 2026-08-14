@@ -20,8 +20,8 @@ type Message = {
 type ConvInfo = {
   otherNama: string | null
   otherAvatar: string | null
-  /** Ada barisnya di alumni_publik — artinya alumni terverifikasi */
   otherAlumni: boolean
+  otherInstitusi: boolean
   otherAngkatan: number | null
   produkNama: string | null
 }
@@ -87,16 +87,24 @@ export default function ChatRoom() {
       if (error || !conv) { router.replace('/chat'); return }
 
       const otherId = conv.buyer_id === user.id ? conv.seller_id : conv.buyer_id
-      const { data: profile } = await supabase
-        // maybeSingle: lawan bicara belum tentu alumni terverifikasi, dan
-        // yang bukan memang tidak punya baris di view publik
-        .from('alumni_publik').select('nama, avatar_url, angkatan').eq('id', otherId).maybeSingle()
+
+      // Identitas dari pengguna_publik — berisi semua akun aktif, jadi nama
+      // pembeli biasa ikut terbaca. Angkatan tetap dari alumni_publik, dan
+      // maybeSingle karena lawan bicara belum tentu alumni.
+      const [profilRes, angkatanRes] = await Promise.all([
+        supabase.from('pengguna_publik')
+          .select('nama, avatar_url, is_institusi, alumni_terverifikasi')
+          .eq('id', otherId).maybeSingle(),
+        supabase.from('alumni_publik').select('angkatan').eq('id', otherId).maybeSingle(),
+      ])
+      const profile = profilRes.data
 
       setConvInfo({
         otherNama: profile?.nama ?? null,
         otherAvatar: profile?.avatar_url ?? null,
-        otherAlumni: Boolean(profile),
-        otherAngkatan: profile?.angkatan ?? null,
+        otherAlumni: Boolean(profile?.alumni_terverifikasi),
+        otherInstitusi: Boolean(profile?.is_institusi),
+        otherAngkatan: angkatanRes.data?.angkatan ?? null,
         produkNama: (conv.produk as any)?.nama ?? null,
       })
 
@@ -215,7 +223,7 @@ export default function ChatRoom() {
               {convInfo?.otherNama || 'Pengguna'}
             </span>
             <BadgeVerifikasi alumni={convInfo?.otherAlumni} size={13} />
-            <BadgeAngkatan angkatan={convInfo?.otherAngkatan} kecil />
+            <BadgeAngkatan angkatan={convInfo?.otherAngkatan} institusi={convInfo?.otherInstitusi} kecil />
           </div>
           {convInfo?.produkNama && (
             <div style={{ fontSize: '11px', color: '#5a7da0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
