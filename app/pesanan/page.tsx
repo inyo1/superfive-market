@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
-import { STATUS_PESANAN, warnaStatus, labelStatus, warnaPembayaran, labelPembayaran, bisaDiterimaPembeli, HARI_SELESAI_OTOMATIS } from '../../lib/statusPesanan'
+import { STATUS_PESANAN, warnaStatus, labelStatus, warnaPembayaran, labelPembayaran, bisaDiterimaPembeli, bisaDibatalkan, HARI_SELESAI_OTOMATIS } from '../../lib/statusPesanan'
 import Navbar from '../components/Navbar'
 import FotoProduk from '../components/FotoProduk'
 import Skeleton, { DaftarSkeletonPesanan } from '../components/Skeleton'
@@ -71,6 +71,13 @@ const WARNA_REFUND: Record<string, string> = {
   gagal:    '#c62828',
 }
 
+// Alasan seragam untuk pembatalan pesanan yang belum dibayar. Pembeli yang
+// salah pesan tidak perlu menjelaskan diri — tidak ada uang yang tertahan dan
+// tidak ada pihak yang dirugikan, jadi menuntut alasan cuma gesekan. Tetap
+// harus ada isinya karena `batalkan_pesanan` menulis alasan apa adanya ke
+// `pesanan.alasan_batal`, dan penjual berhak tahu kenapa pesanannya hilang.
+const ALASAN_BATAL_PEMBELI = 'Dibatalkan pembeli'
+
 const TABS = ['semua', ...STATUS_PESANAN] as const
 type Tab = (typeof TABS)[number]
 
@@ -105,8 +112,14 @@ export default function PesananPage() {
   const [tab, setTab] = useState<Tab>('semua')
   const [loading, setLoading] = useState(true)
   const tampilSkeleton = useTampilSkeleton(loading)
-  const [pesan, setPesan] = useState('')
+  // Pesan pakai penanda ok sendiri, bukan ditebak dari isi teksnya: pesan
+  // error dari database ditampilkan apa adanya dan tidak selalu memuat kata
+  // "Gagal" — "Pesanan sudah dikirim. Ajukan komplain, bukan pembatalan."
+  // akan terbaca sebagai keberhasilan kalau warnanya ditebak dari teks.
+  const [pesan, setPesan] = useState<{ text: string; ok: boolean } | null>(null)
   const [prosesId, setProsesId] = useState<string | null>(null)
+  const [batalId, setBatalId] = useState<string | null>(null)
+  const [alasanBatal, setAlasanBatal] = useState('')
   const [profilPenjual, setProfilPenjual] = useState<Record<string, { angkatan: number | null; is_institusi: boolean }>>({})
   const [refund, setRefund] = useState<Record<string, Refund>>({})
 
@@ -125,7 +138,7 @@ export default function PesananPage() {
         .eq('buyer_id', user.id)
         .order('created_at', { ascending: false })
 
-      if (error) setPesan('Gagal memuat pesanan: ' + error.message)
+      if (error) setPesan({ text: 'Gagal memuat pesanan: ' + error.message, ok: false })
       const baris = (data ?? []) as unknown as Pesanan[]
       setPesanan(baris)
 
@@ -170,9 +183,76 @@ export default function PesananPage() {
         .maybeSingle()
 
       setPesanan(prev => prev.map(p => p.id === id ? { ...p, status: data?.status ?? 'selesai' } : p))
-      setPesan('Terima kasih! Pesanan ditandai selesai.')
+      setPesan({ text: 'Terima kasih! Pesanan ditandai selesai.', ok: true })
     } catch (e) {
-      setPesan('Gagal menyelesaikan pesanan: ' + (e instanceof Error ? e.message : 'coba lagi'))
+      setPesan({ text: 'Gagal menyelesaikan pesanan: ' + (e instanceof Error ? e.message : 'coba lagi'), ok: false })
+    } finally {
+      setProsesId(null)
+    }
+  }
+
+  // Pembatalan oleh pembeli. Lewat `batalkan_pesanan`, bukan UPDATE langsung:
+  // selain dijaga trigger, RPC itu juga yang mengubah payment_status jadi
+  // 'refund' dan membuat baris antrean pengembalian dana.
+  //
+  // Siapa boleh membatalkan dari status apa sudah divalidasi di dalam RPC —
+  // di sini tidak ada validasi yang mengulanginya. `bisaDibatalkan()` cuma
+  // dipakai untuk menyembunyikan tombol yang sudah pasti ditolak.
+  async function batalkanPesanan(p: Pesanan) {
+    const lunas = p.payment_status === 'lunas'
+    const alasan = lunas ? alasanBatal.trim() : ALASAN_BATAL_PEMBELI
+
+    // Satu-satunya pemeriksaan di klien, dan bukan mengulang aturan server:
+    // untuk pesanan lunas alasannya ikut tersimpan di baris refund yang
+    // NOT NULL, jadi kolom kosong akan menggagalkan seluruh pembatalan.
+    if (lunas && !alasan) {
+      setPesan({ text: 'Alasan pembatalan wajib diisi.', ok: false })
+      return
+    }
+
+    setProsesId(p.id)
+    try {
+      const { error } = await supabase.rpc('batalkan_pesanan', {
+        p_pesanan_id: p.id,
+        p_alasan: alasan,
+      })
+      if (error) throw new Error(error.message)
+
+      // Baca ulang barisnya. RPC hanya mengembalikan {ok, refund}, sementara
+      // dibatalkan_at dan payment_status diisi di dalam sana.
+      const { data } = await supabase.from('pesanan')
+        .select('id, status, payment_status, dibatalkan_at, alasan_batal')
+        .eq('id', p.id)
+        .maybeSingle()
+
+      setPesanan(prev => prev.map(x => x.id === p.id
+        ? { ...x, ...(data ?? { status: 'dibatalkan', alasan_batal: alasan }) }
+        : x))
+
+      // Baris refund dibuat oleh RPC yang sama, jadi ambil sekarang juga —
+      // pembeli harus melihat haknya tercatat di kartunya, bukan cuma membaca
+      // pesan yang hilang begitu halaman disegarkan.
+      const { data: barisRefund } = await supabase.from('refund')
+        .select('pesanan_id, nominal, status, created_at, selesai_at')
+        .eq('pesanan_id', p.id)
+        .maybeSingle()
+      if (barisRefund) {
+        setRefund(prev => ({ ...prev, [p.id]: barisRefund as Refund }))
+      }
+
+      setPesan({
+        text: lunas
+          ? 'Pesanan dibatalkan. Pengembalian dana masuk antrean — statusnya bisa kamu pantau di kartu pesanan ini.'
+          : 'Pesanan dibatalkan.',
+        ok: true,
+      })
+      setBatalId(null)
+      setAlasanBatal('')
+    } catch (e) {
+      // Pesan dari database ditampilkan apa adanya, termasuk "Pesanan sudah
+      // dikirim. Ajukan komplain, bukan pembatalan." yang muncul kalau penjual
+      // menandai kirim tepat saat pembeli menekan tombol ini.
+      setPesan({ text: e instanceof Error ? e.message : 'Gagal membatalkan pesanan.', ok: false })
     } finally {
       setProsesId(null)
     }
@@ -209,8 +289,8 @@ export default function PesananPage() {
         </div>
 
         {pesan && (
-          <div style={{ background: pesan.includes('Gagal') ? '#fce4e4' : '#e8f5e9', border: `0.5px solid ${pesan.includes('Gagal') ? '#f09595' : '#a5d6a7'}`, borderRadius: '8px', padding: '10px 14px', fontSize: '12px', color: pesan.includes('Gagal') ? '#c62828' : '#2e7d32', marginBottom: '12px' }}>
-            {pesan}
+          <div style={{ background: pesan.ok ? '#e8f5e9' : '#fce4e4', border: `0.5px solid ${pesan.ok ? '#a5d6a7' : '#f09595'}`, borderRadius: '8px', padding: '10px 14px', fontSize: '12px', color: pesan.ok ? '#2e7d32' : '#c62828', marginBottom: '12px', lineHeight: 1.6 }}>
+            {pesan.text}
           </div>
         )}
 
@@ -429,6 +509,106 @@ export default function PesananPage() {
                   </div>
                 </div>
               )}
+
+              {/* Pembatalan oleh pembeli. Sengaja TIDAK sama dengan versi
+                  penjual di dashboard: yang menentukan bentuknya adalah sudah
+                  ada uang masuk atau belum. */}
+              {bisaDibatalkan(p.status) && (() => {
+                const lunas = p.payment_status === 'lunas'
+                const adaPO = p.pesanan_items.some(i => i.is_preorder)
+                const sedangProses = prosesId === p.id
+
+                if (batalId !== p.id) return (
+                  <div style={{ padding: '0 14px 14px' }}>
+                    <button
+                      onClick={() => { setBatalId(p.id); setAlasanBatal(''); setPesan(null) }}
+                      style={{
+                        width: '100%', background: '#fff', color: '#c62828',
+                        border: '0.5px solid #f09595', padding: '10px',
+                        borderRadius: '8px', fontSize: '12px', fontWeight: '500',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Batalkan Pesanan
+                    </button>
+                  </div>
+                )
+
+                return (
+                  <div style={{ padding: '0 14px 14px' }}>
+                    <div style={{ background: '#fce4e4', borderRadius: '8px', padding: '12px' }}>
+                      <div style={{ fontSize: '13px', fontWeight: '600', color: '#c62828', marginBottom: '6px' }}>
+                        Batalkan pesanan ini?
+                      </div>
+
+                      {lunas ? (
+                        <>
+                          {/* Uangnya sudah masuk. Pembeli harus tahu dananya
+                              tidak kembali seketika sebelum menekan, bukan
+                              sesudahnya. */}
+                          <div style={{ fontSize: '12px', color: '#1a1a1a', lineHeight: 1.7, marginBottom: '8px' }}>
+                            Pembayaranmu sebesar <strong>{fmt(p.total ?? 0)}</strong> sudah masuk.
+                            Kalau dibatalkan, dana itu masuk <strong>antrean pengembalian</strong> dan
+                            diproses admin secara manual — <strong>tidak kembali seketika</strong>.
+                            Statusnya akan tercatat di kartu pesanan ini dan bisa kamu pantau.
+                          </div>
+
+                          {adaPO && (
+                            <div style={{ background: 'rgba(124,77,255,0.10)', border: `0.5px solid ${WARNA_PO_TUA}`, borderRadius: '6px', padding: '9px 11px', marginBottom: '8px' }}>
+                              <div style={{ fontSize: '12px', color: WARNA_PO_TUA, lineHeight: 1.7 }}>
+                                <strong>Ini pesanan pre-order.</strong> Membatalkan berarti melepas
+                                kuota yang sudah kamu pesan, dan kalau periode pre-ordernya sudah
+                                ditutup kamu <strong>tidak bisa memesan lagi</strong>. Pilihan ini
+                                tidak bisa dibatalkan balik.
+                              </div>
+                            </div>
+                          )}
+
+                          <div style={{ fontSize: '11px', fontWeight: '600', color: '#c62828', marginBottom: '4px' }}>
+                            Alasan pembatalan
+                          </div>
+                          <textarea
+                            value={alasanBatal}
+                            onChange={e => setAlasanBatal(e.target.value)}
+                            rows={3}
+                            placeholder="Misal: salah pilih ukuran, atau berubah pikiran"
+                            style={{ width: '100%', padding: '8px 10px', border: '0.5px solid #c5d9ef', borderRadius: '6px', fontSize: '12px', outline: 'none', resize: 'none', boxSizing: 'border-box', fontFamily: 'sans-serif', background: '#fff', marginBottom: '4px' }}
+                          />
+                          <div style={{ fontSize: '11px', color: '#8d4040', marginBottom: '8px' }}>
+                            Alasan ini dibaca penjual dan ikut tercatat di antrean pengembalian dana.
+                          </div>
+                        </>
+                      ) : (
+                        // Belum ada pembayaran: tidak ada yang dirugikan, jadi
+                        // cukup konfirmasi. Menuntut alasan di sini hanya
+                        // gesekan — alasannya diisi seragam oleh sistem.
+                        <div style={{ fontSize: '12px', color: '#1a1a1a', lineHeight: 1.7, marginBottom: '10px' }}>
+                          Belum ada pembayaran yang masuk untuk pesanan ini, jadi tidak ada dana
+                          yang perlu dikembalikan. Pesanan akan langsung ditutup dan stoknya
+                          kembali tersedia.
+                        </div>
+                      )}
+
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          onClick={() => { setBatalId(null); setAlasanBatal('') }}
+                          disabled={sedangProses}
+                          style={{ flex: 1, background: '#fff', color: '#5a7da0', border: '0.5px solid #c5d9ef', padding: '10px', borderRadius: '6px', fontSize: '12px', cursor: sedangProses ? 'not-allowed' : 'pointer' }}
+                        >
+                          Tidak jadi
+                        </button>
+                        <button
+                          onClick={() => batalkanPesanan(p)}
+                          disabled={sedangProses}
+                          style={{ flex: 2, background: sedangProses ? '#e39c9c' : '#c62828', color: '#fff', border: 'none', padding: '10px', borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: sedangProses ? 'not-allowed' : 'pointer' }}
+                        >
+                          {sedangProses ? 'Membatalkan...' : 'Ya, Batalkan Pesanan'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
           )
         })}
