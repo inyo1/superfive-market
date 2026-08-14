@@ -499,6 +499,9 @@ untuk pihak terkait), tapi karena semua aturan siapa-boleh-apa, pengisian cap
 waktu, tenggat, dan antrean refund ada di dalam fungsi. UPDATE langsung akan
 melewati semuanya dan meninggalkan baris setengah jadi.
 
+Sejak 14 Agustus 2026 ini **bukan lagi konvensi, tapi dijaga database** —
+lihat [Trigger penjaga](#trigger-penjaga-trg_jaga_status_pesanan) di bawah.
+
 Perpindahan yang sah:
 
 | Dari | Ke | Oleh | Syarat |
@@ -520,6 +523,74 @@ Cerminannya di klien ada di `aksiPenjual()` dan `bisaDiterimaPembeli()` di
 [lib/statusPesanan.ts](lib/statusPesanan.ts). Itu **hanya** untuk menyembunyikan
 tombol yang pasti ditolak — bukan sumber kebenaran, dan tidak boleh dipakai
 untuk menyimpulkan apa pun yang tidak ditanyakan ke server.
+
+### Trigger penjaga `trg_jaga_status_pesanan`
+
+BEFORE UPDATE di `pesanan`. Menolak **semua** UPDATE langsung yang menyentuh
+kolom di bawah, dengan error:
+
+> Status pesanan hanya boleh diubah lewat ubah_status_pesanan() atau
+> batalkan_pesanan(), bukan UPDATE langsung
+
+Kolom yang dikunci — sebelas, semuanya milik mesin status:
+
+```
+status · payment_status · no_resi · kurir · batas_kirim
+paid_at · diproses_at · dikirim_at · selesai_at · dibatalkan_at · alasan_batal
+```
+
+Kolom lain di `pesanan` tetap bebas di-UPDATE seperti biasa (`catatan`,
+`alamat_kirim`, `penerima_nama`, dan seterusnya) — penjaganya membandingkan
+`IS DISTINCT FROM` per kolom, jadi yang tidak berubah tidak ikut tertahan.
+
+**Jangan pernah menulis kolom-kolom itu dengan `.update()` dari aplikasi.**
+Bukan "sebaiknya jangan" — permintaannya akan gagal. Kalau butuh perpindahan
+status baru, tambahkan aturannya di dalam `ubah_status_pesanan`, jangan cari
+jalan memutar.
+
+Kenapa perlu, padahal sudah ada aturan tertulis: RLS **mengizinkan** penjual
+meng-UPDATE baris pesanannya sendiri. Jadi satu tempat saja di UI yang menulis
+status langsung sudah cukup untuk melewati seluruh mesin status — lompat ke
+`dikirim` tanpa resi, tanpa `paid_at`, tanpa `batas_kirim`. Dan pesanan dengan
+`batas_kirim` NULL tidak akan pernah disentuh cron, sehingga janji "kalau telat,
+uang kembali" diam-diam batal untuk pesanan itu tanpa ada yang tahu.
+
+#### Pola penanda transaksi — akan berulang untuk tabel lain
+
+Yang membedakan RPC resmi dari UPDATE biasa adalah penanda transaksi
+`superfive.lewat_rpc`, dipasang **di dalam** RPC dengan:
+
+```sql
+perform set_config('superfive.lewat_rpc', 'ya', true);  -- true = is_local
+```
+
+Dua sifat yang membuat pola ini aman:
+
+- `is_local = true` berarti penandanya **hilang sendiri saat transaksi
+  selesai**, sukses maupun gagal. Tidak ada yang perlu membersihkannya, dan
+  tidak ada sisa yang bocor ke permintaan berikutnya di koneksi yang sama
+- **Tidak bisa dipasang dari PostgREST**, karena setiap permintaan REST
+  berjalan di transaksinya sendiri. Client tidak punya cara memanggil
+  `set_config` lalu meng-UPDATE di transaksi yang sama
+
+Yang memasang penanda ini: `ubah_status_pesanan`, `batalkan_pesanan`,
+`batalkan_pesanan_sistem`, dan `jalankan_tugas_pesanan`. `create_pesanan`
+tidak perlu — trigger-nya BEFORE UPDATE, sedangkan pembuatan pesanan INSERT.
+
+Kalau nanti ada tabel lain yang butuh penjagaan serupa, ikuti pola yang sama:
+penanda transaksi + trigger yang melempar error, bukan flag di parameter RPC
+(alasannya di [Kewenangan sistem harus dari hak akses](#kewenangan-sistem-harus-dari-hak-akses-bukan-dari-argumen)).
+
+#### Kenapa melempar error, bukan diam-diam seperti `jaga_field_sensitif`
+
+Dua penjaga di project ini sengaja berperilaku berbeda:
+
+| Penjaga | Kelakuan | Kenapa |
+|---|---|---|
+| `jaga_field_sensitif` (`users`) | kembalikan nilai lama **diam-diam** | yang ditahan adalah penyerang yang mencoba menaikkan `role` sendiri. Gagal tanpa pesan tidak memberi petunjuk apa pun soal cara kerja penjagaannya |
+| `jaga_status_pesanan` (`pesanan`) | **lempar error** terang-terangan | yang ditahan adalah pengembang sendiri yang salah menulis kode. Kegagalan diam-diam di sini akan menghasilkan pesanan setengah jadi yang baru ketahuan berminggu-minggu kemudian, dan sangat sulit dilacak |
+
+Jangan menyamakan keduanya "supaya konsisten" — perbedaannya justru intinya.
 
 ### Tenggat otomatis
 
@@ -735,6 +806,7 @@ Jangan tulis manual hal-hal di bawah ini dari aplikasi — sudah ditangani datab
 
 | Trigger | Kapan | Yang dilakukan |
 |---|---|---|
+| `trg_jaga_status_pesanan` | BEFORE UPDATE `pesanan` | **Melempar error** kalau UPDATE langsung menyentuh kolom mesin status. Lihat [Trigger penjaga](#trigger-penjaga-trg_jaga_status_pesanan) |
 | `trg_nomor_pesanan` | BEFORE INSERT `pesanan` | Isi `nomor_pesanan` format `SF-YYMM-00001`. Karena BEFORE, `.select('nomor_pesanan')` langsung dapat nilainya |
 | `trg_pesanan_updated` | BEFORE UPDATE `pesanan` | Isi `updated_at` |
 | `trg_tambah_terjual` | BEFORE UPDATE `pesanan` | Saat status jadi `selesai`: tambah `produk.terjual` dan isi `selesai_at` |
@@ -745,6 +817,13 @@ Jangan tulis manual hal-hal di bawah ini dari aplikasi — sudah ditangani datab
 
 `trg_kurangi_stok` melewati produk PO dengan sengaja — itu sebabnya stok produk
 PO selalu 0 dan **tidak boleh ditampilkan** sebagai angka di UI.
+
+Urutan trigger BEFORE UPDATE di `pesanan` mengikuti abjad, jadi
+`trg_jaga_status_pesanan` selalu jalan lebih dulu. Itu kebetulan yang
+menguntungkan tapi bukan sesuatu yang perlu diandalkan: `trg_tambah_terjual`
+mengisi `NEW.selesai_at` **setelah** penjaga lewat, dan itu aman karena
+penjaganya sudah dilewatkan oleh penanda `superfive.lewat_rpc` — bukan karena
+urutannya.
 
 ## Ringkasan RLS
 
