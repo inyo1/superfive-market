@@ -30,19 +30,21 @@ di file yang bersangkutan.
 app/
   page.tsx           beranda
   about/             tentang
-  admin/             panel admin (hapus produk & toko) + /admin/verifikasi
+  admin/             panel admin (hapus produk & toko)
+                     + /admin/verifikasi (alumni) + /admin/penjual (izin jualan)
   alumni/            direktori alumni
   auth/              login & daftar  → /auth?redirect=...&msg=...
                      plus /auth/reset untuk ganti kata sandi
   chat/              chat pembeli–penjual
   checkout/          checkout, panggil RPC create_pesanan
   dashboard/         dashboard penjual (produk & pesanan masuk)
+  jual/              "Mulai Berjualan" — panggil RPC ajukan_jadi_penjual
   keranjang/         keranjang belanja
   pesanan/           riwayat pesanan pembeli
   produk/            daftar produk + /produk/[id] detail + /produk/tambah
   profil/            profil & alamat pengguna
   toko/              /toko/[id] halaman toko + /toko/saya
-  verifikasi/        unggah bukti alumni
+  verifikasi/        pengajuan alumni — panggil RPC ajukan_alumni
   components/
     Badge*           BadgeAngkatan, BadgeOfficial, BadgePreorder, BadgeVerifikasi
     Editor*          EditorVarian, EditorPreorder — dipakai form tambah & edit
@@ -83,6 +85,20 @@ Profil alumni. `id` sama dengan `auth.users.id`.
 `catatan_pendaftar` · `diverifikasi_at` · `diverifikasi_oleh` uuid ·
 `alasan_tolak` · `is_institusi`✳ bool (default false) · `created_at`
 
+Dua sumbu status — **ini yang dipakai semua logika baru**, lihat
+[Dua sumbu verifikasi](#dua-sumbu-verifikasi):
+
+`status_alumni`✳ text (default `umum`) · `status_penjual`✳ text
+(default `belum_ajukan`) · `alamat_lengkap` · `bank_nama` · `bank_rekening` ·
+`bank_atas_nama` · `setuju_aturan_at` · `ajukan_penjual_at` ·
+`penjual_diputus_at` · `penjual_diputus_oleh` uuid · `alasan_penjual` ·
+`jml_telat_kirim`✳ int (default 0) · `telat_terakhir_at`
+
+Penonaktifan akun dan permintaan data ulang oleh admin:
+
+`nonaktif_at` · `nonaktif_oleh` uuid · `alasan_nonaktif` · `catatan_admin` ·
+`diminta_data_at` · `diminta_data_oleh` uuid
+
 Alamat disimpan terpisah per bagian, lalu dirangkai jadi satu string saat checkout
 (lihat `buildAlamat` di [app/checkout/page.tsx](app/checkout/page.tsx)).
 
@@ -100,14 +116,133 @@ Trigger `jaga_field_sensitif` mengembalikan diam-diam nilai `role`,
 `status_verifikasi`, `diverifikasi_at`, `diverifikasi_oleh`, `alasan_tolak`,
 dan `is_institusi` ke nilai lama kalau yang mengubah bukan admin — tidak
 melempar error, hanya tidak berubah. Karena itu client **tidak perlu** dan
-**tidak boleh** menulis kolom-kolom itu; pakai RPC `verifikasi_alumni`.
+**tidak boleh** menulis kolom-kolom itu; pakai RPC yang sesuai.
+
+### Dua sumbu verifikasi
+
+Sejak 14 Agustus 2026 verifikasi dipecah jadi **dua pertanyaan yang berbeda**,
+dan menggabungkannya kembali adalah kesalahan yang paling mudah terjadi di
+sini. Belanja **tidak bergantung pada keduanya** — pembeli sekarang siapa saja.
+
+```
+status_alumni  : umum | menunggu | alumni | ditolak
+  Siapa orang ini. Menentukan lencana dan masuk-tidaknya ke direktori alumni.
+  'umum' = pembeli biasa, tidak diperiksa siapa pun. Itu default-nya.
+
+status_penjual : belum_ajukan | menunggu | aktif | ditolak | dibekukan
+  HANYA ini yang menentukan toko tayang.
+```
+
+Keduanya dijaga CHECK constraint (`chk_status_alumni`, `chk_status_penjual`),
+jadi nilai di luar daftar ditolak database.
+
+Yang perlu dipegang:
+
+- **Jangan pernah memakai status alumni untuk memagari belanja.** Yang
+  berstatus `umum` tidak boleh dihalangi apa pun: tidak ada layar tunggu,
+  tidak ada pengalihan paksa, tidak ada tombol yang dimatikan. Satu-satunya
+  ajakan verifikasi ada di [/profil](app/profil/page.tsx), sekali, bernada
+  undangan
+- **Pintu berjualan hanya `status_penjual = 'aktif'`.** Itu yang diperiksa
+  [/produk/tambah](app/produk/tambah/page.tsx). Policy `toko_insert_own`
+  masih memakai `status_verifikasi` lama, jadi pagar itu **tidak cukup**
+  sendirian — alumni terverifikasi yang belum disetujui admin masih lolos RLS
+- **Lencana alumni hanya untuk `status_alumni = 'alumni'`.**
+  [BadgeVerifikasi](app/components/BadgeVerifikasi.tsx) menerima boolean, bukan
+  status mentah, supaya tidak ada pemanggil yang menebak nilai mana yang sah
+- Syarat berjualan adalah alumni: `ajukan_jadi_penjual` menolak yang
+  `status_alumni <> 'alumni'`, dan `putuskan_penjual` menolak mengaktifkan
+  yang bukan alumni maupun institusi
+- Penjual `ditolak` atau `dibekukan` **tetap masuk dashboard**, dan itu
+  disengaja: tokonya turun dari etalase, **kewajibannya tidak**. Pesanan yang
+  sedang berjalan tetap harus dikirim, tenggat dan pembatalan otomatis tetap
+  jalan. Karena itu dashboard menampilkan `alasan_penjual` beserta pengingat
+  kewajiban, bukan mengunci halamannya
+
+#### ⚠ `jaga_field_sensitif` BELUM menjaga dua kolom ini
+
+Trigger penjaganya masih menjaga daftar kolom yang lama saja: `role`,
+`status_verifikasi`, `diverifikasi_at`, `diverifikasi_oleh`, `alasan_tolak`,
+`is_institusi`. **`status_alumni` dan `status_penjual` tidak ada di daftar
+itu**, sementara policy `Users can update own profile` mengizinkan siapa pun
+meng-UPDATE barisnya sendiri.
+
+Sudah dibuktikan dengan menjalankannya sebagai `authenticated` (di dalam
+transaksi yang di-rollback): UPDATE ini **berhasil**.
+
+```sql
+update users set status_alumni = 'alumni', status_penjual = 'aktif'
+where id = auth.uid();   -- lolos, tidak dikembalikan trigger
+```
+
+Artinya pengguna biasa bisa memberi dirinya sendiri lencana alumni, masuk
+direktori, dan menyetel dirinya penjual aktif lewat REST — tanpa lewat
+`ajukan_alumni`, `verifikasi_alumni`, maupun `putuskan_penjual`.
+
+Yang untuk sekarang menahan pintu terakhir hanyalah `toko_insert_own`, yang
+masih memeriksa `status_verifikasi` — kolom lama yang memang dijaga trigger.
+Jadi begitu policy itu dipindahkan ke `status_penjual` (langkah yang wajar
+berikutnya), lubangnya jadi utuh. **Perbaiki triggernya lebih dulu.**
+
+Perbaikannya perlu dijalankan Inyo di SQL editor:
+
+```sql
+create or replace function public.jaga_field_sensitif()
+returns trigger language plpgsql security definer set search_path to 'public' as $$
+begin
+  if public.is_admin() then return new; end if;
+
+  new.role                 := old.role;
+  new.status_verifikasi    := old.status_verifikasi;
+  new.diverifikasi_at      := old.diverifikasi_at;
+  new.diverifikasi_oleh    := old.diverifikasi_oleh;
+  new.alasan_tolak         := old.alasan_tolak;
+  new.is_institusi         := old.is_institusi;
+  -- dua sumbu baru
+  new.status_alumni        := old.status_alumni;
+  new.status_penjual       := old.status_penjual;
+  new.is_seller            := old.is_seller;
+  new.alasan_penjual       := old.alasan_penjual;
+  new.penjual_diputus_at   := old.penjual_diputus_at;
+  new.penjual_diputus_oleh := old.penjual_diputus_oleh;
+  new.jml_telat_kirim      := old.jml_telat_kirim;
+  new.telat_terakhir_at    := old.telat_terakhir_at;
+  new.nonaktif_at          := old.nonaktif_at;
+  new.nonaktif_oleh        := old.nonaktif_oleh;
+  new.alasan_nonaktif      := old.alasan_nonaktif;
+  new.catatan_admin        := old.catatan_admin;
+  return new;
+end;
+$$;
+```
+
+**Jangan pasang daftar itu apa adanya.** Trigger ini melewatkan perubahan
+hanya kalau `is_admin()`, dan `is_admin()` bernilai false saat pengguna biasa
+memanggil `ajukan_alumni` atau `ajukan_jadi_penjual` — kedua RPC itu
+`SECURITY DEFINER` tapi `auth.uid()` di dalamnya tetap pengguna itu sendiri.
+Jadi begitu `status_alumni` dan `status_penjual` masuk daftar, kedua
+pengajuan itu ikut dikembalikan diam-diam dan berhenti bekerja.
+
+Yang perlu ditambahkan berbarengan: penanda transaksi, persis pola
+[`superfive.lewat_rpc`](#pola-penanda-transaksi--akan-berulang-untuk-tabel-lain)
+yang sudah terbukti di `pesanan` — RPC memasang penandanya, trigger melewati
+pemeriksaan saat penanda itu ada. Pakai ulang pola itu, jangan bikin cara
+baru.
+
+`status_verifikasi` lama **masih ada dan masih ditulis** oleh `ajukan_alumni`
+dan `verifikasi_alumni` selama peralihan. Jangan dibuang, jangan diandalkan —
+tidak ada satu pun kode klien yang membacanya lagi (sudah diperiksa dengan
+grep). Kalau ada yang kembali membacanya, itu hampir pasti bug: nilainya
+default `menunggu` untuk **semua** akun baru, termasuk pembeli biasa yang
+tidak pernah mengaku alumni.
 
 ### Akun institusi (`is_institusi`)
 
 Menandai akun yang **bukan alumni perorangan** — toko resmi, panitia, dan
 sejenisnya. Akun seperti ini dikecualikan dari:
 
-- **Direktori alumni** (`/alumni`) — query wajib `.eq('is_institusi', false)`
+- **Direktori alumni** (`/alumni`) — sudah disaring di view `alumni_publik`,
+  **jangan menyaring lagi di klien**
 - **Hitungan ALUMNI** di hero beranda
 - **Pengelompokan dan filter angkatan**, karena keduanya dihitung dari hasil
   query direktori
@@ -121,9 +256,11 @@ sejenisnya. Akun seperti ini dikecualikan dari:
 Alasannya: akun institusi tidak punya angkatan yang bermakna, dan menampilkan
 angkatan kosong membuatnya terbaca seperti data yang belum lengkap.
 
-Setiap query yang mengambil `angkatan` untuk ditampilkan harus ikut mengambil
-`is_institusi` dan meneruskannya ke `BadgeAngkatan`. Di konteks toko resmi,
-gantinya adalah lencana OFFICIAL dari
+Untuk data yang datang dari `alumni_publik` **tidak perlu** meneruskan
+`is_institusi` ke `BadgeAngkatan`: akun institusi tidak punya baris di view
+itu sama sekali, jadi angkatannya sudah pasti kosong. Prop `institusi` masih
+ada dan tetap dipakai untuk data yang dibaca langsung dari `users`. Di konteks
+toko resmi, gantinya adalah lencana OFFICIAL dari
 [BadgeOfficial](app/components/BadgeOfficial.tsx).
 
 ### `alumni_publik` (VIEW)
@@ -131,12 +268,38 @@ View baca-saja berisi kolom `users` yang aman dilihat siapa pun, termasuk
 pengunjung yang belum login.
 
 `id` · `nama` · `angkatan` · `avatar_url` · `foto_url` · `is_seller` ·
-`status_verifikasi` · `is_institusi` · `created_at`
+`created_at`
+
+**View-nya menyaring sendiri**, dan ini yang paling penting soal cara pakainya:
+
+```sql
+WHERE status_alumni = 'alumni' AND nonaktif_at IS NULL AND NOT is_institusi
+```
+
+Akibatnya, tiga hal:
+
+- **Ada barisnya di sini = alumni terverifikasi.** Itu sebabnya
+  `BadgeVerifikasi` cukup diberi `alumni={Boolean(baris)}` — tidak perlu kolom
+  status, dan kolomnya memang sudah tidak ada
+- **Jangan menyaring lagi di klien.** `.eq('is_institusi', false)` akan gagal
+  karena kolomnya sudah tidak ada di view, dan menyaring dua kali di dua
+  tempat berbeda hanya menunggu salah satunya ketinggalan saat aturannya
+  berubah
+- **Yang tidak punya baris bukan keadaan salah.** Pembeli biasa, akun
+  institusi, akun nonaktif — semuanya wajar tidak ada di sini. Untuk lookup
+  satu orang pakai `.maybeSingle()`, bukan `.single()`; `.single()` akan
+  melempar error untuk keadaan yang normal
+
+Konsekuensi yang belum terpecahkan: **nama pembeli non-alumni tidak terbaca
+di mana pun**, termasuk di header chat penjual. `users` tertutup dan
+`alumni_publik` tidak memuat mereka. Untuk sekarang UI jatuh ke kata
+"Pengguna". Kalau ini mau diperbaiki, yang dibutuhkan view publik baru yang
+memuat nama & avatar semua akun aktif — bukan melonggarkan RLS `users`.
 
 Cara pakainya sama seperti tabel biasa:
-`supabase.from('alumni_publik').select('id, nama, angkatan, status_verifikasi')`
+`supabase.from('alumni_publik').select('id, nama, angkatan')`
 
-Dua hal yang perlu diingat:
+Dua hal lagi:
 
 - **Embed foreign key ke `users` tidak bisa dipakai lagi** untuk data publik.
   Pola `toko(nama_toko, users(angkatan))` akan kosong. Gantinya: query `toko`
@@ -781,10 +944,66 @@ Dua akibatnya untuk UI:
   klien sudah lewat tenggat. Baca statusnya dari database
 - Untuk tenggat kirim, tampilkan hasil `tenggatEfektif()`, bukan `batas_kirim`
 
+### `ajukan_alumni` — pengguna sendiri
+
+Mengaku alumni. Dipanggil dari [/verifikasi](app/verifikasi/page.tsx) dan
+sekali lagi tepat setelah pendaftaran, kalau pendaftarnya memilih "Saya alumni
+SMPN 5 Bandung".
+
+```ts
+const { error } = await supabase.rpc('ajukan_alumni', {
+  p_angkatan: 2015,
+  p_catatan:  catatan || null,   // opsional
+})
+// data: { ok: true, status: 'menunggu' }
+```
+
+Menolak kalau sudah `alumni`, sudah `menunggu`, akunnya nonaktif, atau
+angkatannya tidak masuk akal (< 1950 atau melebihi tahun berjalan). Kolom
+`angkatan` diisi RPC ini, jadi UI tidak perlu menulisnya terpisah.
+
+### `ajukan_jadi_penjual` — pengguna sendiri
+
+Pintu berjualan. Dipanggil dari [/jual](app/jual/page.tsx).
+
+```ts
+const { error } = await supabase.rpc('ajukan_jadi_penjual', {
+  p_alamat:         alamat,        // alamat asal pengiriman
+  p_bank_nama:      'BCA',
+  p_bank_rekening:  '1234567890',
+  p_bank_atas_nama: nama,
+  p_setuju_aturan:  true,
+})
+// data: { ok: true, status: 'menunggu' }
+```
+
+**Syaratnya `status_alumni = 'alumni'`** — kalau bukan, fungsinya melempar
+"Kamu harus terverifikasi sebagai alumni dulu sebelum bisa berjualan". Karena
+itu UI tidak menampilkan formulirnya sama sekali untuk yang belum alumni:
+percuma mengisi panjang lebar lalu ditolak di detik terakhir.
+
+Juga menolak yang sudah `aktif`, sedang `menunggu`, atau `dibekukan`. Yang
+`ditolak` boleh mengirim ulang.
+
+### `putuskan_penjual` — hanya admin
+
+```ts
+const { data, error } = await supabase.rpc('putuskan_penjual', {
+  p_user_id:   id,
+  p_keputusan: 'aktif',   // 'aktif' | 'ditolak' | 'dibekukan'
+  p_alasan:    null,      // wajib untuk 'ditolak' dan 'dibekukan'
+})
+// data: { ok: true, nama, status }
+```
+
+Ikut menyetel `is_seller`. Menolak mengaktifkan yang bukan alumni dan bukan
+akun institusi. Dipakai [/admin/penjual](app/admin/penjual/page.tsx).
+
 ### `verifikasi_alumni` — hanya admin
 
-Menyetujui atau menolak pendaftar. Jangan menulis `status_verifikasi` langsung
-ke tabel — trigger `jaga_field_sensitif` akan mengabaikannya tanpa error.
+Menyetujui atau menolak pendaftar alumni. Jangan menulis `status_alumni` atau
+`status_verifikasi` langsung ke tabel — trigger `jaga_field_sensitif` akan
+mengabaikannya tanpa error.
 
 ```ts
 const { data, error } = await supabase.rpc('verifikasi_alumni', {
@@ -792,13 +1011,40 @@ const { data, error } = await supabase.rpc('verifikasi_alumni', {
   p_setujui: true,      // false = tolak
   p_alasan:  null,      // wajib diisi kalau menolak
 })
-// data: { nama, status }
+// data: { nama, status }   status: 'alumni' | 'ditolak'
 ```
 
-### `is_admin()` — helper
+Menulis **kedua** kolom status sekaligus (`status_alumni` dan
+`status_verifikasi` lama). Menolak kalau sasarannya diri sendiri, kalau
+sasarannya sesama admin dan keputusannya menolak, atau kalau angkatannya masih
+kosong untuk akun non-institusi.
 
-Mengembalikan boolean, dipakai di dalam policy. Hanya bisa dipanggil pengguna
-yang sudah login. Di client cukup baca `users.role` milik sendiri.
+### `minta_data_ulang` — hanya admin
+
+Mengembalikan `status_verifikasi` ke `menunggu` dengan `catatan_admin`, untuk
+keraguan administratif kecil yang dulu memaksa admin menolak. Catatannya
+ditampilkan di [/verifikasi](app/verifikasi/page.tsx).
+
+```ts
+await supabase.rpc('minta_data_ulang', { p_user_id: id, p_catatan: catatan })
+```
+
+Catatan: fungsi ini **hanya menyentuh sumbu lama** `status_verifikasi`, belum
+`status_alumni`. Belum ada UI yang memanggilnya.
+
+### `nonaktifkan_user` / `aktifkan_user` — hanya admin
+
+Menonaktifkan akun (`nonaktif_at`, `alasan_nonaktif`) dan membuka kembali.
+Akun nonaktif hilang dari `alumni_publik` dan `penjual_aktif()` ikut
+mengembalikan false, jadi tokonya turun. Menolak menonaktifkan diri sendiri
+dan admin aktif terakhir. Belum ada UI yang memanggil keduanya.
+
+### `is_admin()` dan `penjual_aktif(uuid)` — helper policy
+
+Dipakai **di dalam policy**, bukan dari aplikasi. Keduanya `SECURITY DEFINER`
+dan **sengaja punya EXECUTE untuk `anon`** — alasannya di
+[Temuan RLS](#temuan-rls-yang-akan-berulang). Di client cukup baca
+`users.role` milik sendiri.
 
 ## Trigger Otomatis
 
@@ -814,7 +1060,7 @@ Jangan tulis manual hal-hal di bawah ini dari aplikasi — sudah ditangani datab
 | `trg_kembalikan_stok` | BEFORE UPDATE `pesanan` | Saat status jadi `dibatalkan`: kembalikan stok varian dan produk. **Produk PO dilewati sepenuhnya.** Lihat [Pengembalian stok](#pengembalian-stok-trg_kembalikan_stok) |
 | `trg_refresh_rating` | AFTER INSERT/UPDATE/DELETE `reviews` | Hitung ulang rating produk |
 | `trg_jaga_toko_official` | BEFORE INSERT/UPDATE `toko` | Kembalikan `is_official` ke false / nilai lama kalau yang mengubah bukan admin |
-| `trg_jaga_field_sensitif` | BEFORE UPDATE `users` | Kembalikan `role`, `status_verifikasi`, dan kawan-kawan ke nilai lama kalau bukan admin |
+| `trg_jaga_field_sensitif` | BEFORE UPDATE `users` | Kembalikan `role`, `status_verifikasi`, dan kawan-kawan ke nilai lama kalau bukan admin. **Belum menjaga `status_alumni` dan `status_penjual`** — lihat [peringatannya](#-jaga_field_sensitif-belum-menjaga-dua-kolom-ini) |
 
 `trg_kurangi_stok` melewati produk PO dengan sengaja — itu sebabnya stok produk
 PO selalu 0 dan **tidak boleh ditampilkan** sebagai angka di UI.
@@ -861,12 +1107,18 @@ tidak.
 - `users` — SELECT/UPDATE hanya pemilik (`id = auth.uid()`), plus akses penuh
   untuk admin lewat `users_admin_all`. **Tidak ada akses publik.** Data alumni
   lain diambil dari view `alumni_publik`
-- `produk`, `toko`, `produk_varian` — SELECT terbuka untuk publik;
-  INSERT/UPDATE/DELETE hanya pemilik toko (`toko.seller_id = auth.uid()`) atau
-  admin. Untuk `produk_varian` kepemilikannya ditelusuri lewat
-  `produk → toko`. `toko_insert_own` juga menolak pengguna yang
-  `status_verifikasi`-nya belum `terverifikasi`, jadi yang belum lolos
-  verifikasi tidak bisa membuka toko
+- `produk` dan `toko` — SELECT publik **hanya kalau penjualnya aktif**:
+  `penjual_aktif(seller_id) OR seller_id = auth.uid() OR is_admin()`. Jadi toko
+  penjual yang dibekukan hilang dari etalase, tapi **pemiliknya sendiri tetap
+  bisa melihatnya** — itu disengaja supaya dia bisa membenahi datanya
+- `produk_varian` — SELECT terbuka penuh (`true`); yang menyembunyikan produknya
+  adalah policy `produk`
+- INSERT/UPDATE/DELETE ketiganya hanya pemilik toko
+  (`toko.seller_id = auth.uid()`) atau admin. Untuk `produk_varian`
+  kepemilikannya ditelusuri lewat `produk → toko`. `toko_insert_own` masih
+  memeriksa `status_verifikasi = 'terverifikasi'` — sumbu **lama**, jadi pagar
+  ini tidak setara dengan `status_penjual = 'aktif'` dan tidak boleh
+  diandalkan sendirian, lihat [Dua sumbu verifikasi](#dua-sumbu-verifikasi)
 - `keranjang` — pengguna hanya bisa menyentuh barisnya sendiri
 - `pesanan` — INSERT wajib `buyer_id = auth.uid()`. SELECT/UPDATE untuk pembeli
   (`buyer_id = auth.uid()`) **atau** penjual pemilik toko
@@ -946,15 +1198,21 @@ where table_schema='public' and table_name='nama_objek'
 
 ## ATURAN: Hak EXECUTE Fungsi Baru
 
-Tepat **lima** fungsi yang boleh dipanggil pengguna login, dan tidak satu pun
-boleh dipanggil `anon`:
+Dua belas fungsi boleh dipanggil pengguna login:
 
 ```
 create_pesanan · ubah_status_pesanan · batalkan_pesanan
-verifikasi_alumni · is_admin
+ajukan_alumni · ajukan_jadi_penjual
+verifikasi_alumni · putuskan_penjual · minta_data_ulang
+nonaktifkan_user · aktifkan_user
+is_admin · penjual_aktif
 ```
 
-Semua sisanya — fungsi trigger, `batalkan_pesanan_sistem`, dan
+Dua di antaranya — **`is_admin` dan `penjual_aktif`** — juga punya EXECUTE
+untuk `anon`, dan itu **wajib**, bukan kelalaian. Alasannya di
+[Temuan RLS](#temuan-rls-yang-akan-berulang). Sisanya `anon_bisa = false`.
+
+Semua fungsi lain — fungsi trigger, `batalkan_pesanan_sistem`, dan
 `jalankan_tugas_pesanan` — tidak punya EXECUTE untuk `anon` maupun
 `authenticated`. Sudah diverifikasi dengan `has_function_privilege`.
 
@@ -982,9 +1240,10 @@ select proname,
 from pg_proc where pronamespace = 'public'::regnamespace order by proname;
 ```
 
-`anon_bisa` harus `false` untuk **semua** baris. Bisa juga dilihat dari
-`pg_proc.proacl`: kalau di sana ada entri tanpa nama peran (`=X/postgres`),
-itu hibah PUBLIC yang masih menempel.
+`anon_bisa` harus `false` untuk semua baris **kecuali `is_admin` dan
+`penjual_aktif`**, yang memang perlu. Bisa juga dilihat dari `pg_proc.proacl`:
+kalau di sana ada entri tanpa nama peran (`=X/postgres`), itu hibah PUBLIC yang
+masih menempel.
 
 ### Kewenangan sistem harus dari hak akses, bukan dari argumen
 
@@ -1000,6 +1259,66 @@ Sekarang jalur sistem dipisah jadi fungsi tersendiri
 membedakan sistem dari pengguna adalah **hak akses**, bukan nilai argumen.
 Kalau nanti ada jalur istimewa lain, ikuti pola yang sama: fungsi terpisah,
 tanpa grant — jangan tambahkan flag.
+
+## ATURAN: Uji Setiap Policy Baru sebagai `anon` dan `authenticated`
+
+**Setiap policy baru wajib DIJALANKAN dengan `set local role anon` dan
+`set local role authenticated`, bukan sekadar dibaca.** Policy yang terbaca
+benar bisa berperilaku sama sekali lain tergantung siapa yang bertanya.
+
+```sql
+begin;
+  set local role anon;
+  select count(*) from public.produk;      -- pengunjung
+rollback;
+
+begin;
+  set local role authenticated;
+  set local request.jwt.claims to '{"sub":"<uuid-user>"}';
+  select count(*) from public.produk;      -- pengguna login
+rollback;
+```
+
+Ini bukan kehati-hatian berlebihan. Dua temuan di bawah keduanya lolos
+pembacaan mata dan baru ketahuan saat benar-benar dijalankan.
+
+### Temuan RLS yang akan berulang
+
+**(a) Subquery ke `users` di dalam policy dijalankan sebagai peran penanya.**
+
+Artinya RLS `users` ikut berlaku di dalam subquery itu, dan karena `users`
+tertutup untuk publik, `anon` melihat **himpunan kosong**. Policy lama memakai
+`NOT EXISTS (select 1 from users where ...)` — dan `NOT EXISTS` atas himpunan
+kosong **selalu true**. Jadi policy itu tidak pernah benar-benar memeriksa apa
+pun untuk pengunjung: penjagaan yang terlihat ada di teksnya, tapi tidak ada
+efeknya.
+
+Sekarang jalannya lewat `penjual_aktif(seller_id)` yang `SECURITY DEFINER`,
+sehingga pemeriksaannya berjalan dengan hak pemilik fungsi dan hasilnya sama
+untuk siapa pun yang bertanya.
+
+Aturan turunannya: **jangan menaruh subquery ke tabel ber-RLS langsung di
+dalam policy** kalau tabel itu tidak terbaca oleh peran yang akan dievaluasi.
+Bungkus jadi fungsi `SECURITY DEFINER` — dan hati-hati khusus dengan
+`NOT EXISTS`, karena bentuk itulah yang gagalnya diam-diam ke arah "izinkan".
+
+**(b) Fungsi helper yang dipakai di policy harus bisa dipanggil peran yang
+mengevaluasinya.**
+
+`is_admin()` muncul di dalam policy yang juga dievaluasi `anon` (mis.
+`produk_select_public`). Tanpa EXECUTE untuk `anon`, evaluasi policy-nya gagal
+dengan permission denied — dan yang terlihat di aplikasi bukan pesan error
+yang jelas, melainkan **halaman kosong untuk pengunjung**.
+
+Karena itu `is_admin()` dan `penjual_aktif()` sengaja diberi EXECUTE ke `anon`.
+Keduanya aman: `is_admin()` hanya membaca peran si penanya sendiri dan
+mengembalikan false untuk `anon`, `penjual_aktif()` hanya menjawab pertanyaan
+yang jawabannya sudah publik lewat etalase.
+
+Ini **berlawanan** dengan aturan umum "tidak ada fungsi yang boleh dipanggil
+`anon`" di [Hak EXECUTE Fungsi Baru](#aturan-hak-execute-fungsi-baru).
+Pengecualiannya hanya untuk helper yang dipakai di dalam policy — bukan untuk
+fungsi yang mengubah data.
 
 ## ATURAN: Perubahan Skema Database
 
@@ -1119,15 +1438,43 @@ Kalau butuh memastikan sesuatu di sisi data, pakai Supabase MCP untuk `SELECT`
   verifikasi untuk sekarang bersandar pada penilaian admin atas nama dan
   angkatan. Rinciannya di
   [Unggah bukti alumni DIMATIKAN SEMENTARA](#unggah-bukti-alumni-dimatikan-sementara-sejak-14-agustus-2026).
-- **Admin belum bisa meminta data ulang.** Untuk pengguna yang sudah
-  `terverifikasi`, satu-satunya tombol adalah Tolak — jadi keraguan
-  administratif kecil pun memaksa admin menolak orang yang tokonya mungkin
-  sudah jalan. Yang dibutuhkan: mengembalikan status ke `menunggu` dengan
-  catatan admin. `verifikasi_alumni` **tidak bisa dipakai** — parameternya
-  boolean dan hasilnya hanya `terverifikasi` atau `ditolak`. Perlu RPC baru
-  (mis. `minta_data_ulang(p_user_id, p_catatan)`), bukan UPDATE dari client:
-  `status_verifikasi` dijaga `jaga_field_sensitif` dan UPDATE langsung akan
-  dibatalkan diam-diam tanpa error.
+- **Tiga RPC sudah ada tapi belum punya tombol.** `minta_data_ulang`,
+  `nonaktifkan_user`, dan `aktifkan_user` semuanya jalan dan sudah diberi
+  EXECUTE ke `authenticated`, tapi tidak ada satu pun halaman yang
+  memanggilnya. `minta_data_ulang` khususnya menjawab keluhan lama "admin
+  hanya punya tombol Tolak" — tinggal dipasang di
+  [/admin/verifikasi](app/admin/verifikasi/page.tsx). Catatannya sudah
+  ditampilkan di sisi pendaftar (`catatan_admin` di
+  [/verifikasi](app/verifikasi/page.tsx)), jadi yang kurang benar-benar cuma
+  tombolnya.
+- **`minta_data_ulang` masih bekerja di sumbu lama.** Fungsinya hanya menyetel
+  `status_verifikasi = 'menunggu'`, tidak menyentuh `status_alumni`. Kalau
+  nanti tombolnya dipasang, pendaftarnya akan tetap terbaca `alumni` di
+  seluruh UI baru — perlu diperbaiki di sisi SQL dulu (urusan Inyo).
+- **Nama pembeli non-alumni tidak terbaca di mana pun.** `users` tertutup dan
+  `alumni_publik` tidak memuat mereka, jadi penjual yang di-chat pembeli biasa
+  melihat "Pengguna" tanpa nama. Perlu view publik baru berisi nama & avatar
+  semua akun aktif — jangan diselesaikan dengan melonggarkan RLS `users`.
+- **`toko_insert_own` masih memeriksa sumbu lama** (`status_verifikasi =
+  'terverifikasi'`), bukan `status_penjual = 'aktif'`. Untuk sekarang pagarnya
+  ditegakkan di klien ([/produk/tambah](app/produk/tambah/page.tsx)), yang
+  berarti alumni terverifikasi yang belum disetujui admin **masih bisa
+  membuat baris `toko` lewat REST langsung**. Produknya tidak akan tayang
+  (`produk_select_public` memakai `penjual_aktif`), tapi barisnya tetap
+  terbentuk. Perbaikan sebenarnya ada di policy-nya.
+- **⚠ Pengguna biasa bisa menyetel `status_alumni` dan `status_penjual`
+  miliknya sendiri lewat REST**, karena `jaga_field_sensitif` belum menjaga
+  kedua kolom itu. Sudah dibuktikan dengan menjalankannya sebagai
+  `authenticated`. Ini utang paling mendesak di daftar ini — SQL perbaikannya
+  sudah ditulis di
+  [peringatan `jaga_field_sensitif`](#-jaga_field_sensitif-belum-menjaga-dua-kolom-ini)
+  dan harus dijalankan Inyo, berbarengan dengan penanda transaksi di
+  `ajukan_alumni` dan `ajukan_jadi_penjual`.
+- **Alur dua sumbu belum diuji manual di browser** (per 14 Agustus 2026).
+  Dev server tidak menyala saat pekerjaan ini dikerjakan, jadi yang sudah
+  dipastikan hanya `npx tsc --noEmit` dan `npm run lint`. Yang paling perlu
+  dilihat langsung: pendaftaran dua pilihan, `/jual` di tiap nilai
+  `status_penjual`, dan `/admin/penjual`.
 - **Stok pesanan yang batal sebelum `trg_kembalikan_stok` ada tidak kembali
   secara surut.** Trigger-nya hanya bekerja pada pembatalan yang terjadi
   setelah ia dipasang (14 Agustus 2026); pesanan yang dibatalkan sebelum itu
