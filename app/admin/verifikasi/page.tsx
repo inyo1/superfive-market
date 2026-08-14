@@ -16,6 +16,7 @@ type Pendaftar = {
   angkatan: number | null
   avatar_url: string | null
   status_verifikasi: string
+  is_institusi: boolean | null
   bukti_alumni_url: string | null
   catatan_pendaftar: string | null
   alasan_tolak: string | null
@@ -83,7 +84,7 @@ export default function VerifikasiAdminPage() {
   async function muat() {
     const { data, error } = await supabase
       .from('users')
-      .select('id, nama, email, angkatan, avatar_url, status_verifikasi, bukti_alumni_url, catatan_pendaftar, alasan_tolak, created_at, diverifikasi_at')
+      .select('id, nama, email, angkatan, avatar_url, status_verifikasi, is_institusi, bukti_alumni_url, catatan_pendaftar, alasan_tolak, created_at, diverifikasi_at')
       .order('created_at', { ascending: false })
 
     if (error) { tampilkanPesan('Gagal memuat pendaftar: ' + error.message, false); return }
@@ -253,9 +254,28 @@ export default function VerifikasiAdminPage() {
                   <div style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a1a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {p.nama || 'Tanpa nama'}
                   </div>
-                  <div style={{ fontSize: '12px', color: '#5a7da0' }}>
-                    {p.angkatan ? `Angkatan ${p.angkatan}` : 'Angkatan belum diisi'}
-                  </div>
+                  {/* Akun institusi mewakili lembaga atau toko resmi, bukan
+                      perorangan — kriteria alumni tidak berlaku untuknya, dan
+                      angkatannya memang tidak ada artinya. Karena itu lencana
+                      menggantikan baris angkatan, bukan menemaninya. */}
+                  {p.is_institusi ? (
+                    <div style={{ marginTop: '2px' }}>
+                      <span style={{
+                        display: 'inline-block',
+                        background: 'rgba(239,159,39,0.16)',
+                        border: '0.5px solid #EF9F27',
+                        color: '#8a5a05',
+                        fontSize: '10px', fontWeight: '700', letterSpacing: '0.3px',
+                        padding: '2px 8px', borderRadius: '20px', lineHeight: 1.5,
+                      }}>
+                        🏛️ Akun Institusi
+                      </span>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: '12px', color: '#5a7da0' }}>
+                      {p.angkatan ? `Angkatan ${p.angkatan}` : 'Angkatan belum diisi'}
+                    </div>
+                  )}
                   <div style={{ fontSize: '11px', color: '#5a7da0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {p.email ?? '-'}
                   </div>
