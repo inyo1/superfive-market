@@ -200,7 +200,8 @@ export default function VerifikasiAdminPage() {
           <Link href="/admin" style={{ fontSize: '12px', color: '#0C447C', textDecoration: 'none' }}>← Panel Admin</Link>
         </div>
         <div style={{ fontSize: '12px', color: '#5a7da0', marginBottom: '16px' }}>
-          Periksa bukti alumni sebelum menyetujui. Yang belum terverifikasi tidak bisa membuka toko.
+          Unggah bukti sedang dimatikan — periksa nama, angkatan, dan catatan pendaftar
+          sebelum menyetujui. Yang belum terverifikasi tidak bisa membuka toko.
         </div>
 
         {pesan && (
@@ -277,9 +278,14 @@ export default function VerifikasiAdminPage() {
                 </div>
               )}
 
-              {/* Bukti alumni */}
-              <div style={{ margin: '0 14px 12px' }}>
-                {p.bukti_alumni_url ? (
+              {/* Bukti alumni — hanya untuk data lama.
+                  Unggah bukti sudah dimatikan, jadi TIDAK ADA peringatan
+                  "belum mengunggah": peringatan itu akan menyala untuk hampir
+                  semua orang dan cepat diabaikan, termasuk nanti saat ada
+                  peringatan yang benar-benar penting. Tautannya tetap
+                  ditampilkan kalau berkasnya memang ada. */}
+              {p.bukti_alumni_url && (
+                <div style={{ margin: '0 14px 12px' }}>
                   <button
                     onClick={() => bukaBukti(p)}
                     disabled={memuatBukti === p.id}
@@ -287,12 +293,8 @@ export default function VerifikasiAdminPage() {
                   >
                     {memuatBukti === p.id ? 'Membuka...' : '🖼️ Lihat Bukti Alumni'}
                   </button>
-                ) : (
-                  <div style={{ background: '#fff8e1', border: '0.5px solid #ffe082', borderRadius: '8px', padding: '9px 12px', fontSize: '12px', color: '#f57f17' }}>
-                    ⚠️ Belum mengunggah bukti alumni
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
 
               {/* Alasan penolakan sebelumnya */}
               {p.status_verifikasi === 'ditolak' && p.alasan_tolak && (
