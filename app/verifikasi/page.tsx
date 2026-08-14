@@ -8,22 +8,26 @@ import Skeleton, { SkeletonPanel } from '../components/Skeleton'
 import Tombol from '../components/Tombol'
 import { useTampilSkeleton } from '../hooks/useSkeleton'
 
+// Halaman ini SATU-SATUNYA urusan: mengaku alumni. Bukan pagar belanja.
+//
+// Sejak verifikasi dipecah dua sumbu, yang berstatus 'umum' adalah pembeli
+// biasa yang tidak diperiksa siapa pun — mereka sampai di sini hanya kalau
+// sendiri yang mau masuk direktori alumni atau mau berjualan.
+//
 // UNGGAH BUKTI ALUMNI DIMATIKAN SEMENTARA — keputusan produk, bukan kode mati.
-//
 // Kolom users.bukti_alumni_url, bucket privat `bukti-alumni`, dan helper
-// lib/buktiAlumni.ts sengaja DIPERTAHANKAN utuh supaya fitur ini bisa
-// dinyalakan lagi tanpa migrasi. `uploadBuktiAlumni` untuk sementara tidak
-// dipanggil dari mana pun — JANGAN dihapus karena terlihat tak terpakai.
-// `urlBukti` masih dipakai panel admin untuk membuka bukti dari data lama.
-//
-// Selama dimatikan, verifikasi bersandar pada penilaian admin atas nama dan
-// angkatan pendaftar, dibantu catatan yang ditulis pendaftar di bawah ini.
+// lib/buktiAlumni.ts sengaja DIPERTAHANKAN utuh supaya bisa dinyalakan lagi
+// tanpa migrasi. `uploadBuktiAlumni` tidak dipanggil dari mana pun — JANGAN
+// dihapus karena terlihat tak terpakai. `urlBukti` masih dipakai panel admin.
+
+const TAHUN_INI = new Date().getFullYear()
 
 export default function VerifikasiPage() {
   const router = useRouter()
-  const [userId, setUserId] = useState<string | null>(null)
   const [status, setStatus] = useState<string | null>(null)
   const [alasanTolak, setAlasanTolak] = useState<string | null>(null)
+  const [catatanAdmin, setCatatanAdmin] = useState<string | null>(null)
+  const [angkatan, setAngkatan] = useState('')
   const [catatan, setCatatan] = useState('')
   const [loading, setLoading] = useState(true)
   const tampilSkeleton = useTampilSkeleton(loading)
@@ -37,18 +41,19 @@ export default function VerifikasiPage() {
         router.replace('/auth?redirect=/verifikasi&msg=Login+dulu+untuk+mengajukan+verifikasi')
         return
       }
-      setUserId(user.id)
 
       const { data } = await supabase
         .from('users')
-        .select('status_verifikasi, catatan_pendaftar, alasan_tolak')
+        .select('status_alumni, angkatan, catatan_pendaftar, alasan_tolak, catatan_admin')
         .eq('id', user.id)
         .single()
 
       if (data) {
-        setStatus(data.status_verifikasi ?? 'menunggu')
+        setStatus(data.status_alumni ?? 'umum')
+        setAngkatan(data.angkatan ? String(data.angkatan) : '')
         setCatatan(data.catatan_pendaftar ?? '')
         setAlasanTolak(data.alasan_tolak ?? null)
+        setCatatanAdmin(data.catatan_admin ?? null)
       }
       setLoading(false)
     }
@@ -56,18 +61,22 @@ export default function VerifikasiPage() {
   }, [])
 
   async function kirim() {
-    if (!userId) return
+    if (!angkatan) { setPesan({ text: 'Pilih dulu angkatanmu.', ok: false }); return }
 
     setMengirim(true)
     try {
-      // Kolom status_verifikasi sengaja tidak disentuh — trigger
-      // jaga_field_sensitif memang melarang user mengubahnya sendiri.
-      const { error } = await supabase
-        .from('users')
-        .update({ catatan_pendaftar: catatan.trim() || null })
-        .eq('id', userId)
+      // Semua aturannya ada di dalam RPC — termasuk angkatan yang masuk akal
+      // dan larangan mengajukan dua kali. UI tidak mengulang validasinya,
+      // cukup menampilkan error.message apa adanya.
+      const { error } = await supabase.rpc('ajukan_alumni', {
+        p_angkatan: parseInt(angkatan),
+        p_catatan: catatan.trim() || null,
+      })
       if (error) throw new Error(error.message)
 
+      setStatus('menunggu')
+      setAlasanTolak(null)
+      setCatatanAdmin(null)
       setPesan({
         text: 'Pengajuan terkirim. Admin akan memeriksa datamu, biasanya dalam 1–2 hari.',
         ok: true,
@@ -91,8 +100,8 @@ export default function VerifikasiPage() {
     </main>
   )
 
-  // Sudah terverifikasi — tidak ada yang perlu dikerjakan di sini
-  if (status === 'terverifikasi') return (
+  // Sudah diakui alumni — tidak ada yang perlu dikerjakan di sini
+  if (status === 'alumni') return (
     <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
       <Navbar />
       <div style={{ maxWidth: '520px', margin: '32px auto', padding: '0 16px' }}>
@@ -102,14 +111,15 @@ export default function VerifikasiPage() {
             Kamu sudah terverifikasi
           </h2>
           <p style={{ fontSize: '13px', color: '#5a7da0', margin: '0 0 20px' }}>
-            Akunmu sudah diakui sebagai alumni SMPN 5 Bandung. Kamu bisa membuka toko dan mulai berjualan.
+            Akunmu sudah diakui sebagai alumni SMPN 5 Bandung dan masuk direktori alumni.
+            Kalau mau berjualan, ajukan diri jadi penjual dulu.
           </p>
           <div style={{ display: 'flex', gap: '10px' }}>
-            <Link href="/produk" style={{ flex: 1, background: '#fff', color: '#0C447C', border: '1px solid #0C447C', padding: '11px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none' }}>
-              Belanja
+            <Link href="/alumni" style={{ flex: 1, background: '#fff', color: '#0C447C', border: '1px solid #0C447C', padding: '11px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none' }}>
+              Direktori Alumni
             </Link>
-            <Link href="/produk/tambah" style={{ flex: 1, background: '#0C447C', color: '#fff', padding: '11px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none' }}>
-              Mulai Jualan
+            <Link href="/jual" style={{ flex: 1, background: '#0C447C', color: '#fff', padding: '11px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none' }}>
+              Mulai Berjualan
             </Link>
           </div>
         </div>
@@ -117,6 +127,7 @@ export default function VerifikasiPage() {
     </main>
   )
 
+  const menunggu = status === 'menunggu'
   const ditolak = status === 'ditolak'
 
   return (
@@ -128,8 +139,31 @@ export default function VerifikasiPage() {
           Verifikasi Alumni
         </h1>
         <div style={{ fontSize: '12px', color: '#5a7da0', marginBottom: '16px' }}>
-          Satu langkah supaya kamu bisa membuka toko
+          Supaya kamu masuk direktori alumni dan bisa berjualan
         </div>
+
+        {/* Pengajuan sedang diperiksa */}
+        {menunggu && (
+          <div style={{ background: '#fff8e1', border: '0.5px solid #ffe082', borderRadius: '12px', padding: '14px 16px', marginBottom: '12px' }}>
+            <div style={{ fontSize: '13px', fontWeight: '600', color: '#f57f17', marginBottom: '4px' }}>
+              ⏳ Pengajuanmu sedang diperiksa admin
+            </div>
+            <div style={{ fontSize: '12px', color: '#8d6e26', lineHeight: '1.7' }}>
+              Biasanya 1–2 hari. Sambil menunggu, belanjamu tidak dibatasi sama sekali —
+              yang belum bisa hanya berjualan.
+            </div>
+          </div>
+        )}
+
+        {/* Admin minta data dilengkapi */}
+        {catatanAdmin && (
+          <div style={{ background: '#E6F1FB', border: '0.5px solid #b3d1ee', borderRadius: '12px', padding: '14px 16px', marginBottom: '12px' }}>
+            <div style={{ fontSize: '13px', fontWeight: '600', color: '#0C447C', marginBottom: '4px' }}>
+              📝 Catatan dari admin
+            </div>
+            <div style={{ fontSize: '12px', color: '#0C447C', whiteSpace: 'pre-line' }}>{catatanAdmin}</div>
+          </div>
+        )}
 
         {/* Alasan penolakan */}
         {ditolak && alasanTolak && (
@@ -150,36 +184,59 @@ export default function VerifikasiPage() {
             Kenapa perlu verifikasi?
           </div>
           <div style={{ fontSize: '12px', color: '#5a7da0', lineHeight: '1.7' }}>
-            Superfive Market khusus untuk alumni SMPN 5 Bandung. Verifikasi memastikan
-            setiap penjual benar-benar alumni, supaya pembeli merasa aman bertransaksi.
+            Belanja di Superfive Market terbuka untuk siapa saja. Yang diperiksa hanya
+            dua hal: siapa yang masuk <strong style={{ color: '#1a1a1a' }}>direktori alumni</strong>,
+            dan siapa yang boleh <strong style={{ color: '#1a1a1a' }}>berjualan</strong>.
             <br /><br />
             Admin memeriksa <strong style={{ color: '#1a1a1a' }}>nama dan angkatan</strong> di
-            profilmu. Pastikan keduanya sudah terisi dan sesuai dengan nama saat sekolah dulu.
-            <br /><br />
-            <strong style={{ color: '#1a1a1a' }}>Selama menunggu, kamu tetap bisa belanja seperti biasa</strong> —
-            yang dibatasi hanya membuka toko dan berjualan.
+            profilmu. Pastikan namamu sesuai dengan nama saat sekolah dulu.
           </div>
           <Link href="/profil" style={{ display: 'inline-block', marginTop: '10px', fontSize: '12px', color: '#0C447C', textDecoration: 'none' }}>
-            Periksa nama & angkatan di profil →
+            Periksa nama di profil →
           </Link>
         </div>
 
-        {/* Form */}
+        {/* Form pengajuan */}
         <div style={{ background: '#fff', borderRadius: '12px', padding: '16px', border: '0.5px solid #c5d9ef', marginBottom: '12px' }}>
-          <div style={{ fontSize: '13px', fontWeight: '600', color: '#0C447C', marginBottom: '4px' }}>
-            Catatan untuk Admin
+          <div style={{ marginBottom: '14px' }}>
+            <label htmlFor="angkatan" style={{ fontSize: '13px', fontWeight: '600', color: '#0C447C', display: 'block', marginBottom: '4px' }}>
+              Angkatan (Tahun Lulus) *
+            </label>
+            <div style={{ fontSize: '11px', color: '#5a7da0', marginBottom: '8px' }}>
+              Ini yang dipakai admin untuk mencocokkan datamu dengan daftar alumni.
+            </div>
+            <select
+              id="angkatan"
+              value={angkatan}
+              onChange={e => setAngkatan(e.target.value)}
+              disabled={menunggu}
+              style={{ width: '100%', padding: '11px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', background: menunggu ? '#f8fbff' : '#fff', boxSizing: 'border-box', minHeight: '44px' }}
+            >
+              <option value="">-- Pilih Angkatan --</option>
+              {Array.from({ length: TAHUN_INI - 1970 + 1 }, (_, i) => TAHUN_INI - i).map(y => (
+                <option key={y} value={y}>Angkatan {y}</option>
+              ))}
+            </select>
           </div>
-          <div style={{ fontSize: '11px', color: '#5a7da0', marginBottom: '8px' }}>
-            Tulis hal yang membantu admin mengenalimu — nama wali kelas, kelas terakhir,
-            nomor absen, atau teman seangkatan yang bisa dikonfirmasi.
+
+          <div>
+            <label htmlFor="catatan" style={{ fontSize: '13px', fontWeight: '600', color: '#0C447C', display: 'block', marginBottom: '4px' }}>
+              Catatan untuk Admin
+            </label>
+            <div style={{ fontSize: '11px', color: '#5a7da0', marginBottom: '8px' }}>
+              Tulis hal yang membantu admin mengenalimu — nama wali kelas, kelas terakhir,
+              nomor absen, atau teman seangkatan yang bisa dikonfirmasi.
+            </div>
+            <textarea
+              id="catatan"
+              value={catatan}
+              onChange={e => setCatatan(e.target.value)}
+              rows={4}
+              disabled={menunggu}
+              placeholder="Misal: kelas 9C, wali kelas Bu Rina"
+              style={{ width: '100%', padding: '9px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', resize: 'none', boxSizing: 'border-box', fontFamily: 'sans-serif', background: menunggu ? '#f8fbff' : '#fff' }}
+            />
           </div>
-          <textarea
-            value={catatan}
-            onChange={e => setCatatan(e.target.value)}
-            rows={4}
-            placeholder="Misal: angkatan 2015, kelas 9C, wali kelas Bu Rina"
-            style={{ width: '100%', padding: '9px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', resize: 'none', boxSizing: 'border-box', fontFamily: 'sans-serif' }}
-          />
         </div>
 
         {pesan && (
@@ -188,20 +245,16 @@ export default function VerifikasiPage() {
           </div>
         )}
 
-        <Tombol
-          onClick={kirim}
-          loading={mengirim}
-          teksLoading="Mengirim..."
-          penuh
-          style={{ padding: '15px', fontSize: '14px', borderRadius: '10px', marginBottom: '10px' }}
-        >
-          {ditolak ? 'Kirim Ulang Pengajuan' : 'Kirim Pengajuan'}
-        </Tombol>
-
-        {status === 'menunggu' && (
-          <div style={{ background: '#fff8e1', border: '0.5px solid #ffe082', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', color: '#f57f17', textAlign: 'center', marginBottom: '10px' }}>
-            ⏳ Pengajuanmu sedang ditinjau admin
-          </div>
+        {!menunggu && (
+          <Tombol
+            onClick={kirim}
+            loading={mengirim}
+            teksLoading="Mengirim..."
+            penuh
+            style={{ padding: '15px', fontSize: '14px', borderRadius: '10px', marginBottom: '10px' }}
+          >
+            {ditolak ? 'Kirim Ulang Pengajuan' : 'Kirim Pengajuan'}
+          </Tombol>
         )}
 
         <Link href="/" style={{ display: 'block', textAlign: 'center', color: '#5a7da0', fontSize: '13px', textDecoration: 'none', paddingBottom: '24px' }}>

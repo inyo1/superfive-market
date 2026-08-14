@@ -79,7 +79,6 @@ export default function Home() {
   const [latest, setLatest] = useState<Produk[]>([])
   const [loading, setLoading] = useState(true)
   const [loggedIn, setLoggedIn] = useState(false)
-  const [statusVerifikasi, setStatusVerifikasi] = useState<string | null>(null)
 
   // Tujuannya bergantung status login, jadi ini tombol aksi — bukan tautan.
   // Sebelumnya <a href> dengan preventDefault, yang menyesatkan pembaca layar
@@ -115,14 +114,6 @@ export default function Home() {
       ])
       setLoggedIn(!!authRes.data.user)
 
-      // Banner verifikasi hanya untuk yang statusnya masih menunggu
-      const uid = authRes.data.user?.id
-      if (uid) {
-        const { data: profil } = await supabase
-          .from('users').select('status_verifikasi').eq('id', uid).single()
-        setStatusVerifikasi(profil?.status_verifikasi ?? null)
-      }
-
       setStats({
         produk: pCount.count ?? 0,
         toko:   tCount.count ?? 0,
@@ -138,33 +129,10 @@ export default function Home() {
     <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
       <Navbar />
 
-      {/* ── Banner verifikasi ── */}
-      {loggedIn && statusVerifikasi === 'menunggu' && (
-        <div style={{ background: '#fff8e1', borderBottom: '0.5px solid #ffe082', padding: '12px 16px' }}>
-          <div style={{
-            maxWidth: '700px', margin: '0 auto',
-            display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap',
-          }}>
-            <span style={{ fontSize: '20px', flexShrink: 0 }}>⏳</span>
-            <div style={{ flex: 1, minWidth: '200px' }}>
-              <div style={{ fontSize: '13px', fontWeight: '600', color: '#f57f17', marginBottom: '2px' }}>
-                Akunmu sedang menunggu verifikasi
-              </div>
-              <div style={{ fontSize: '12px', color: '#8d6e26' }}>
-                Kamu bisa belanja, tapi belum bisa membuka toko.
-              </div>
-            </div>
-            <Link href="/verifikasi" style={{
-              background: '#f57f17', color: '#fff', padding: '0 18px',
-              minHeight: '44px', display: 'inline-flex', alignItems: 'center',
-              borderRadius: '8px', fontSize: '12px', fontWeight: '600',
-              textDecoration: 'none', flexShrink: 0,
-            }}>
-              Lengkapi Verifikasi
-            </Link>
-          </div>
-        </div>
-      )}
+      {/* Banner verifikasi sengaja tidak ada di sini. Sejak pembeli tidak lagi
+          diperiksa, banner itu akan menyala untuk hampir semua orang yang baru
+          daftar — padahal tidak ada satu pun yang terhalang. Ajakannya cukup
+          sekali, di halaman profil. */}
 
       {/* ── Hero Banner ── */}
       <div style={{

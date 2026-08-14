@@ -30,6 +30,7 @@ export default function ProfilPage() {
   const [saving, setSaving] = useState(false)
   const [pesan, setPesan] = useState('')
   const [statusVerifikasi, setStatusVerifikasi] = useState<string | null>(null)
+  const [statusAlumni, setStatusAlumni] = useState<string | null>(null)
   const [isInstitusi, setIsInstitusi] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -42,13 +43,14 @@ export default function ProfilPage() {
 
       const { data } = await supabase
         .from('users')
-        .select('nama, email, angkatan, avatar_url, no_hp, jalan, kelurahan, kecamatan, kota, provinsi, kode_pos, status_verifikasi, is_institusi')
+        .select('nama, email, angkatan, avatar_url, no_hp, jalan, kelurahan, kecamatan, kota, provinsi, kode_pos, status_verifikasi, status_alumni, is_institusi')
         .eq('id', user.id)
         .single()
 
       if (data) {
         setNama(data.nama ?? '')
         setStatusVerifikasi(data.status_verifikasi ?? null)
+        setStatusAlumni(data.status_alumni ?? 'umum')
         setIsInstitusi(Boolean(data.is_institusi))
         setAngkatan(data.angkatan ? String(data.angkatan) : '')
         setAvatarUrl(data.avatar_url ?? null)
@@ -195,6 +197,57 @@ export default function ProfilPage() {
           <div style={{ fontSize: '11px', color: '#9ab4cc', marginTop: '10px' }}>Klik foto untuk mengganti</div>
         </div>
 
+        {/* Ajakan verifikasi alumni — SATU-SATUNYA tempat ajakan ini muncul.
+            Yang berstatus 'umum' adalah pembeli biasa dan tidak terhalang apa
+            pun, jadi ini undangan, bukan peringatan: tidak ada warna merah,
+            tidak ada tanda seru, dan tidak muncul di halaman lain. */}
+        {!isInstitusi && statusAlumni === 'umum' && (
+          <div style={{ background: '#E6F1FB', borderRadius: '16px', padding: '18px 20px', border: '0.5px solid #b3d1ee', marginBottom: '12px' }}>
+            <div style={{ fontSize: '13px', fontWeight: '600', color: '#0C447C', marginBottom: '4px' }}>
+              🎓 Alumni SMPN 5 Bandung?
+            </div>
+            <div style={{ fontSize: '12px', color: '#3d6c9c', lineHeight: '1.7', marginBottom: '12px' }}>
+              Verifikasi untuk masuk direktori alumni dan bisa berjualan.
+            </div>
+            <Link href="/verifikasi" style={{
+              display: 'inline-flex', alignItems: 'center', background: '#0C447C', color: '#fff',
+              padding: '0 18px', minHeight: '40px', borderRadius: '8px',
+              fontSize: '12px', fontWeight: '600', textDecoration: 'none',
+            }}>
+              Verifikasi Alumni
+            </Link>
+          </div>
+        )}
+
+        {statusAlumni === 'menunggu' && (
+          <div style={{ background: '#fff8e1', borderRadius: '16px', padding: '16px 20px', border: '0.5px solid #ffe082', marginBottom: '12px' }}>
+            <div style={{ fontSize: '13px', fontWeight: '600', color: '#f57f17', marginBottom: '4px' }}>
+              ⏳ Pengajuan alumni sedang diperiksa
+            </div>
+            <div style={{ fontSize: '12px', color: '#8d6e26', lineHeight: '1.7' }}>
+              Belanjamu tidak dibatasi sama sekali sambil menunggu.
+            </div>
+          </div>
+        )}
+
+        {statusAlumni === 'ditolak' && (
+          <div style={{ background: '#fff', borderRadius: '16px', padding: '16px 20px', border: '0.5px solid #f09595', marginBottom: '12px' }}>
+            <div style={{ fontSize: '13px', fontWeight: '600', color: '#c62828', marginBottom: '4px' }}>
+              Pengajuan alumni belum diterima
+            </div>
+            <div style={{ fontSize: '12px', color: '#8d4040', lineHeight: '1.7', marginBottom: '12px' }}>
+              Kamu tetap bisa belanja seperti biasa. Kalau datanya sudah diperbaiki, kirim ulang.
+            </div>
+            <Link href="/verifikasi" style={{
+              display: 'inline-flex', alignItems: 'center', background: '#fff', color: '#0C447C',
+              border: '1px solid #0C447C', padding: '0 18px', minHeight: '40px', borderRadius: '8px',
+              fontSize: '12px', fontWeight: '600', textDecoration: 'none',
+            }}>
+              Lihat Alasannya
+            </Link>
+          </div>
+        )}
+
         {/* Informasi Akun */}
         <div style={{ background: '#fff', borderRadius: '16px', padding: '20px', border: '0.5px solid #c5d9ef', marginBottom: '12px' }}>
           <div style={{ fontSize: '13px', fontWeight: '600', color: '#0C447C', marginBottom: '16px' }}>Informasi Akun</div>
@@ -206,8 +259,10 @@ export default function ProfilPage() {
           </div>
 
           {/* Akun institusi bukan alumni perorangan — kolom angkatan tidak
-              relevan dan kalau ditampilkan hanya akan diisi asal */}
-          {!isInstitusi && (
+              relevan dan kalau ditampilkan hanya akan diisi asal. Yang
+              berstatus 'umum' juga tidak diminta angkatan: jalannya lewat
+              pengajuan alumni di atas, bukan kolom yang diisi diam-diam. */}
+          {!isInstitusi && statusAlumni !== 'umum' && (
             <div style={{ marginBottom: '14px' }}>
               <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '6px' }}>Angkatan (Tahun Lulus)</label>
               <select value={angkatan} onChange={e => setAngkatan(e.target.value)}
