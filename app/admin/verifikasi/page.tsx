@@ -15,7 +15,7 @@ type Pendaftar = {
   email: string | null
   angkatan: number | null
   avatar_url: string | null
-  status_verifikasi: string
+  status_alumni: string
   is_institusi: boolean | null
   bukti_alumni_url: string | null
   catatan_pendaftar: string | null
@@ -24,12 +24,15 @@ type Pendaftar = {
   diverifikasi_at: string | null
 }
 
-const TABS = ['menunggu', 'terverifikasi', 'ditolak'] as const
+// Nilai status_alumni, bukan status_verifikasi lama. 'umum' sengaja tidak
+// punya tab: mereka pembeli biasa yang tidak pernah mengaku alumni, jadi tidak
+// ada yang perlu diputuskan admin.
+const TABS = ['menunggu', 'alumni', 'ditolak'] as const
 type Tab = (typeof TABS)[number]
 
 const LABEL_TAB: Record<Tab, string> = {
   menunggu: 'Menunggu',
-  terverifikasi: 'Terverifikasi',
+  alumni: 'Terverifikasi',
   ditolak: 'Ditolak',
 }
 
@@ -84,7 +87,8 @@ export default function VerifikasiAdminPage() {
   async function muat() {
     const { data, error } = await supabase
       .from('users')
-      .select('id, nama, email, angkatan, avatar_url, status_verifikasi, is_institusi, bukti_alumni_url, catatan_pendaftar, alasan_tolak, created_at, diverifikasi_at')
+      .select('id, nama, email, angkatan, avatar_url, status_alumni, is_institusi, bukti_alumni_url, catatan_pendaftar, alasan_tolak, created_at, diverifikasi_at')
+      .neq('status_alumni', 'umum')
       .order('created_at', { ascending: false })
 
     if (error) { tampilkanPesan('Gagal memuat pendaftar: ' + error.message, false); return }
@@ -118,13 +122,14 @@ export default function VerifikasiAdminPage() {
 
       if (error) throw new Error(error.message)
 
+      // verifikasi_alumni mengembalikan nilai status_alumni: 'alumni' | 'ditolak'
       const hasil = data as { nama: string | null; status: string } | null
-      const statusBaru = hasil?.status ?? (setujui ? 'terverifikasi' : 'ditolak')
+      const statusBaru = hasil?.status ?? (setujui ? 'alumni' : 'ditolak')
 
       setPendaftar(prev => prev.map(p => p.id === id
         ? {
             ...p,
-            status_verifikasi: statusBaru,
+            status_alumni: statusBaru,
             alasan_tolak: setujui ? null : (alasanTolak ?? p.alasan_tolak),
             diverifikasi_at: new Date().toISOString(),
           }
@@ -156,8 +161,8 @@ export default function VerifikasiAdminPage() {
     setBuktiUrl(url)
   }
 
-  const terlihat = pendaftar.filter(p => p.status_verifikasi === tab)
-  function jumlah(t: Tab) { return pendaftar.filter(p => p.status_verifikasi === t).length }
+  const terlihat = pendaftar.filter(p => p.status_alumni === tab)
+  function jumlah(t: Tab) { return pendaftar.filter(p => p.status_alumni === t).length }
 
   if (tampilSkeleton) return (
     <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
@@ -202,7 +207,8 @@ export default function VerifikasiAdminPage() {
         </div>
         <div style={{ fontSize: '12px', color: '#5a7da0', marginBottom: '16px' }}>
           Unggah bukti sedang dimatikan — periksa nama, angkatan, dan catatan pendaftar
-          sebelum menyetujui. Yang belum terverifikasi tidak bisa membuka toko.
+          sebelum menyetujui. Yang tampil di sini hanya yang mengaku alumni; pembeli
+          biasa tidak diperiksa. Untuk izin berjualan, lihat <Link href="/admin/penjual" style={{ color: '#0C447C' }}>Pengajuan Penjual</Link>.
         </div>
 
         {pesan && (
@@ -317,7 +323,7 @@ export default function VerifikasiAdminPage() {
               )}
 
               {/* Alasan penolakan sebelumnya */}
-              {p.status_verifikasi === 'ditolak' && p.alasan_tolak && (
+              {p.status_alumni === 'ditolak' && p.alasan_tolak && (
                 <div style={{ margin: '0 14px 12px', background: '#fce4e4', borderRadius: '8px', padding: '10px 12px' }}>
                   <div style={{ fontSize: '10px', color: '#c62828', marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                     Alasan ditolak
@@ -359,7 +365,7 @@ export default function VerifikasiAdminPage() {
                   </div>
                 ) : (
                   <div style={{ display: 'flex', gap: '8px' }}>
-                    {p.status_verifikasi !== 'terverifikasi' && (
+                    {p.status_alumni !== 'alumni' && (
                       <button
                         onClick={() => putuskan(p.id, true)}
                         disabled={sedangProses}
@@ -368,7 +374,7 @@ export default function VerifikasiAdminPage() {
                         {sedangProses ? 'Menyimpan...' : '✓ Verifikasi'}
                       </button>
                     )}
-                    {p.status_verifikasi !== 'ditolak' && (
+                    {p.status_alumni !== 'ditolak' && (
                       <button
                         onClick={() => { setTolakId(p.id); setAlasan('') }}
                         disabled={sedangProses}

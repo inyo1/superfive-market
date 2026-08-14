@@ -14,7 +14,6 @@ type Member = {
   nama: string | null
   angkatan: number | null
   avatar_url: string | null
-  status_verifikasi: string | null
   jumlahProduk: number
 }
 
@@ -59,13 +58,12 @@ export default function AlumniPage() {
         // alumni_publik: view aman berisi kolom yang boleh dilihat publik.
         // Tabel users sekarang hanya bisa dibaca pemiliknya sendiri dan admin.
         //
-        // Akun institusi dikecualikan: ini direktori alumni perorangan, dan
-        // akun tanpa angkatan di sini terbaca seperti data yang belum lengkap.
-        // Total dan pengelompokan angkatan otomatis ikut bersih karena
-        // keduanya dihitung dari hasil query ini.
+        // JANGAN menyaring lagi di sini. View-nya sudah menyaring sendiri:
+        // status_alumni = 'alumni', akun nonaktif dan akun institusi
+        // dikecualikan. Total dan pengelompokan angkatan otomatis ikut bersih
+        // karena keduanya dihitung dari hasil query ini.
         supabase.from('alumni_publik')
-          .select('id, nama, angkatan, avatar_url, status_verifikasi')
-          .eq('is_institusi', false),
+          .select('id, nama, angkatan, avatar_url'),
         supabase.from('toko').select('id, seller_id'),
         supabase.from('produk').select('toko_id'),
       ])
@@ -264,7 +262,9 @@ export default function AlumniPage() {
                       }}>
                         {m.nama || 'Alumni'}
                       </span>
-                      <BadgeVerifikasi status={m.status_verifikasi} size={13} />
+                      {/* Semua yang muncul di sini pasti alumni terverifikasi —
+                          view-nya memang hanya berisi mereka */}
+                      <BadgeVerifikasi alumni size={13} />
                     </div>
                     <div style={{ marginBottom: '8px', display: 'flex', justifyContent: 'center' }}>
                       <BadgeAngkatan angkatan={m.angkatan} sembunyikanKosong={false} kecil />

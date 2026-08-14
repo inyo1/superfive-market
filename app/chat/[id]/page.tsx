@@ -20,9 +20,9 @@ type Message = {
 type ConvInfo = {
   otherNama: string | null
   otherAvatar: string | null
-  otherVerifikasi: string | null
+  /** Ada barisnya di alumni_publik — artinya alumni terverifikasi */
+  otherAlumni: boolean
   otherAngkatan: number | null
-  otherInstitusi: boolean
   produkNama: string | null
 }
 
@@ -88,14 +88,15 @@ export default function ChatRoom() {
 
       const otherId = conv.buyer_id === user.id ? conv.seller_id : conv.buyer_id
       const { data: profile } = await supabase
-        .from('alumni_publik').select('nama, avatar_url, status_verifikasi, angkatan, is_institusi').eq('id', otherId).single()
+        // maybeSingle: lawan bicara belum tentu alumni terverifikasi, dan
+        // yang bukan memang tidak punya baris di view publik
+        .from('alumni_publik').select('nama, avatar_url, angkatan').eq('id', otherId).maybeSingle()
 
       setConvInfo({
         otherNama: profile?.nama ?? null,
         otherAvatar: profile?.avatar_url ?? null,
-        otherVerifikasi: profile?.status_verifikasi ?? null,
+        otherAlumni: Boolean(profile),
         otherAngkatan: profile?.angkatan ?? null,
-        otherInstitusi: Boolean(profile?.is_institusi),
         produkNama: (conv.produk as any)?.nama ?? null,
       })
 
@@ -211,10 +212,10 @@ export default function ChatRoom() {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
             <span style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a1a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {convInfo?.otherNama || 'Alumni'}
+              {convInfo?.otherNama || 'Pengguna'}
             </span>
-            <BadgeVerifikasi status={convInfo?.otherVerifikasi} size={13} />
-            <BadgeAngkatan angkatan={convInfo?.otherAngkatan} institusi={convInfo?.otherInstitusi} kecil />
+            <BadgeVerifikasi alumni={convInfo?.otherAlumni} size={13} />
+            <BadgeAngkatan angkatan={convInfo?.otherAngkatan} kecil />
           </div>
           {convInfo?.produkNama && (
             <div style={{ fontSize: '11px', color: '#5a7da0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

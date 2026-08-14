@@ -97,13 +97,15 @@ export default function DetailProduk() {
       } else {
         // Angkatan penjual diambil dari alumni_publik, bukan embed ke users
         const sellerId = (data as any).toko?.seller_id
-        let penjual: { angkatan: number | null; status_verifikasi: string | null } | null = null
+        let penjual: { angkatan: number | null } | null = null
         if (sellerId) {
+          // maybeSingle: penjual toko resmi itu akun institusi dan memang
+          // tidak punya baris di view alumni
           const { data: u } = await supabase
             .from('alumni_publik')
-            .select('angkatan, status_verifikasi')
+            .select('angkatan')
             .eq('id', sellerId)
-            .single()
+            .maybeSingle()
           penjual = u ?? null
         }
         const toko = (data as any).toko

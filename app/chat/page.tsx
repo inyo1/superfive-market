@@ -15,9 +15,9 @@ type ConvDisplay = {
   otherId: string
   otherNama: string | null
   otherAvatar: string | null
-  otherVerifikasi: string | null
+  /** Ada barisnya di alumni_publik — artinya alumni terverifikasi */
+  otherAlumni: boolean
   otherAngkatan: number | null
-  otherInstitusi: boolean
   lastMessage: string | null
   lastMessageAt: string | null
   unread: number
@@ -73,7 +73,7 @@ export default function ChatListPage() {
       const otherIds = rawConvs.map(c => c.buyer_id === user.id ? c.seller_id : c.buyer_id)
       const { data: profiles } = await supabase
         .from('alumni_publik')
-        .select('id, nama, avatar_url, status_verifikasi, angkatan, is_institusi')
+        .select('id, nama, avatar_url, angkatan')
         .in('id', [...new Set(otherIds)])
 
       const profileMap = Object.fromEntries((profiles ?? []).map(p => [p.id, p]))
@@ -98,9 +98,11 @@ export default function ChatListPage() {
           otherId,
           otherNama: p?.nama ?? null,
           otherAvatar: p?.avatar_url ?? null,
-          otherVerifikasi: p?.status_verifikasi ?? null,
+          // Lawan bicara yang bukan alumni terverifikasi — pembeli biasa,
+          // akun institusi, atau yang pengajuannya belum diputus — memang
+          // tidak punya baris di view publik, jadi namanya tidak terbaca.
+          otherAlumni: Boolean(p),
           otherAngkatan: p?.angkatan ?? null,
-          otherInstitusi: Boolean(p?.is_institusi),
           lastMessage: c.last_message,
           lastMessageAt: c.last_message_at,
           unread: unreadByConv[c.id] ?? 0,
@@ -150,10 +152,10 @@ export default function ChatListPage() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '5px', minWidth: 0 }}>
                       <span style={{ fontSize: '14px', fontWeight: c.unread > 0 ? '700' : '500', color: '#1a1a1a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {c.otherNama || 'Alumni'}
+                        {c.otherNama || 'Pengguna'}
                       </span>
-                      <BadgeVerifikasi status={c.otherVerifikasi} size={13} />
-                      <BadgeAngkatan angkatan={c.otherAngkatan} institusi={c.otherInstitusi} kecil />
+                      <BadgeVerifikasi alumni={c.otherAlumni} size={13} />
+                      <BadgeAngkatan angkatan={c.otherAngkatan} kecil />
                     </div>
                     <div style={{ fontSize: '11px', color: '#9ab4cc', flexShrink: 0, marginLeft: '8px' }}>
                       {timeAgo(c.lastMessageAt)}

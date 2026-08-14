@@ -23,7 +23,7 @@ type Toko = {
   kategori: string
   deskripsi?: string
   is_official?: boolean
-  users: { nama: string | null; angkatan: number | null; status_verifikasi: string | null; is_institusi: boolean } | null
+  users: { nama: string | null; angkatan: number | null } | null
 }
 
 type Produk = {
@@ -91,11 +91,13 @@ export default function TokoPage() {
 
       // Data penjual diambil terpisah dari view alumni_publik — embed lewat
       // foreign key ke users tidak lagi bisa dipakai sejak users ditutup.
+      // maybeSingle: pemilik toko resmi itu akun institusi dan memang tidak
+      // punya baris di view alumni — bukan keadaan salah
       const { data: penjual } = await supabase
         .from('alumni_publik')
-        .select('nama, angkatan, status_verifikasi, is_institusi')
+        .select('nama, angkatan')
         .eq('id', tokoData.seller_id)
-        .single()
+        .maybeSingle()
 
       setToko({ ...tokoData, users: penjual ?? null } as any)
       setNamaBaru(tokoData.nama_toko)
@@ -284,9 +286,9 @@ export default function TokoPage() {
                 <BadgeOfficial aktif bentuk="lencana" />
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', fontSize: '12px', color: '#B5D4F4' }}>
-                  <span>{toko.users?.nama || 'Alumni'}</span>
-                  <BadgeVerifikasi status={toko.users?.status_verifikasi} size={13} />
-                  <BadgeAngkatan angkatan={toko.users?.angkatan} institusi={toko.users?.is_institusi} />
+                  <span>{toko.users?.nama || 'Penjual'}</span>
+                  <BadgeVerifikasi alumni={Boolean(toko.users)} size={13} />
+                  <BadgeAngkatan angkatan={toko.users?.angkatan} />
                 </div>
               )}
             </div>

@@ -28,6 +28,7 @@ export default function TokoSayaPage() {
   const tampilSkeleton = useTampilSkeleton(loading)
   const [toko, setToko] = useState<Toko | null>(null)
   const [produk, setProduk] = useState<Produk[]>([])
+  const [statusPenjual, setStatusPenjual] = useState<string | null>(null)
   const [toast, setToast] = useState<{ text: string; ok: boolean } | null>(null)
 
   // Edit state
@@ -46,6 +47,13 @@ export default function TokoSayaPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.replace('/auth?msg=login-required'); return }
 
+      const { data: profil } = await supabase
+        .from('users').select('status_penjual').eq('id', user.id).single()
+      setStatusPenjual(profil?.status_penjual ?? 'belum_ajukan')
+
+      // Pemilik selalu bisa melihat tokonya sendiri, bahkan saat status
+      // penjualnya sedang dibekukan — policy toko_select_public memang
+      // mengizinkannya, supaya dia bisa membenahi datanya.
       const { data: tokoData } = await supabase
         .from('toko').select('id, nama_toko, kategori')
         .eq('seller_id', user.id).single()
@@ -257,6 +265,23 @@ export default function TokoSayaPage() {
       </div>
 
       <div style={{ maxWidth: '700px', margin: '0 auto', padding: '16px' }}>
+
+        {/* Tokonya turun dari etalase, kewajibannya tidak */}
+        {statusPenjual && statusPenjual !== 'aktif' && (
+          <div style={{ background: '#fff', border: '0.5px solid #f09595', borderRadius: '12px', padding: '14px 16px', marginBottom: '12px' }}>
+            <div style={{ fontSize: '13px', fontWeight: '700', color: '#c62828', marginBottom: '4px' }}>
+              Toko ini tidak tayang untuk pembeli
+            </div>
+            <div style={{ fontSize: '12px', color: '#8d4040', lineHeight: '1.7' }}>
+              Status penjualmu sedang bukan aktif. Kamu masih bisa melihat dan memperbaiki
+              datanya di sini, dan <strong>pesanan yang sedang berjalan tetap wajib
+              diselesaikan</strong> lewat dashboard.
+            </div>
+            <Link href="/jual" style={{ display: 'inline-block', marginTop: '8px', fontSize: '12px', color: '#0C447C', fontWeight: '600', textDecoration: 'none' }}>
+              Lihat status pengajuan →
+            </Link>
+          </div>
+        )}
 
         {/* Toast */}
         {toast && (

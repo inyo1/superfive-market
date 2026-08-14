@@ -1,18 +1,22 @@
 // Centang biru penanda alumni terverifikasi. Satu komponen untuk semua tempat
 // (alumni, profil, toko, kartu produk, header chat) supaya bentuknya seragam.
 //
-// Sengaja hanya menerima status mentah dari kolom users.status_verifikasi —
-// pemanggil tidak perlu tahu nilai mana yang dianggap sah.
+// Menerima boolean, bukan status mentah. Sejak verifikasi dipecah dua sumbu,
+// yang menentukan lencana ini HANYA users.status_alumni = 'alumni' — bukan
+// status_verifikasi lama, dan bukan status penjual. Untuk data yang datang
+// dari view alumni_publik, keberadaan barisnya sendiri sudah berarti alumni:
+// view-nya memang sudah menyaring.
 
 type Props = {
-  status: string | null | undefined
+  /** users.status_alumni === 'alumni' */
+  alumni: boolean | null | undefined
   size?: number
   /** Tampilkan tulisan "Terverifikasi" di sebelah centang */
   withLabel?: boolean
 }
 
-export default function BadgeVerifikasi({ status, size = 14, withLabel = false }: Props) {
-  if (status !== 'terverifikasi') return null
+export default function BadgeVerifikasi({ alumni, size = 14, withLabel = false }: Props) {
+  if (!alumni) return null
 
   const centang = (
     <svg

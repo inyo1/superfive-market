@@ -100,12 +100,11 @@ export default function Home() {
           .eq('toko.is_official', false),
         supabase.from('toko').select('*', { count: 'exact', head: true }),
         // Hitung dari view publik — tabel users tidak lagi bisa dibaca umum,
-        // kalau tetap dari sana angkanya jadi 0 untuk pengunjung.
-        // Akun institusi tidak ikut, supaya angkanya cocok dengan isi
-        // direktori alumni.
+        // kalau tetap dari sana angkanya jadi 0 untuk pengunjung. Tidak perlu
+        // disaring lagi: view-nya sudah hanya berisi alumni terverifikasi yang
+        // aktif dan bukan akun institusi, sama persis dengan isi direktori.
         supabase.from('alumni_publik')
-          .select('*', { count: 'exact', head: true })
-          .eq('is_institusi', false),
+          .select('*', { count: 'exact', head: true }),
         supabase.from('produk')
           .select('id, nama, harga, kategori, foto_url, terjual, rating, is_preorder, po_janji_kirim, toko!inner(nama_toko, is_official)')
           .eq('toko.is_official', false)

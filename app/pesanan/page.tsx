@@ -120,7 +120,7 @@ export default function PesananPage() {
   const [prosesId, setProsesId] = useState<string | null>(null)
   const [batalId, setBatalId] = useState<string | null>(null)
   const [alasanBatal, setAlasanBatal] = useState('')
-  const [profilPenjual, setProfilPenjual] = useState<Record<string, { angkatan: number | null; is_institusi: boolean }>>({})
+  const [profilPenjual, setProfilPenjual] = useState<Record<string, { angkatan: number | null }>>({})
   const [refund, setRefund] = useState<Record<string, Refund>>({})
 
   useEffect(() => {
@@ -157,8 +157,8 @@ export default function PesananPage() {
       const sellerIds = [...new Set(baris.map(p => p.toko?.seller_id).filter(Boolean))] as string[]
       if (sellerIds.length > 0) {
         const { data: penjual } = await supabase
-          .from('alumni_publik').select('id, angkatan, is_institusi').in('id', sellerIds)
-        setProfilPenjual(Object.fromEntries((penjual ?? []).map(u => [u.id, { angkatan: u.angkatan, is_institusi: u.is_institusi }])))
+          .from('alumni_publik').select('id, angkatan').in('id', sellerIds)
+        setProfilPenjual(Object.fromEntries((penjual ?? []).map(u => [u.id, { angkatan: u.angkatan }])))
       }
       setLoading(false)
     }
@@ -373,7 +373,7 @@ export default function PesananPage() {
                     <span style={{ fontSize: '12px', color: '#5a7da0' }}>🏪 Toko tidak diketahui</span>
                   )}
                   {p.toko?.seller_id && (
-                    <BadgeAngkatan angkatan={profilPenjual[p.toko.seller_id]?.angkatan} institusi={profilPenjual[p.toko.seller_id]?.is_institusi} kecil />
+                    <BadgeAngkatan angkatan={profilPenjual[p.toko.seller_id]?.angkatan} kecil />
                   )}
                 </div>
               </div>

@@ -36,7 +36,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       .from('alumni_publik')
       .select('nama, angkatan')
       .eq('id', toko.seller_id)
-      .single()
+      .maybeSingle()
     penjual = data ?? null
   }
 

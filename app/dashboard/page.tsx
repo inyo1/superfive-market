@@ -69,6 +69,10 @@ export default function DashboardPage() {
   const [pesanan, setPesanan] = useState<Pesanan[]>([])
   const [loading, setLoading] = useState(true)
   const [noToko, setNoToko] = useState(false)
+  // Status penjual + alasannya. Yang dibekukan atau ditolak tetap masuk ke
+  // dashboard: tokonya turun, kewajibannya tidak.
+  const [statusPenjual, setStatusPenjual] = useState<string | null>(null)
+  const [alasanPenjual, setAlasanPenjual] = useState<string | null>(null)
   const tampilSkeleton = useTampilSkeleton(loading)
 
   // Edit produk
@@ -111,6 +115,11 @@ export default function DashboardPage() {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/auth'); return }
+
+      const { data: profil } = await supabase
+        .from('users').select('status_penjual, alasan_penjual').eq('id', user.id).single()
+      setStatusPenjual(profil?.status_penjual ?? 'belum_ajukan')
+      setAlasanPenjual(profil?.alasan_penjual ?? null)
 
       const { data: tokoData } = await supabase.from('toko').select('id, nama_toko, kategori, is_official').eq('seller_id', user.id).single()
       if (!tokoData) { setNoToko(true); setLoading(false); return }
@@ -330,23 +339,62 @@ export default function DashboardPage() {
     </main>
   )
 
-  if (noToko) return (
-    <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
-      <Navbar />
-      <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-        <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏪</div>
-        <div style={{ fontSize: '16px', fontWeight: '500', color: '#333', marginBottom: '8px' }}>Kamu belum punya toko</div>
-        <div style={{ fontSize: '13px', color: '#5a7da0', marginBottom: '24px' }}>Tambah produk pertama untuk membuat toko otomatis</div>
-        <Link href="/produk/tambah" style={{ background: '#0C447C', color: '#fff', padding: '12px 24px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none' }}>
-          + Tambah Produk Pertama
-        </Link>
-      </div>
-    </main>
-  )
+  if (noToko) {
+    const sudahPenjual = statusPenjual === 'aktif'
+    return (
+      <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
+        <Navbar />
+        <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>{sudahPenjual ? '🏪' : '💼'}</div>
+          <div style={{ fontSize: '16px', fontWeight: '500', color: '#333', marginBottom: '8px' }}>
+            {sudahPenjual ? 'Kamu belum punya toko' : 'Kamu belum terdaftar sebagai penjual'}
+          </div>
+          <div style={{ fontSize: '13px', color: '#5a7da0', marginBottom: '24px' }}>
+            {sudahPenjual
+              ? 'Tambah produk pertama untuk membuat toko otomatis'
+              : 'Ajukan diri jadi penjual dulu — setelah disetujui admin, tokomu bisa dibuka'}
+          </div>
+          <Link href={sudahPenjual ? '/produk/tambah' : '/jual'} style={{ background: '#0C447C', color: '#fff', padding: '12px 24px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none' }}>
+            {sudahPenjual ? '+ Tambah Produk Pertama' : 'Mulai Berjualan'}
+          </Link>
+        </div>
+      </main>
+    )
+  }
 
   return (
     <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
       <Navbar />
+
+      {/* Status penjual yang sedang bermasalah. Tokonya turun dari etalase,
+          tapi pesanan yang sudah terlanjur masuk TETAP WAJIB diselesaikan —
+          itu yang paling penting terbaca di sini, bukan alasannya saja.
+          Dashboard-nya sendiri tidak dikunci, justru supaya dia bisa
+          menyelesaikan kewajibannya dan memperbaiki datanya. */}
+      {(statusPenjual === 'dibekukan' || statusPenjual === 'ditolak') && (
+        <div style={{ background: '#fff', borderBottom: '0.5px solid #f09595', padding: '14px 16px' }}>
+          <div style={{ maxWidth: '660px', margin: '0 auto' }}>
+            <div style={{ fontSize: '13px', fontWeight: '700', color: '#c62828', marginBottom: '4px' }}>
+              {statusPenjual === 'dibekukan'
+                ? '⛔ Akun penjualmu sedang dibekukan'
+                : '⛔ Pengajuan penjualmu ditolak'}
+            </div>
+            {alasanPenjual && (
+              <div style={{ background: '#fce4e4', borderRadius: '8px', padding: '9px 12px', fontSize: '12px', color: '#c62828', margin: '6px 0', whiteSpace: 'pre-line' }}>
+                {alasanPenjual}
+              </div>
+            )}
+            <div style={{ fontSize: '12px', color: '#8d4040', lineHeight: '1.7' }}>
+              Tokomu tidak tayang di etalase, tapi <strong>pesanan yang sedang berjalan
+              tetap wajib kamu selesaikan</strong> — kirim barangnya dan isi nomor resi
+              seperti biasa. Tenggat kirim dan pembatalan otomatis tetap berlaku.
+            </div>
+            <Link href="/jual" style={{ display: 'inline-block', marginTop: '8px', fontSize: '12px', color: '#0C447C', fontWeight: '600', textDecoration: 'none' }}>
+              Lihat status pengajuan →
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Edit modal */}
       {editId && (

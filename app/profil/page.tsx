@@ -29,7 +29,6 @@ export default function ProfilPage() {
   const tampilSkeleton = useTampilSkeleton(loading)
   const [saving, setSaving] = useState(false)
   const [pesan, setPesan] = useState('')
-  const [statusVerifikasi, setStatusVerifikasi] = useState<string | null>(null)
   const [statusAlumni, setStatusAlumni] = useState<string | null>(null)
   const [isInstitusi, setIsInstitusi] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -43,13 +42,12 @@ export default function ProfilPage() {
 
       const { data } = await supabase
         .from('users')
-        .select('nama, email, angkatan, avatar_url, no_hp, jalan, kelurahan, kecamatan, kota, provinsi, kode_pos, status_verifikasi, status_alumni, is_institusi')
+        .select('nama, email, angkatan, avatar_url, no_hp, jalan, kelurahan, kecamatan, kota, provinsi, kode_pos, status_alumni, is_institusi')
         .eq('id', user.id)
         .single()
 
       if (data) {
         setNama(data.nama ?? '')
-        setStatusVerifikasi(data.status_verifikasi ?? null)
         setStatusAlumni(data.status_alumni ?? 'umum')
         setIsInstitusi(Boolean(data.is_institusi))
         setAngkatan(data.angkatan ? String(data.angkatan) : '')
@@ -186,7 +184,7 @@ export default function ProfilPage() {
           <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFileChange} style={{ display: 'none' }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '2px' }}>
             <span style={{ fontSize: '13px', fontWeight: '500', color: '#1a1a1a' }}>{nama || 'Nama belum diisi'}</span>
-            <BadgeVerifikasi status={statusVerifikasi} size={14} />
+            <BadgeVerifikasi alumni={statusAlumni === 'alumni'} size={14} />
           </div>
           <div style={{ fontSize: '12px', color: '#5a7da0', marginBottom: '6px' }}>{userEmail}</div>
           {angkatan && (
