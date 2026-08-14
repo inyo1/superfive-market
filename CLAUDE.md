@@ -454,6 +454,31 @@ Chat yang dipakai sekarang.
   [lib/buktiAlumni.ts](lib/buktiAlumni.ts), jangan bikin URL sendiri.
 - Pemilik bisa unggah/lihat/hapus miliknya sendiri; admin bisa lihat semua.
 
+### Unggah bukti alumni DIMATIKAN SEMENTARA (sejak 14 Agustus 2026)
+
+Keputusan produk, bukan pembersihan kode. Yang berubah hanya tampilan dan
+alur — **kolom `users.bukti_alumni_url` dan bucket `bukti-alumni` sengaja
+dipertahankan utuh**, beserta policy-nya, supaya fitur ini bisa dinyalakan
+lagi tanpa migrasi apa pun.
+
+Keadaan sekarang:
+
+- Halaman [/verifikasi](app/verifikasi/page.tsx) tidak lagi punya kolom unggah.
+  Yang dikirim pendaftar cuma `catatan_pendaftar`
+- `uploadBuktiAlumni()` di [lib/buktiAlumni.ts](lib/buktiAlumni.ts) **tidak
+  dipanggil dari mana pun**. Itu disengaja — jangan dihapus karena terlihat
+  tak terpakai. `urlBukti()` masih dipakai panel admin
+- Panel admin **tidak menampilkan peringatan "belum mengunggah bukti"**.
+  Selama unggahnya mati, peringatan itu menyala untuk hampir semua orang, dan
+  peringatan yang selalu menyala akan diabaikan — termasuk nanti saat ada
+  peringatan yang benar-benar penting. Tautan buktinya tetap muncul kalau
+  `bukti_alumni_url` memang terisi dari data lama
+- **Verifikasi untuk sekarang bersandar pada penilaian admin** atas nama dan
+  angkatan pendaftar, dibantu catatan yang ditulisnya
+
+Kalau dinyalakan lagi: kembalikan kolom unggah di `/verifikasi`, dan barulah
+peringatan "belum mengunggah" di panel admin punya arti kembali.
+
 ## Kosakata Status
 
 Dijaga CHECK constraint di database. Nilai di luar daftar ini **ditolak**.
@@ -979,6 +1004,20 @@ Kalau butuh memastikan sesuatu di sisi data, pakai Supabase MCP untuk `SELECT`
   menumpuk di status `menunggu` sampai panelnya dibuat — dan karena `refund`
   tidak punya policy tulis, panel itu harus lewat RPC baru, bukan UPDATE dari
   client.
+- **Unggah bukti alumni dimatikan sementara** (14 Agustus 2026). Kolom
+  `users.bukti_alumni_url` dan bucket `bukti-alumni` sengaja dipertahankan;
+  verifikasi untuk sekarang bersandar pada penilaian admin atas nama dan
+  angkatan. Rinciannya di
+  [Unggah bukti alumni DIMATIKAN SEMENTARA](#unggah-bukti-alumni-dimatikan-sementara-sejak-14-agustus-2026).
+- **Admin belum bisa meminta data ulang.** Untuk pengguna yang sudah
+  `terverifikasi`, satu-satunya tombol adalah Tolak — jadi keraguan
+  administratif kecil pun memaksa admin menolak orang yang tokonya mungkin
+  sudah jalan. Yang dibutuhkan: mengembalikan status ke `menunggu` dengan
+  catatan admin. `verifikasi_alumni` **tidak bisa dipakai** — parameternya
+  boolean dan hasilnya hanya `terverifikasi` atau `ditolak`. Perlu RPC baru
+  (mis. `minta_data_ulang(p_user_id, p_catatan)`), bukan UPDATE dari client:
+  `status_verifikasi` dijaga `jaga_field_sensitif` dan UPDATE langsung akan
+  dibatalkan diam-diam tanpa error.
 - Buku besar penjual belum ada.
 - Kontribusi kas 5% belum ada.
 - Seluruh fitur verifikasi alumni (halaman admin, /verifikasi, badge, banner)
