@@ -17,6 +17,8 @@ type Pendaftar = {
   avatar_url: string | null
   status_alumni: string
   is_institusi: boolean | null
+  catatan_admin: string | null
+  diminta_data_at: string | null
   bukti_alumni_url: string | null
   catatan_pendaftar: string | null
   alasan_tolak: string | null
@@ -70,9 +72,12 @@ export default function VerifikasiAdminPage() {
   const [pendaftar, setPendaftar] = useState<Pendaftar[]>([])
   const [pesan, setPesan] = useState<{ text: string; ok: boolean } | null>(null)
   const [prosesId, setProsesId] = useState<string | null>(null)
+  const [adminId, setAdminId] = useState<string | null>(null)
 
-  // Form tolak
-  const [tolakId, setTolakId] = useState<string | null>(null)
+  // Satu form untuk dua aksi yang sama-sama wajib beralasan: menolak, dan
+  // meminta data dilengkapi. Hanya satu yang boleh terbuka sekaligus.
+  const [formId, setFormId] = useState<string | null>(null)
+  const [formJenis, setFormJenis] = useState<'tolak' | 'minta'>('tolak')
   const [alasan, setAlasan] = useState('')
 
   // Lightbox bukti
@@ -87,7 +92,7 @@ export default function VerifikasiAdminPage() {
   async function muat() {
     const { data, error } = await supabase
       .from('users')
-      .select('id, nama, email, angkatan, avatar_url, status_alumni, is_institusi, bukti_alumni_url, catatan_pendaftar, alasan_tolak, created_at, diverifikasi_at')
+      .select('id, nama, email, angkatan, avatar_url, status_alumni, is_institusi, bukti_alumni_url, catatan_pendaftar, alasan_tolak, catatan_admin, diminta_data_at, created_at, diverifikasi_at')
       .neq('status_alumni', 'umum')
       .order('created_at', { ascending: false })
 
@@ -104,6 +109,7 @@ export default function VerifikasiAdminPage() {
         .from('users').select('role').eq('id', user.id).single()
 
       if (!profile || profile.role !== 'admin') { router.replace('/'); return }
+      setAdminId(user.id)
 
       await muat()
       setReady(true)
@@ -131,6 +137,9 @@ export default function VerifikasiAdminPage() {
             ...p,
             status_alumni: statusBaru,
             alasan_tolak: setujui ? null : (alasanTolak ?? p.alasan_tolak),
+            // verifikasi_alumni mengosongkan catatan_admin, jadi permintaan
+            // data yang lama tidak boleh tertinggal di layar
+            catatan_admin: null,
             diverifikasi_at: new Date().toISOString(),
           }
         : p))
@@ -139,7 +148,7 @@ export default function VerifikasiAdminPage() {
         `${hasil?.nama ?? 'Pendaftar'} ${setujui ? 'diverifikasi' : 'ditolak'}.`,
         true,
       )
-      setTolakId(null)
+      setFormId(null)
       setAlasan('')
     } catch (e) {
       tampilkanPesan('Gagal: ' + (e instanceof Error ? e.message : 'coba lagi'), false)
@@ -148,9 +157,58 @@ export default function VerifikasiAdminPage() {
     }
   }
 
-  function kirimTolak(id: string) {
-    if (!alasan.trim()) { tampilkanPesan('Alasan penolakan wajib diisi', false); return }
-    putuskan(id, false, alasan.trim())
+  // Menarik keputusan yang sudah dibuat dan mengembalikan pendaftar ke antrean
+  // 'menunggu' dengan catatan apa yang perlu dilengkapi. Jalan tengah supaya
+  // keraguan administratif kecil tidak lagi memaksa admin menolak orang.
+  async function mintaDataUlang(id: string, catatan: string) {
+    setProsesId(id)
+    try {
+      const { data, error } = await supabase.rpc('minta_data_ulang', {
+        p_user_id: id,
+        p_catatan: catatan,
+      })
+      if (error) throw new Error(error.message)
+
+      const hasil = data as { nama: string | null } | null
+      setPendaftar(prev => prev.map(p => p.id === id
+        ? {
+            ...p,
+            status_alumni: 'menunggu',
+            catatan_admin: catatan,
+            alasan_tolak: null,
+            diverifikasi_at: null,
+            diminta_data_at: new Date().toISOString(),
+          }
+        : p))
+
+      tampilkanPesan(`Permintaan data terkirim ke ${hasil?.nama ?? 'pendaftar'}.`, true)
+      setFormId(null)
+      setAlasan('')
+      setTab('menunggu')
+    } catch (e) {
+      tampilkanPesan('Gagal: ' + (e instanceof Error ? e.message : 'coba lagi'), false)
+    } finally {
+      setProsesId(null)
+    }
+  }
+
+  function kirimForm(id: string) {
+    const teks = alasan.trim()
+    if (!teks) {
+      tampilkanPesan(
+        formJenis === 'tolak' ? 'Alasan penolakan wajib diisi' : 'Tulis dulu data apa yang perlu dilengkapi',
+        false,
+      )
+      return
+    }
+    if (formJenis === 'tolak') putuskan(id, false, teks)
+    else mintaDataUlang(id, teks)
+  }
+
+  function bukaForm(id: string, jenis: 'tolak' | 'minta') {
+    setFormId(id)
+    setFormJenis(jenis)
+    setAlasan('')
   }
 
   async function bukaBukti(p: Pendaftar) {
@@ -224,7 +282,7 @@ export default function VerifikasiAdminPage() {
             return (
               <button
                 key={t}
-                onClick={() => setTab(t)}
+                onClick={() => { setTab(t); setFormId(null); setAlasan('') }}
                 style={{
                   flex: 1, padding: '9px 6px', borderRadius: '8px',
                   border: aktif ? 'none' : '0.5px solid #c5d9ef',
@@ -322,6 +380,17 @@ export default function VerifikasiAdminPage() {
                 </div>
               )}
 
+              {/* Data yang sedang diminta admin — pendaftar melihat catatan
+                  yang sama di halaman /verifikasi miliknya */}
+              {p.catatan_admin && (
+                <div style={{ margin: '0 14px 12px', background: '#E6F1FB', borderRadius: '8px', padding: '10px 12px' }}>
+                  <div style={{ fontSize: '10px', color: '#0C447C', marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Diminta melengkapi{p.diminta_data_at ? ` · ${fmtTgl(p.diminta_data_at)}` : ''}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#0C447C', whiteSpace: 'pre-line' }}>{p.catatan_admin}</div>
+                </div>
+              )}
+
               {/* Alasan penolakan sebelumnya */}
               {p.status_alumni === 'ditolak' && p.alasan_tolak && (
                 <div style={{ margin: '0 14px 12px', background: '#fce4e4', borderRadius: '8px', padding: '10px 12px' }}>
@@ -334,53 +403,88 @@ export default function VerifikasiAdminPage() {
 
               {/* Aksi */}
               <div style={{ padding: '0 14px 14px' }}>
-                {tolakId === p.id ? (
+                {formId === p.id ? (
                   <div style={{ background: '#f0f5fb', borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#c62828' }}>Alasan penolakan</div>
+                    <div style={{ fontSize: '12px', fontWeight: '600', color: formJenis === 'tolak' ? '#c62828' : '#0C447C' }}>
+                      {formJenis === 'tolak' ? 'Alasan penolakan' : 'Data apa yang perlu dilengkapi?'}
+                    </div>
                     <textarea
                       value={alasan}
                       onChange={e => setAlasan(e.target.value)}
                       rows={3}
-                      placeholder="Misal: bukti tidak terbaca, atau nama tidak cocok dengan data alumni"
+                      placeholder={formJenis === 'tolak'
+                        ? 'Misal: nama tidak cocok dengan data alumni'
+                        : 'Misal: tulis nama wali kelas dan kelas terakhirmu supaya bisa kami cocokkan'}
                       style={{ width: '100%', padding: '8px 10px', border: '0.5px solid #c5d9ef', borderRadius: '6px', fontSize: '12px', outline: 'none', resize: 'none', boxSizing: 'border-box', fontFamily: 'sans-serif', background: '#fff' }}
                     />
                     <div style={{ fontSize: '11px', color: '#5a7da0' }}>
-                      Alasan ini ditampilkan ke pendaftar supaya bisa mengirim ulang.
+                      {formJenis === 'tolak'
+                        ? 'Alasan ini ditampilkan ke pendaftar supaya bisa mengirim ulang.'
+                        : 'Catatan ini ditampilkan ke pendaftar, dan statusnya kembali ke Menunggu.'}
                     </div>
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <button
-                        onClick={() => { setTolakId(null); setAlasan('') }}
+                        onClick={() => { setFormId(null); setAlasan('') }}
                         style={{ flex: 1, background: '#fff', color: '#5a7da0', border: '0.5px solid #c5d9ef', padding: '9px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}
                       >
                         Batal
                       </button>
                       <button
-                        onClick={() => kirimTolak(p.id)}
+                        onClick={() => kirimForm(p.id)}
                         disabled={sedangProses}
-                        style={{ flex: 2, background: sedangProses ? '#e39c9c' : '#c62828', color: '#fff', border: 'none', padding: '9px', borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: sedangProses ? 'not-allowed' : 'pointer' }}
+                        style={{
+                          flex: 2, color: '#fff', border: 'none', padding: '9px', borderRadius: '6px',
+                          fontSize: '12px', fontWeight: '600',
+                          background: sedangProses
+                            ? (formJenis === 'tolak' ? '#e39c9c' : '#7fa8c9')
+                            : (formJenis === 'tolak' ? '#c62828' : '#0C447C'),
+                          cursor: sedangProses ? 'not-allowed' : 'pointer',
+                        }}
                       >
-                        {sedangProses ? 'Menyimpan...' : 'Kirim Penolakan'}
+                        {sedangProses
+                          ? 'Menyimpan...'
+                          : formJenis === 'tolak' ? 'Kirim Penolakan' : 'Kirim Permintaan'}
                       </button>
                     </div>
                   </div>
+                ) : p.id === adminId ? (
+                  /* RPC-nya menolak semua aksi ke akun sendiri, jadi tombolnya
+                     tidak usah ditawarkan sama sekali */
+                  <div style={{ fontSize: '12px', color: '#9ab4cc', textAlign: 'center', padding: '6px' }}>
+                    Ini akunmu sendiri.
+                  </div>
                 ) : (
-                  <div style={{ display: 'flex', gap: '8px' }}>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                     {p.status_alumni !== 'alumni' && (
                       <button
                         onClick={() => putuskan(p.id, true)}
                         disabled={sedangProses}
-                        style={{ flex: 2, background: sedangProses ? '#a5d6a7' : '#2e7d32', color: '#fff', border: 'none', padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: sedangProses ? 'not-allowed' : 'pointer' }}
+                        style={{ flex: 2, minWidth: '130px', background: sedangProses ? '#a5d6a7' : '#2e7d32', color: '#fff', border: 'none', padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: sedangProses ? 'not-allowed' : 'pointer' }}
                       >
                         {sedangProses ? 'Menyimpan...' : '✓ Verifikasi'}
                       </button>
                     )}
                     {p.status_alumni !== 'ditolak' && (
                       <button
-                        onClick={() => { setTolakId(p.id); setAlasan('') }}
+                        onClick={() => bukaForm(p.id, 'tolak')}
                         disabled={sedangProses}
-                        style={{ flex: 1, background: '#fce4e4', color: '#c62828', border: 'none', padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: sedangProses ? 'not-allowed' : 'pointer' }}
+                        style={{ flex: 1, minWidth: '80px', background: '#fce4e4', color: '#c62828', border: 'none', padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: sedangProses ? 'not-allowed' : 'pointer' }}
                       >
                         Tolak
+                      </button>
+                    )}
+                    {/* Hanya untuk yang keputusannya sudah dibuat. Yang masih
+                        'menunggu' ditolak RPC-nya ("memang sedang menunggu
+                        diperiksa"), dan yang 'umum' tidak pernah sampai ke
+                        halaman ini — keduanya tidak perlu ditawari tombol
+                        yang sudah pasti gagal. */}
+                    {(p.status_alumni === 'alumni' || p.status_alumni === 'ditolak') && (
+                      <button
+                        onClick={() => bukaForm(p.id, 'minta')}
+                        disabled={sedangProses}
+                        style={{ flex: 1, minWidth: '150px', background: '#E6F1FB', color: '#0C447C', border: '0.5px solid #c5d9ef', padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: sedangProses ? 'not-allowed' : 'pointer' }}
+                      >
+                        Minta Data Ulang
                       </button>
                     )}
                   </div>
