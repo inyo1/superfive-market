@@ -811,6 +811,7 @@ Jangan tulis manual hal-hal di bawah ini dari aplikasi — sudah ditangani datab
 | `trg_pesanan_updated` | BEFORE UPDATE `pesanan` | Isi `updated_at` |
 | `trg_tambah_terjual` | BEFORE UPDATE `pesanan` | Saat status jadi `selesai`: tambah `produk.terjual` dan isi `selesai_at` |
 | `trg_kurangi_stok` | AFTER INSERT `pesanan_items` | Kurangi `produk_varian.stok` (kalau ada varian) dan `produk.stok`, minimum 0. **Produk PO dilewati sepenuhnya** |
+| `trg_kembalikan_stok` | BEFORE UPDATE `pesanan` | Saat status jadi `dibatalkan`: kembalikan stok varian dan produk. **Produk PO dilewati sepenuhnya.** Lihat [Pengembalian stok](#pengembalian-stok-trg_kembalikan_stok) |
 | `trg_refresh_rating` | AFTER INSERT/UPDATE/DELETE `reviews` | Hitung ulang rating produk |
 | `trg_jaga_toko_official` | BEFORE INSERT/UPDATE `toko` | Kembalikan `is_official` ke false / nilai lama kalau yang mengubah bukan admin |
 | `trg_jaga_field_sensitif` | BEFORE UPDATE `users` | Kembalikan `role`, `status_verifikasi`, dan kawan-kawan ke nilai lama kalau bukan admin |
@@ -824,6 +825,36 @@ menguntungkan tapi bukan sesuatu yang perlu diandalkan: `trg_tambah_terjual`
 mengisi `NEW.selesai_at` **setelah** penjaga lewat, dan itu aman karena
 penjaganya sudah dilewatkan oleh penanda `superfive.lewat_rpc` — bukan karena
 urutannya.
+
+### Pengembalian stok `trg_kembalikan_stok`
+
+Cermin dari `trg_kurangi_stok`, arah sebaliknya. BEFORE UPDATE di `pesanan`;
+begitu `status` berubah **menjadi** `dibatalkan`, `qty` tiap item dikembalikan
+ke `produk_varian.stok` (kalau itemnya bervarian) dan ke `produk.stok`.
+
+Tiga hal yang menentukan bentuknya:
+
+- **Produk PO dilewati sepenuhnya**, sama persis seperti `trg_kurangi_stok`.
+  Stok produk PO memang tidak pernah dipotong, jadi mengembalikannya justru
+  akan menciptakan stok dari udara. Dua trigger ini harus selalu sepakat soal
+  PO — kalau salah satu diubah, ubah keduanya
+- **Hanya jalan pada perpindahan masuk.** Kalau `OLD.status` sudah
+  `dibatalkan`, trigger langsung keluar. Jadi UPDATE lain pada pesanan yang
+  sudah batal tidak menggandakan stok
+- **Dipasang di tabel, bukan di dalam RPC.** Ini yang penting: pembatalan
+  datang dari tiga arah — `batalkan_pesanan` (pembeli maupun penjual),
+  `batalkan_pesanan_sistem`, dan `jalankan_tugas_pesanan` yang membatalkan
+  pesanan kadaluarsa dan telat kirim. Menaruh logikanya di tabel membuat
+  ketiganya tercakup sekaligus, dan jalur pembatalan baru yang ditambahkan
+  nanti ikut tercakup tanpa harus diingat
+
+Sebelum trigger ini ada, **tidak ada apa pun yang mengembalikan stok**:
+`trg_kurangi_stok` memotong saat pesanan dibuat dan pembatalan tidak
+mengembalikannya, sehingga setiap pesanan batal memakan stok secara permanen.
+
+Konsekuensinya untuk UI: kalimat seperti "stoknya kembali tersedia" di panel
+pembatalan [/pesanan](app/pesanan/page.tsx) sekarang memang benar — sebelumnya
+tidak.
 
 ## Ringkasan RLS
 
@@ -1097,6 +1128,29 @@ Kalau butuh memastikan sesuatu di sisi data, pakai Supabase MCP untuk `SELECT`
   (mis. `minta_data_ulang(p_user_id, p_catatan)`), bukan UPDATE dari client:
   `status_verifikasi` dijaga `jaga_field_sensitif` dan UPDATE langsung akan
   dibatalkan diam-diam tanpa error.
+- **Stok pesanan yang batal sebelum `trg_kembalikan_stok` ada tidak kembali
+  secara surut.** Trigger-nya hanya bekerja pada pembatalan yang terjadi
+  setelah ia dipasang (14 Agustus 2026); pesanan yang dibatalkan sebelum itu
+  sudah terlanjur memakan stok permanen dan angkanya masih salah sampai
+  sekarang — misalnya KAOS 1 yang tersisa 99 karena pesanan yang disapu cron
+  pagi itu. Perbaikannya sekali jalan, dan harus dijalankan Inyo di SQL
+  editor, bukan dari aplikasi. Untuk melihat dulu seberapa besar
+  selisihnya:
+
+  ```sql
+  select i.produk_id, p.nama, p.stok as stok_sekarang, sum(i.qty) as belum_kembali
+  from pesanan_items i
+  join pesanan ps on ps.id = i.pesanan_id
+  join produk p  on p.id = i.produk_id
+  where ps.status = 'dibatalkan'
+    and ps.dibatalkan_at < timestamptz '2026-08-14'   -- ganti dengan waktu trigger dipasang
+    and not coalesce(p.is_preorder, false)
+  group by i.produk_id, p.nama, p.stok
+  order by belum_kembali desc;
+  ```
+
+  Angkanya perlu diperiksa mata dulu sebelum ditambahkan — pesanan yang
+  produknya sudah dihapus punya `produk_id` NULL dan tidak muncul di sini.
 - Buku besar penjual belum ada.
 - Kontribusi kas 5% belum ada.
 - Seluruh fitur verifikasi alumni (halaman admin, /verifikasi, badge, banner)
