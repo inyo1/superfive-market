@@ -131,6 +131,7 @@ export default function BottomNav() {
         { href: '/pesanan', label: 'Pesanan Saya', ikon: '🧾' },
         { href: '/toko/saya', label: 'Toko Saya', ikon: '🏪' },
         { href: '/dashboard', label: 'Dashboard Seller', ikon: '📊' },
+        { href: '/jual', label: 'Mulai Berjualan', ikon: '💼' },
         { href: '/alumni', label: 'Direktori Alumni', ikon: '🎓' },
         { href: '/about', label: 'Tentang Kami', ikon: 'ℹ️' },
       ]

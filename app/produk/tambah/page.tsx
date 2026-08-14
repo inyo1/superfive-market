@@ -16,6 +16,9 @@ export default function TambahProduk() {
   const [authChecked, setAuthChecked] = useState(false)
   const [redirecting, setRedirecting] = useState(false)
   const [countdown, setCountdown] = useState(2)
+  // Pintu berjualan. Yang belum disetujui admin tidak boleh sampai ke formulir,
+  // karena baris toko-nya sudah terlanjur dibuat sebelum produknya disimpan.
+  const [bolehJualan, setBolehJualan] = useState(false)
   const [nama, setNama] = useState('')
   const [harga, setHarga] = useState('')
   const [deskripsi, setDeskripsi] = useState('')
@@ -29,11 +32,13 @@ export default function TambahProduk() {
   const inputFotoRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    let timer: ReturnType<typeof setInterval> | undefined
+
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) {
         setRedirecting(true)
         let sisa = 2
-        const timer = setInterval(() => {
+        timer = setInterval(() => {
           sisa -= 1
           setCountdown(sisa)
           if (sisa <= 0) {
@@ -41,10 +46,16 @@ export default function TambahProduk() {
             router.replace('/auth')
           }
         }, 1000)
-      } else {
-        setAuthChecked(true)
+        return
       }
+
+      const { data } = await supabase
+        .from('users').select('status_penjual').eq('id', user.id).single()
+      setBolehJualan(data?.status_penjual === 'aktif')
+      setAuthChecked(true)
     })
+
+    return () => clearInterval(timer)
   }, [])
 
   function handlePilihFoto(e: React.ChangeEvent<HTMLInputElement>) {
@@ -146,6 +157,33 @@ export default function TambahProduk() {
         <Navbar />
         <div style={{ textAlign: 'center', padding: '60px 20px', color: '#5a7da0' }}>
           Memeriksa sesi...
+        </div>
+      </main>
+    )
+  }
+
+  if (!bolehJualan) {
+    return (
+      <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
+        <Navbar />
+        <div style={{ maxWidth: '440px', margin: '40px auto', padding: '0 16px' }}>
+          <div style={{ background: '#fff', borderRadius: '12px', padding: '32px 20px', border: '0.5px solid #c5d9ef', textAlign: 'center' }}>
+            <div style={{ fontSize: '48px', marginBottom: '14px' }}>💼</div>
+            <div style={{ fontSize: '16px', fontWeight: '700', color: '#1a1a1a', marginBottom: '8px' }}>
+              Kamu belum terdaftar sebagai penjual
+            </div>
+            <p style={{ fontSize: '13px', color: '#5a7da0', lineHeight: '1.7', margin: '0 0 20px' }}>
+              Ajukan diri jadi penjual dulu — alamat pengiriman, data rekening, dan
+              persetujuan aturan. Setelah disetujui admin, kamu bisa memasang produk.
+            </p>
+            <Link href="/jual" style={{
+              display: 'inline-flex', alignItems: 'center', background: '#0C447C', color: '#fff',
+              padding: '0 22px', minHeight: '44px', borderRadius: '8px',
+              fontSize: '13px', fontWeight: '600', textDecoration: 'none',
+            }}>
+              Mulai Berjualan
+            </Link>
+          </div>
         </div>
       </main>
     )
