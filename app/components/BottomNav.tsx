@@ -208,6 +208,9 @@ export default function BottomNav() {
                 <Link href="/admin/verifikasi" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '13px 12px', borderRadius: '10px', fontSize: '14px', color: '#e65100', fontWeight: '600', textDecoration: 'none', minHeight: '44px', boxSizing: 'border-box' }}>
                   <span style={{ fontSize: '18px' }}>🎓</span> Verifikasi Alumni
                 </Link>
+                <Link href="/admin/penjual" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '13px 12px', borderRadius: '10px', fontSize: '14px', color: '#e65100', fontWeight: '600', textDecoration: 'none', minHeight: '44px', boxSizing: 'border-box' }}>
+                  <span style={{ fontSize: '18px' }}>💼</span> Pengajuan Penjual
+                </Link>
               </>
             )}
 

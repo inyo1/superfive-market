@@ -53,6 +53,7 @@ export default function Navbar() {
   const [userName, setUserName] = useState<string>('')
   const [isAdmin, setIsAdmin] = useState(false)
   const [menungguVerifikasi, setMenungguVerifikasi] = useState(0)
+  const [menungguPenjual, setMenungguPenjual] = useState(0)
   const navRef = useRef<HTMLElement>(null)
   const pathname = usePathname()
   const router = useRouter()
@@ -73,13 +74,16 @@ export default function Navbar() {
     }
   }
 
-  // Jumlah pendaftar yang menunggu verifikasi, dipakai jadi badge angka
+  // Dua antrean admin yang berbeda, masing-masing punya badge angka sendiri
   async function hitungMenunggu() {
-    const { count } = await supabase
-      .from('users')
-      .select('id', { count: 'exact', head: true })
-      .eq('status_verifikasi', 'menunggu')
-    setMenungguVerifikasi(count ?? 0)
+    const [alumni, penjual] = await Promise.all([
+      supabase.from('users').select('id', { count: 'exact', head: true })
+        .eq('status_alumni', 'menunggu'),
+      supabase.from('users').select('id', { count: 'exact', head: true })
+        .eq('status_penjual', 'menunggu'),
+    ])
+    setMenungguVerifikasi(alumni.count ?? 0)
+    setMenungguPenjual(penjual.count ?? 0)
   }
 
   useEffect(() => {
@@ -90,7 +94,7 @@ export default function Navbar() {
     const { data: listener } = supabase.auth.onAuthStateChange((_e, session) => {
       setUser(session?.user ?? null)
       if (session?.user) fetchProfile(session.user.id)
-      else { setAvatarUrl(null); setUserName(''); setIsAdmin(false); setMenungguVerifikasi(0) }
+      else { setAvatarUrl(null); setUserName(''); setIsAdmin(false); setMenungguVerifikasi(0); setMenungguPenjual(0) }
     })
     return () => listener.subscription.unsubscribe()
   }, [])
@@ -329,13 +333,13 @@ export default function Navbar() {
                 <span aria-hidden style={{ alignSelf: 'center', width: '1px', height: '20px', background: 'rgba(255,255,255,0.18)', margin: '0 6px', flexShrink: 0 }} />
                 <Link
                   href="/admin"
-                  aria-current={isActive('/admin') && !pathname.startsWith('/admin/verifikasi') ? 'page' : undefined}
+                  aria-current={pathname === '/admin' ? 'page' : undefined}
                   style={{
                     display: 'inline-flex', alignItems: 'center',
                     height: '44px', padding: '0 14px', flexShrink: 0,
                     fontSize: '13px', textDecoration: 'none', whiteSpace: 'nowrap',
                     color: '#ffb74d', fontWeight: '600',
-                    borderBottom: `3px solid ${isActive('/admin') && !pathname.startsWith('/admin/verifikasi') ? EMAS : 'transparent'}`,
+                    borderBottom: `3px solid ${pathname === '/admin' ? EMAS : 'transparent'}`,
                   }}
                 >
                   Admin
@@ -359,6 +363,28 @@ export default function Navbar() {
                       display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
                     }}>
                       {menungguVerifikasi > 99 ? '99+' : menungguVerifikasi}
+                    </span>
+                  )}
+                </Link>
+                <Link
+                  href="/admin/penjual"
+                  aria-current={pathname.startsWith('/admin/penjual') ? 'page' : undefined}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '7px',
+                    height: '44px', padding: '0 14px', flexShrink: 0,
+                    fontSize: '13px', textDecoration: 'none', whiteSpace: 'nowrap',
+                    color: '#ffb74d', fontWeight: '600',
+                    borderBottom: `3px solid ${pathname.startsWith('/admin/penjual') ? EMAS : 'transparent'}`,
+                  }}
+                >
+                  Pengajuan Penjual
+                  {menungguPenjual > 0 && (
+                    <span style={{
+                      background: '#e53935', color: '#fff', fontSize: '10px', fontWeight: '700',
+                      borderRadius: '10px', minWidth: '18px', height: '18px', padding: '0 5px',
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
+                    }}>
+                      {menungguPenjual > 99 ? '99+' : menungguPenjual}
                     </span>
                   )}
                 </Link>

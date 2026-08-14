@@ -184,9 +184,31 @@ export default function AdminPage() {
           <div style={{ fontSize: '11px', color: '#7eb8f0', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '4px' }}>
             Panel Admin
           </div>
-          <h1 style={{ fontSize: '20px', fontWeight: '800', color: '#fff', margin: '0 0 16px' }}>
+          <h1 style={{ fontSize: '20px', fontWeight: '800', color: '#fff', margin: '0 0 12px' }}>
             Superfive Market
           </h1>
+
+          {/* Dua antrean keputusan, dua halaman terpisah — siapa alumni dan
+              siapa boleh berjualan bukan pertanyaan yang sama */}
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+            {[
+              { href: '/admin/verifikasi', label: '🎓 Verifikasi Alumni' },
+              { href: '/admin/penjual', label: '💼 Pengajuan Penjual' },
+            ].map(m => (
+              <Link
+                key={m.href}
+                href={m.href}
+                style={{
+                  display: 'inline-flex', alignItems: 'center',
+                  background: 'rgba(255,255,255,0.15)', color: '#fff',
+                  padding: '0 14px', minHeight: '38px', borderRadius: '8px',
+                  fontSize: '12px', fontWeight: '600', textDecoration: 'none',
+                }}
+              >
+                {m.label}
+              </Link>
+            ))}
+          </div>
 
           {/* Stats row */}
           <div style={{ display: 'flex', gap: '8px' }}>
