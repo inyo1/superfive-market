@@ -8,6 +8,10 @@ export const BUCKET_BUKTI = 'bukti-alumni'
 
 const UMUR_SIGNED_URL = 60 * 10 // 10 menit
 
+// SEMENTARA TIDAK DIPAKAI — unggah bukti alumni dimatikan sebagai keputusan
+// produk, bukan karena fiturnya usang. Fungsi ini sengaja dipertahankan supaya
+// bisa dipasang kembali tanpa menulis ulang; jangan dihapus meski tidak ada
+// pemanggilnya. Lihat catatan di app/verifikasi/page.tsx.
 export async function uploadBuktiAlumni(
   file: File,
   userId: string,
