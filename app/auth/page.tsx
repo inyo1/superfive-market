@@ -21,6 +21,10 @@ function AuthContent() {
   const [nama, setNama] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  // Sengaja tanpa nilai awal: string kosong berarti pendaftar belum memilih.
+  // Tanpa ini akan ada orang yang tercatat alumni hanya karena tidak pernah
+  // memikirkannya — sama seperti pemilih status barang di EditorPreorder.
+  const [jenis, setJenis] = useState<'' | 'alumni' | 'umum'>('')
   const [angkatan, setAngkatan] = useState('')
   const [loading, setLoading] = useState(false)
   const [pesan, setPesan] = useState('')
@@ -74,14 +78,31 @@ function AuthContent() {
   }
 
   async function handleRegister() {
+    if (!nama.trim()) { setPesan('Nama lengkap wajib diisi.'); return }
+    if (!jenis) { setPesan('Pilih dulu salah satu: alumni, atau teman/keluarga alumni.'); return }
+    if (jenis === 'alumni' && !angkatan) { setPesan('Angkatan wajib diisi kalau kamu alumni.'); return }
+
     setLoading(true)
     const { data, error } = await supabase.auth.signUp({ email, password })
     if (error) { setPesan('Gagal daftar: ' + error.message); setLoading(false); return }
     if (data.user) {
       await supabase.from('users').insert({
         id: data.user.id,
-        nama, email, angkatan: angkatan ? parseInt(angkatan) : null,
+        nama, email,
+        angkatan: jenis === 'alumni' && angkatan ? parseInt(angkatan) : null,
       })
+
+      // Pendaftar biasa berhenti di sini: status_alumni tetap 'umum', tidak ada
+      // layar menunggu, dan belanjanya tidak dihalangi apa pun.
+      if (jenis === 'alumni') {
+        // Kalau RPC-nya gagal (mis. sesi belum terbentuk karena email masih
+        // harus dikonfirmasi), pendaftarannya tetap dianggap berhasil —
+        // pengajuan alumni bisa dikirim ulang dari /verifikasi setelah masuk.
+        await supabase.rpc('ajukan_alumni', {
+          p_angkatan: parseInt(angkatan),
+          p_catatan: null,
+        })
+      }
       setRegistered(true)
     }
     setLoading(false)
@@ -105,6 +126,7 @@ function AuthContent() {
             </div>
             <p style={{ fontSize: '13px', color: '#9ab4cc', lineHeight: '1.6', margin: '0 0 24px' }}>
               Klik link di email untuk mengaktifkan akun, lalu kembali ke sini untuk masuk.
+              {jenis === 'alumni' && ' Pengajuan alumni-mu akan diperiksa admin — sambil menunggu, kamu sudah bisa belanja.'}
             </p>
             <button
               onClick={() => { setRegistered(false); setMode('login'); setPesan('') }}
@@ -127,7 +149,7 @@ function AuthContent() {
           <div style={{textAlign:'center',marginBottom:'20px'}}>
             <Image src="/LOGO-512.png" alt="Logo" width={60} height={60} priority style={{objectFit:"contain",marginBottom:"8px"}} />
             <div style={{fontSize:'16px',fontWeight:'500',color:'#0C447C'}}>Superfive Market</div>
-            <div style={{fontSize:'12px',color:'#5a7da0'}}>Khusus alumni SMPN 5 Bandung</div>
+            <div style={{fontSize:'12px',color:'#5a7da0'}}>Marketplace alumni SMPN 5 Bandung</div>
           </div>
 
           {(msg || redirectTo !== '/') && (
@@ -223,7 +245,7 @@ function AuthContent() {
           <>
           <div style={{display:'flex',background:'#f0f5fb',borderRadius:'8px',padding:'3px',marginBottom:'16px'}}>
             <button onClick={()=>setMode('login')} style={{flex:1,padding:'8px',border:'none',borderRadius:'6px',cursor:'pointer',fontSize:'13px',background:mode==='login'?'#0C447C':'transparent',color:mode==='login'?'#fff':'#5a7da0',fontWeight:mode==='login'?'500':'400'}}>Masuk</button>
-            <button onClick={()=>setMode('register')} style={{flex:1,padding:'8px',border:'none',borderRadius:'6px',cursor:'pointer',fontSize:'13px',background:mode==='register'?'#0C447C':'transparent',color:mode==='register'?'#fff':'#5a7da0',fontWeight:mode==='register'?'500':'400'}}>Daftar Alumni</button>
+            <button onClick={()=>setMode('register')} style={{flex:1,padding:'8px',border:'none',borderRadius:'6px',cursor:'pointer',fontSize:'13px',background:mode==='register'?'#0C447C':'transparent',color:mode==='register'?'#fff':'#5a7da0',fontWeight:mode==='register'?'500':'400'}}>Daftar</button>
           </div>
 
           {mode==='register' && (
@@ -282,15 +304,58 @@ function AuthContent() {
             />
           </div>
 
+          {/* Dua pilihan setara, bukan saklar. Pilihan kedua sengaja bernada
+              netral: yang bukan alumni justru sedang diundang masuk, bukan
+              ditandai sebagai orang luar. */}
           {mode==='register' && (
             <div style={{marginBottom:'12px'}}>
-              <label style={{fontSize:'12px',color:'#5a7da0',display:'block',marginBottom:'4px'}}>Angkatan (Tahun Lulus)</label>
-              <select value={angkatan} onChange={e=>setAngkatan(e.target.value)} style={{width:'100%',padding:'9px 12px',border:'0.5px solid #c5d9ef',borderRadius:'8px',fontSize:'13px',outline:'none',background:'#fff'}}>
-                <option value="">-- Pilih Angkatan --</option>
-                {Array.from({length:new Date().getFullYear()-1970+1},(_,i)=>new Date().getFullYear()-i).map(y=>(
-                  <option key={y} value={y}>Angkatan {y}</option>
-                ))}
-              </select>
+              <div style={{fontSize:'12px',color:'#5a7da0',marginBottom:'6px'}}>Kamu daftar sebagai</div>
+              <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
+                {([
+                  { nilai:'alumni', label:'Saya alumni SMPN 5 Bandung' },
+                  { nilai:'umum',   label:'Saya teman atau keluarga alumni' },
+                ] as const).map(o=>{
+                  const dipilih = jenis===o.nilai
+                  return (
+                    <label
+                      key={o.nilai}
+                      style={{
+                        display:'flex',alignItems:'center',gap:'10px',cursor:'pointer',
+                        padding:'11px 12px',borderRadius:'8px',minHeight:'44px',boxSizing:'border-box',
+                        border:`1px solid ${dipilih ? '#0C447C' : '#c5d9ef'}`,
+                        background: dipilih ? '#E6F1FB' : '#fff',
+                      }}
+                    >
+                      <input
+                        type="radio" name="jenis-pendaftar" value={o.nilai}
+                        checked={dipilih}
+                        onChange={()=>setJenis(o.nilai)}
+                        style={{accentColor:'#0C447C',width:'16px',height:'16px',flexShrink:0}}
+                      />
+                      <span style={{fontSize:'13px',color: dipilih ? '#0C447C' : '#1a1a1a',fontWeight: dipilih ? '600' : '400'}}>
+                        {o.label}
+                      </span>
+                    </label>
+                  )
+                })}
+              </div>
+
+              {/* Angkatan hanya relevan untuk alumni — dan wajib, karena admin
+                  memakainya untuk memeriksa pengajuan */}
+              {jenis==='alumni' && (
+                <div style={{marginTop:'10px'}}>
+                  <label htmlFor="angkatan" style={{fontSize:'12px',color:'#5a7da0',display:'block',marginBottom:'4px'}}>Angkatan (Tahun Lulus) *</label>
+                  <select id="angkatan" value={angkatan} onChange={e=>setAngkatan(e.target.value)} style={{width:'100%',padding:'9px 12px',border:'0.5px solid #c5d9ef',borderRadius:'8px',fontSize:'13px',outline:'none',background:'#fff'}}>
+                    <option value="">-- Pilih Angkatan --</option>
+                    {Array.from({length:new Date().getFullYear()-1970+1},(_,i)=>new Date().getFullYear()-i).map(y=>(
+                      <option key={y} value={y}>Angkatan {y}</option>
+                    ))}
+                  </select>
+                  <div style={{fontSize:'11px',color:'#9ab4cc',marginTop:'6px',lineHeight:'1.6'}}>
+                    Pengajuanmu diperiksa admin. Sambil menunggu, kamu sudah bisa belanja seperti biasa.
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
