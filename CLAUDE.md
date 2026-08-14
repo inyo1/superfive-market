@@ -750,31 +750,60 @@ Penanda yang sama sekarang dibaca **dua trigger**, bukan satu:
 | `jaga_status_pesanan` | `pesanan` |
 | `jaga_field_sensitif` | `users` |
 
-Yang memasang penanda ini, per hari ini: `ubah_status_pesanan`,
-`batalkan_pesanan`, `batalkan_pesanan_sistem`, `jalankan_tugas_pesanan`,
-`ajukan_alumni`, `ajukan_jadi_penjual`, dan `minta_data_ulang`. Daftar
-mutakhirnya selalu bisa dibaca ulang:
+#### Aturannya tanpa pengecualian
+
+**SETIAP RPC yang menulis kolom terjaga WAJIB memasang penanda ini — termasuk
+RPC yang hanya dipanggil admin.** Tidak ada pengecualian, dan yang berikut ini
+penting supaya aturannya bertahan setelah orang lupa alasannya.
+
+`jaga_field_sensitif` juga melewatkan siapa pun yang `is_admin()`, jadi RPC
+khusus admin *bisa* bekerja tanpa penanda. Tapi lolos lewat `is_admin()` itu
+**bersandar pada kebetulan bahwa pemanggilnya selalu admin** — bukan pada apa
+pun yang dijamin fungsinya sendiri. Struktur peran tiga tingkat yang sedang
+dibahas akan mematahkan asumsi itu: begitu admin angkatan boleh memverifikasi,
+`is_admin()` tidak lagi otomatis true, dan fungsinya **mati diam-diam** —
+UPDATE-nya sukses, kolomnya tidak berubah, tidak ada error di mana pun.
+
+Itu sebabnya keempat RPC admin (`verifikasi_alumni`, `putuskan_penjual`,
+`nonaktifkan_user`, `aktifkan_user`) sekarang ikut memasang penanda meski
+belum membutuhkannya hari ini. Satu baris `perform set_config(...)` di awal
+fungsi jauh lebih murah daripada melacak fitur yang diam-diam berhenti bekerja
+berminggu-minggu kemudian.
+
+Keadaan sekarang: **sebelas dari dua belas RPC memasang penanda.**
+`create_pesanan` satu-satunya yang tidak, dan memang tidak perlu — kedua
+trigger penjaganya BEFORE UPDATE, sedangkan pembuatan pesanan INSERT.
+
+#### Query pemeriksa
+
+Jangan membaca fungsinya satu per satu; tanyakan saja ke database:
 
 ```sql
-select proname from pg_proc where pronamespace = 'public'::regnamespace
-  and pg_get_functiondef(oid) like '%lewat_rpc%' order by proname;
+select proname,
+       prosrc like '%superfive.lewat_rpc%' as pasang_penanda
+from pg_proc p
+join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public'
+  and p.prokind = 'f'
+  and prosrc ~* 'update\s+(public\.)?(users|pesanan)'   -- case-insensitive
+order by pasang_penanda, proname;
 ```
 
-**SETIAP RPC baru yang menulis kolom terjaga WAJIB memasang penanda ini.**
-Kalau lupa, tidak ada error yang muncul — `jaga_field_sensitif` gagalnya
-diam-diam, jadi RPC-nya akan tampak sukses sementara kolomnya sama sekali
-tidak berubah. Ini kegagalan yang paling mahal dilacak di project ini, dan
-satu baris `perform set_config(...)` di awal fungsi sudah cukup mencegahnya.
+`pasang_penanda` harus `true` untuk **semua** baris. Diurutkan menaik supaya
+yang `false` muncul paling atas.
 
-Ada satu jalur lain yang juga lolos: RPC khusus admin. `jaga_field_sensitif`
-melewatkan siapa pun yang `is_admin()`, jadi `verifikasi_alumni`,
-`putuskan_penjual`, `nonaktifkan_user`, dan `aktifkan_user` bekerja **tanpa**
-penanda. Itu berjalan, tapi jangan dijadikan pola untuk RPC baru: begitu
-sebuah fungsi suatu saat boleh dipanggil non-admin, ia akan mati diam-diam.
-Pasang penandanya sejak awal.
+Dua jebakan di query ini, keduanya menghasilkan lampu hijau yang tidak berarti
+apa-apa — persis jenis kegagalan yang diperingatkan di
+[Aturan pengujian](#aturan-pengujian-penjaga-jangan-pakai-akun-admin):
 
-`create_pesanan` tidak perlu — trigger `pesanan` yang dijaga BEFORE UPDATE,
-sedangkan pembuatan pesanan INSERT.
+- **Tanda kurungnya wajib.** `AND` mengikat lebih kuat daripada `OR`, jadi
+  `where nspname='public' and A or B` terbaca `(nspname='public' and A) or B`
+  — cabang keduanya lolos tanpa penyaring schema, dan fungsi dari schema lain
+  ikut terbawa. Di database ini bedanya nyata: 7 baris asing ikut muncul
+- **`like '%UPDATE users%'` melewatkan `UPDATE public.users`**, dan juga
+  huruf kecil, karena `LIKE` peka huruf besar-kecil. Dengan pola itu
+  `verifikasi_alumni` **tidak muncul sama sekali** — salah satu fungsi yang
+  justru sedang diperiksa. Pakai `~*` seperti di atas
 
 Kalau nanti ada tabel lain yang butuh penjagaan serupa, ikuti pola yang sama:
 penanda transaksi + trigger, bukan flag di parameter RPC (alasannya di
