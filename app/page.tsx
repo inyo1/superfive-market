@@ -145,10 +145,13 @@ export default function Home() {
 
         {/* Logo + brand */}
         <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
+          {/* Persegi, tanpa borderRadius: logo Superfive punya sudut yang ikut
+              terpangkas kalau kotaknya dibulatkan. objectFit 'contain' menjaga
+              seluruh logo tetap masuk tanpa terpotong. */}
           <Image
             src="/LOGO-512.png" alt="Superfive Market"
             width={120} height={120} priority
-            style={{ objectFit: 'contain', borderRadius: '20px', flexShrink: 0, filter: 'drop-shadow(0 4px 16px rgba(0,0,0,0.28))' }}
+            style={{ objectFit: 'contain', flexShrink: 0, filter: 'drop-shadow(0 4px 16px rgba(0,0,0,0.28))' }}
           />
           <div>
             <div style={{ fontSize: '11px', color: '#7eb8f0', letterSpacing: '1.8px', textTransform: 'uppercase', marginBottom: '5px' }}>
