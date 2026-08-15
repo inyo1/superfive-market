@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
+import { adminPenuh } from '../../lib/peran'
 import { useCart } from '../context/CartContext'
 import { useChatContext } from '../context/ChatContext'
 
@@ -83,11 +84,13 @@ export default function BottomNav() {
   const [sheetTerbuka, setSheetTerbuka] = useState(false)
   const [user, setUser] = useState<any>(null)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [adminAngkatan, setAdminAngkatan] = useState(false)
 
   useEffect(() => {
     async function ambilProfil(uid: string) {
       const { data } = await supabase.from('users').select('role').eq('id', uid).single()
-      setIsAdmin(data?.role === 'admin')
+      setIsAdmin(adminPenuh(data?.role))
+      setAdminAngkatan(data?.role === 'admin_angkatan')
     }
 
     supabase.auth.getUser().then(({ data }) => {
@@ -199,18 +202,23 @@ export default function BottomNav() {
               </Link>
             ))}
 
-            {isAdmin && (
+            {(isAdmin || adminAngkatan) && (
               <>
                 <div style={{ height: '1px', background: '#e8f0f8', margin: '8px 12px' }} />
-                <Link href="/admin" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '13px 12px', borderRadius: '10px', fontSize: '14px', color: '#e65100', fontWeight: '600', textDecoration: 'none', minHeight: '44px', boxSizing: 'border-box' }}>
-                  <span style={{ fontSize: '18px' }}>⭐</span> Panel Admin
-                </Link>
+                {isAdmin && (
+                  <Link href="/admin" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '13px 12px', borderRadius: '10px', fontSize: '14px', color: '#e65100', fontWeight: '600', textDecoration: 'none', minHeight: '44px', boxSizing: 'border-box' }}>
+                    <span style={{ fontSize: '18px' }}>⭐</span> Panel Admin
+                  </Link>
+                )}
+                {/* Admin angkatan hanya dapat pintu ini */}
                 <Link href="/admin/verifikasi" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '13px 12px', borderRadius: '10px', fontSize: '14px', color: '#e65100', fontWeight: '600', textDecoration: 'none', minHeight: '44px', boxSizing: 'border-box' }}>
                   <span style={{ fontSize: '18px' }}>🎓</span> Verifikasi Alumni
                 </Link>
-                <Link href="/admin/penjual" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '13px 12px', borderRadius: '10px', fontSize: '14px', color: '#e65100', fontWeight: '600', textDecoration: 'none', minHeight: '44px', boxSizing: 'border-box' }}>
-                  <span style={{ fontSize: '18px' }}>💼</span> Pengajuan Penjual
-                </Link>
+                {isAdmin && (
+                  <Link href="/admin/penjual" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '13px 12px', borderRadius: '10px', fontSize: '14px', color: '#e65100', fontWeight: '600', textDecoration: 'none', minHeight: '44px', boxSizing: 'border-box' }}>
+                    <span style={{ fontSize: '18px' }}>💼</span> Pengajuan Penjual
+                  </Link>
+                )}
               </>
             )}
 

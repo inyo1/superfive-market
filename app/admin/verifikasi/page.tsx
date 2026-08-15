@@ -8,6 +8,7 @@ import { urlBukti } from '../../../lib/buktiAlumni'
 import Navbar from '../../components/Navbar'
 import Skeleton, { SkeletonPanel } from '../../components/Skeleton'
 import { useTampilSkeleton } from '../../hooks/useSkeleton'
+import { bolehVerifikasiAlumni, adminPenuh, type Peran } from '../../../lib/peran'
 
 type Pendaftar = {
   id: string
@@ -73,6 +74,8 @@ export default function VerifikasiAdminPage() {
   const [pesan, setPesan] = useState<{ text: string; ok: boolean } | null>(null)
   const [prosesId, setProsesId] = useState<string | null>(null)
   const [adminId, setAdminId] = useState<string | null>(null)
+  const [peranSaya, setPeranSaya] = useState<Peran | null>(null)
+  const [angkatanSaya, setAngkatanSaya] = useState<number | null>(null)
 
   // Satu form untuk dua aksi yang sama-sama wajib beralasan: menolak, dan
   // meminta data dilengkapi. Hanya satu yang boleh terbuka sekaligus.
@@ -106,10 +109,14 @@ export default function VerifikasiAdminPage() {
       if (!user) { router.replace('/auth?redirect=/admin/verifikasi'); return }
 
       const { data: profile } = await supabase
-        .from('users').select('role').eq('id', user.id).single()
+        .from('users').select('role, angkatan').eq('id', user.id).single()
 
-      if (!profile || profile.role !== 'admin') { router.replace('/'); return }
+      // Admin angkatan ikut boleh masuk — batas angkatannya ditegakkan
+      // verifikasi_alumni, dan daftarnya disaring di bawah
+      if (!bolehVerifikasiAlumni(profile?.role)) { router.replace('/'); return }
       setAdminId(user.id)
+      setPeranSaya((profile?.role ?? null) as Peran | null)
+      setAngkatanSaya(profile?.angkatan ?? null)
 
       await muat()
       setReady(true)

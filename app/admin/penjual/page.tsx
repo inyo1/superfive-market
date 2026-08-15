@@ -7,6 +7,7 @@ import { supabase } from '../../../lib/supabase'
 import Navbar from '../../components/Navbar'
 import Skeleton, { SkeletonPanel } from '../../components/Skeleton'
 import { useTampilSkeleton } from '../../hooks/useSkeleton'
+import { adminPenuh } from '../../../lib/peran'
 
 // Panel pengajuan penjual — sengaja terpisah dari /admin/verifikasi.
 // Dua urusan berbeda: yang satu memutuskan siapa alumni, yang ini memutuskan
@@ -125,7 +126,8 @@ export default function PenjualAdminPage() {
 
       const { data: profile } = await supabase
         .from('users').select('role').eq('id', user.id).single()
-      if (!profile || profile.role !== 'admin') { router.replace('/'); return }
+      // Izin berjualan urusan admin penuh, bukan admin angkatan
+      if (!adminPenuh(profile?.role)) { router.replace('/'); return }
 
       await muat()
       setReady(true)

@@ -7,6 +7,7 @@ import { supabase } from '../../lib/supabase'
 import Navbar from '../components/Navbar'
 import FotoProduk from '../components/FotoProduk'
 import DialogKonfirmasi from '../components/DialogKonfirmasi'
+import { adminPenuh, isSuperadmin, labelPeran, gayaPeran, type Peran } from '../../lib/peran'
 
 type Konfirmasi = { jenis: 'produk' | 'toko'; id: string; nama: string }
 
@@ -48,6 +49,7 @@ export default function AdminPage() {
   const router = useRouter()
   const [ready, setReady] = useState(false)
   const [adminId, setAdminId] = useState<string | null>(null)
+  const [peranSaya, setPeranSaya] = useState<Peran | null>(null)
   const [tab, setTab] = useState<'users' | 'produk' | 'toko'>('users')
 
   const [users, setUsers] = useState<UserRow[]>([])
@@ -79,8 +81,9 @@ export default function AdminPage() {
       const { data: profile } = await supabase
         .from('users').select('role').eq('id', user.id).single()
 
-      if (!profile || profile.role !== 'admin') { router.push('/'); return }
+      if (!adminPenuh(profile?.role)) { router.push('/'); return }
       setAdminId(user.id)
+      setPeranSaya((profile?.role ?? null) as Peran | null)
 
       await Promise.all([loadUsers(), loadProduk(), loadToko()])
       setReady(true)

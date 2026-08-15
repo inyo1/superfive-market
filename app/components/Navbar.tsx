@@ -7,6 +7,7 @@ import { supabase } from '../../lib/supabase'
 import { useCart } from '../context/CartContext'
 import { useChatContext } from '../context/ChatContext'
 import SearchOverlay from './SearchOverlay'
+import { adminPenuh, bolehVerifikasiAlumni } from '../../lib/peran'
 
 const links = [
   { href: '/', label: 'Beranda' },
@@ -52,6 +53,8 @@ export default function Navbar() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [userName, setUserName] = useState<string>('')
   const [isAdmin, setIsAdmin] = useState(false)
+  // Admin angkatan hanya dapat pintu verifikasi alumni, bukan panel admin
+  const [adminAngkatan, setAdminAngkatan] = useState(false)
   const [menungguVerifikasi, setMenungguVerifikasi] = useState(0)
   const [menungguPenjual, setMenungguPenjual] = useState(0)
   const navRef = useRef<HTMLElement>(null)
@@ -69,8 +72,9 @@ export default function Navbar() {
     if (data) {
       setUserName(data.nama ?? '')
       setAvatarUrl(data.avatar_url ?? null)
-      setIsAdmin(data.role === 'admin')
-      if (data.role === 'admin') hitungMenunggu()
+      setIsAdmin(adminPenuh(data.role))
+      setAdminAngkatan(data.role === 'admin_angkatan')
+      if (bolehVerifikasiAlumni(data.role)) hitungMenunggu()
     }
   }
 
@@ -328,9 +332,10 @@ export default function Navbar() {
               )
             })}
 
-            {isAdmin && (
+            {(isAdmin || adminAngkatan) && (
               <>
                 <span aria-hidden style={{ alignSelf: 'center', width: '1px', height: '20px', background: 'rgba(255,255,255,0.18)', margin: '0 6px', flexShrink: 0 }} />
+                {isAdmin && (
                 <Link
                   href="/admin"
                   aria-current={pathname === '/admin' ? 'page' : undefined}
@@ -344,6 +349,7 @@ export default function Navbar() {
                 >
                   Admin
                 </Link>
+                )}
                 <Link
                   href="/admin/verifikasi"
                   aria-current={pathname.startsWith('/admin/verifikasi') ? 'page' : undefined}
@@ -366,6 +372,7 @@ export default function Navbar() {
                     </span>
                   )}
                 </Link>
+                {isAdmin && (
                 <Link
                   href="/admin/penjual"
                   aria-current={pathname.startsWith('/admin/penjual') ? 'page' : undefined}
@@ -388,6 +395,7 @@ export default function Navbar() {
                     </span>
                   )}
                 </Link>
+                )}
               </>
             )}
           </div>
