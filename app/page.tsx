@@ -61,8 +61,10 @@ const IKON = {
   strokeLinejoin: 'round' as const,
   fill: 'none',
   stroke: 'currentColor',
-  width: 24,
-  height: 24,
+  // 18px, bukan 24: susunannya mendatar sekarang, jadi ikon ikut menentukan
+  // tinggi baris — dan barisnya memang harus pendek
+  width: 18,
+  height: 18,
   viewBox: '0 0 24 24',
   'aria-hidden': true,
 }
@@ -100,35 +102,43 @@ function IkonAlumni() {
   )
 }
 
-// Satu blok angka. Angkanya yang jadi bintang — ikonnya lebih kecil dan lebih
-// pudar, karena ia penunjuk, bukan hiasan utama.
+/** Pemisah antar statistik. Titik, bukan garis vertikal — garis membagi
+ *  barisnya jadi kolom yang terasa kaku, titik hanya memberi jeda. */
+function Titik() {
+  return (
+    <span aria-hidden style={{ color: '#c5d9ef', fontSize: '13px', lineHeight: 1, flexShrink: 0 }}>
+      ·
+    </span>
+  )
+}
+
+// Satu statistik dalam SATU BARIS mendatar: [ikon] 6 Produk.
+//
+// Sebelumnya menumpuk tiga tingkat, dan tinggi sectionnya jadi tidak bisa
+// turun berapa pun paddingnya dikecilkan — susunannya yang menahan, bukan
+// jaraknya. Mendatar, ketiganya cukup satu tinggi baris.
 function Statistik({ label, value, ikon }: { label: string; value: number; ikon: React.ReactNode }) {
   const count = useCountUp(value)
   return (
-    <div style={{
-      flex: 1, minWidth: 0, textAlign: 'center',
-      display: 'flex', flexDirection: 'column', alignItems: 'center',
-    }}>
-      <div style={{ color: '#8fb3d4', marginBottom: '10px', lineHeight: 0 }}>
-        {ikon}
-      </div>
-      <div style={{
-        fontSize: '30px', fontWeight: '800', color: '#0C447C',
-        lineHeight: 1, letterSpacing: '-0.5px',
-        // Angka berubah saat animasi hitung naik; tabular-nums menjaga lebarnya
-        // tetap sehingga ketiganya tidak bergeser-geser
+    <div style={{ display: 'flex', alignItems: 'center', gap: '7px', minWidth: 0 }}>
+      <span style={{ color: '#8fb3d4', lineHeight: 0, flexShrink: 0 }}>{ikon}</span>
+      <span style={{
+        fontSize: '19px', fontWeight: '800', color: '#0C447C',
+        lineHeight: 1, letterSpacing: '-0.3px',
+        // Angka berubah selama animasi hitung naik; tabular-nums menjaga
+        // lebarnya tetap supaya barisnya tidak bergeser-geser
         fontVariantNumeric: 'tabular-nums',
       }}>
         {count}
-      </div>
-      <div style={{
-        fontSize: '10px', color: '#5a7da0', marginTop: '8px',
-        textTransform: 'uppercase', letterSpacing: '1.2px', fontWeight: '600',
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        maxWidth: '100%',
+      </span>
+      {/* Di layar tersempit label disembunyikan lewat CSS — ikon dan angkanya
+          sudah cukup, dan itu lebih baik daripada tiga kolom yang berdesakan */}
+      <span className="stat-label" style={{
+        fontSize: '13px', color: '#5a7da0', lineHeight: 1,
+        whiteSpace: 'nowrap',
       }}>
         {label}
-      </div>
+      </span>
     </div>
   )
 }
@@ -283,26 +293,27 @@ export default function Home() {
       </div>
 
       {/* ── Statistik ──
-          Section sendiri tepat di bawah hero, berlatar putih supaya jelas
-          terpisah dari hero yang biru tua.
+          Satu baris pendek tepat di bawah hero. Latar putih polos, dibatasi
+          satu garis tipis di bawahnya — bukan kotak berlatar yang mengurung
+          ketiganya.
 
-          Ketiganya duduk di satu wadah biru muda bersudut membulat, TANPA
-          garis pemisah vertikal. Garis itu yang dulu membuat barisnya kaku —
-          jaraklah yang memisahkan di sini, bukan garis.
+          Pemisahnya titik tengah, bukan garis vertikal: garis membagi jadi
+          kolom-kolom yang terasa kaku, titik hanya memberi jeda.
 
-          Tiga kolom sejajar di lebar berapa pun: `flex` tanpa `flexWrap`,
-          jadi tidak pernah menumpuk ke bawah di HP. */}
-      <div style={{ background: '#fff' }}>
-        <div style={{ maxWidth: '700px', margin: '0 auto', padding: '18px 16px 22px' }}>
-          <div style={{
-            background: '#E6F1FB', borderRadius: '16px',
-            padding: '22px 12px',
-            display: 'flex', alignItems: 'flex-start', gap: '8px',
-          }}>
-            <Statistik label="Produk" value={stats.produk} ikon={<IkonProduk />} />
-            <Statistik label="Toko"   value={stats.toko}   ikon={<IkonToko />} />
-            <Statistik label="Alumni" value={stats.alumni} ikon={<IkonAlumni />} />
-          </div>
+          Tetap tiga sejajar di HP — `flex` tanpa `flexWrap`. Labelnya yang
+          menyingkir duluan kalau layarnya sangat sempit, bukan susunannya. */}
+      <div style={{ background: '#fff', borderBottom: '0.5px solid #eef3f8' }}>
+        <div style={{
+          maxWidth: '700px', margin: '0 auto', padding: '0 16px',
+          minHeight: '68px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          gap: '14px',
+        }}>
+          <Statistik label="Produk" value={stats.produk} ikon={<IkonProduk />} />
+          <Titik />
+          <Statistik label="Toko"   value={stats.toko}   ikon={<IkonToko />} />
+          <Titik />
+          <Statistik label="Alumni" value={stats.alumni} ikon={<IkonAlumni />} />
         </div>
       </div>
 

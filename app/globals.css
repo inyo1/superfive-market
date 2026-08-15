@@ -140,6 +140,14 @@ main {
   .tab-label { font-size: 11px !important; }
 }
 
+/* ── Statistik beranda — di layar sangat sempit, label menyingkir ──
+   Ikon dan angkanya sudah cukup terbaca sendiri, dan itu lebih baik
+   daripada tiga statistik yang berdesakan atau turun ke baris berikutnya.
+   Yang menyingkir labelnya, susunan tiga-sejajarnya tetap. */
+@media (max-width: 359px) {
+  .stat-label { display: none; }
+}
+
 /* ── Sticky bottom CTA (product detail page) ── */
 .cta-bottom-bar {
   position: sticky;
