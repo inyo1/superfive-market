@@ -84,13 +84,15 @@ export default function Home() {
     async function load() {
       const [authRes, pCount, tCount, uCount, latestRes] = await Promise.all([
         supabase.auth.getUser(),
-        // Merchandise resmi punya raknya sendiri, jadi tidak ikut dihitung
-        // di angka etalase umum — supaya cocok dengan yang benar-benar tampil.
-        // toko!inner wajib: tanpa itu filter hanya mengosongkan embed-nya,
-        // produknya sendiri tetap ikut terhitung.
-        supabase.from('produk')
-          .select('id, toko!inner(is_official)', { count: 'exact', head: true })
-          .eq('toko.is_official', false),
+        // Hitungan polos, TANPA penyaring apa pun. Angka di hero menjawab
+        // "seberapa ramai Superfive", jadi merchandise resmi ikut — dulu
+        // dikecualikan dengan `.eq('toko.is_official', false)` mengikuti
+        // etalase umum, dan akibatnya hero menampilkan 1 PRODUK padahal ada 6.
+        //
+        // Yang menentukan apa yang boleh terlihat sudah RLS (produk dan toko
+        // hanya tampil kalau penjualnya aktif), jadi count polos ke tabelnya
+        // memang sudah angka yang benar. Jangan menyaring lagi di sini.
+        supabase.from('produk').select('*', { count: 'exact', head: true }),
         supabase.from('toko').select('*', { count: 'exact', head: true }),
         // Hitung dari view publik — tabel users tidak lagi bisa dibaca umum,
         // kalau tetap dari sana angkanya jadi 0 untuk pengunjung. Tidak perlu

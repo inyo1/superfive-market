@@ -380,9 +380,15 @@ produk. Satu-satunya penyuntingan toko dari UI ada di
 
 `is_official` menandai toko resmi INILIMA. Pengaruhnya ke UI besar:
 
-- produknya **tidak muncul** di etalase umum `/produk`, tidak ikut hitungan
-  PRODUK di hero beranda, dan tidak ikut section Produk Terbaru — semuanya
-  menyaring dengan `toko!inner(...)` + `.eq('toko.is_official', false)`
+- produknya **tidak muncul** di etalase umum `/produk` dan tidak ikut section
+  Produk Terbaru — keduanya menyaring dengan `toko!inner(...)` +
+  `.eq('toko.is_official', false)`
+- **tapi tetap ikut hitungan PRODUK di hero beranda.** Angka hero menjawab
+  "seberapa ramai Superfive", bukan "berapa isi etalase umum". Pernah
+  disaring seperti dua di atas, dan akibatnya hero menampilkan `1 PRODUK`
+  padahal ada 6 — lima di antaranya milik toko resmi. Hitungannya sekarang
+  polos tanpa penyaring apa pun; yang menentukan apa yang boleh terlihat
+  sudah RLS
 - gantinya punya rak sendiri: carousel di [SectionOfficial](app/components/SectionOfficial.tsx),
   diurutkan `produk.urutan` menaik
 - tetap muncul di pencarian, dengan lencana OFFICIAL dan diletakkan paling atas
