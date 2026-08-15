@@ -1201,6 +1201,56 @@ menuntut `is_admin()`, jadi `minta_data_ulang`, `putuskan_penjual`,
 menolak mereka — UI menyembunyikan tombolnya, lihat
 [/admin/verifikasi](app/admin/verifikasi/page.tsx).
 
+### `antrean_alumni` — satu-satunya sumber antrean verifikasi
+
+```ts
+const { data } = await supabase.rpc('antrean_alumni', { p_status: 'menunggu' })
+// p_status: 'menunggu' | 'alumni' | 'ditolak'
+```
+
+Mengembalikan `id · nama · email · angkatan · avatar_url · foto_url ·
+catatan_pendaftar · catatan_admin · status_alumni · is_institusi ·
+created_at · diverifikasi_at · diminta_data_at · alasan_tolak`.
+
+Tiga hal dikerjakan di dalamnya, jadi klien tidak perlu dan **tidak boleh**
+mengulanginya:
+
+- **Penyaringan angkatan.** Admin umum dan superadmin melihat semua; admin
+  angkatan hanya angkatannya sendiri
+- **Akun nonaktif dikecualikan**
+- **Urutannya**: `coalesce(diminta_data_at, created_at)` menaik — yang paling
+  lama menunggu di atas. Jangan diurutkan ulang di klien
+
+**Dipakai untuk SEMUA peran**, bukan hanya admin angkatan.
+[/admin/verifikasi](app/admin/verifikasi/page.tsx) tidak menyentuh tabel
+`users` sama sekali — satu jalur yang bisa meleset, bukan dua.
+
+#### Kenapa RPC, bukan policy
+
+Pilihan ini akan dipertanyakan orang berikutnya, dan jawabannya bukan selera:
+
+> **POLICY TIDAK BISA MEMBATASI KOLOM.**
+
+Policy `SELECT` pada `users` bekerja per baris. Begitu admin angkatan boleh
+membaca baris seangkatannya, ia otomatis boleh membaca **seluruh kolom** baris
+itu — termasuk `bank_rekening`, `bank_atas_nama`, `alamat_lengkap`, dan
+`no_hp`. Tidak ada cara mempersempitnya di dalam policy.
+
+RPC `SECURITY DEFINER` justru sebaliknya: kolom yang dikembalikan adalah
+daftar yang ditulis di `RETURNS TABLE`, dan tidak ada yang bisa meminta lebih.
+
+Karena itu `antrean_alumni` **tidak mengembalikan `no_hp`, alamat, maupun
+data rekening — untuk siapa pun, termasuk superadmin.** Kalau suatu saat panel
+butuh salah satunya, tambahkan kolomnya ke fungsi ini dan pertimbangkan
+akibatnya; **jangan membacanya lewat jalur lain.** Membaca `users` langsung
+"cuma untuk satu kolom" mengembalikan persis lubang yang ditutup di sini.
+
+Akibat yang sudah terasa: kolom `bukti_alumni_url` tidak ada di daftar, jadi
+tombol "Lihat Bukti Alumni" untuk data lama sudah dilepas dari panel. Kolom,
+bucket, dan [lib/buktiAlumni.ts](lib/buktiAlumni.ts) sengaja dipertahankan —
+kalau buktinya mau ditampilkan lagi, jalannya lewat menambah kolom di
+`antrean_alumni`.
+
 ### `minta_data_ulang` — hanya admin
 
 Menarik keputusan yang sudah dibuat dan mengembalikan pendaftar ke antrean
@@ -1265,7 +1315,7 @@ sistem — tanpa jalan pulih dari dalam aplikasi.
 Pelajaran yang sama dengan penjaga lain di dokumen ini: **lolos karena
 `is_admin()` bukan berarti aman, itu justru berarti tidak ada yang memeriksa.**
 
-### `hapus_user` — hanya admin, dua cara
+### `hapus_user` — HANYA superadmin, dua cara
 
 **Tidak pernah menolak karena jejak.** Yang menentukan caranya adalah database,
 dan hasilnya ada di kunci `cara`:
@@ -1285,6 +1335,18 @@ karena jejaknya tidak selalu terlihat dari layar admin.
 
 Masih menolak: akun sendiri, superadmin, dan siapa pun yang bukan `member`
 (turunkan perannya dulu).
+
+#### Kenapa hanya superadmin
+
+> Hanya superadmin yang bisa menghapus anggota
+
+Admin umum ditolak — sudah diuji. Bedanya dengan `nonaktifkan_user` bukan
+soal tingkat kepercayaan, melainkan soal **bisa-tidaknya dibatalkan**:
+penonaktifan punya `aktifkan_user`, penghapusan memusnahkan data pribadi
+tanpa jalan pulih. Wewenang yang tidak bisa dibatalkan ditahan di satu tangan.
+
+`nonaktifkan_user` dan `aktifkan_user` tetap boleh admin umum, dan tombolnya
+tetap tampil untuk mereka — itu tindakan utama mereka.
 
 #### Kenapa dianonimkan, bukan dihapus paksa
 
@@ -1523,12 +1585,12 @@ where table_schema='public' and table_name='nama_objek'
 
 ## ATURAN: Hak EXECUTE Fungsi Baru
 
-Enam belas fungsi boleh dipanggil pengguna login:
+Tujuh belas fungsi boleh dipanggil pengguna login:
 
 ```
 create_pesanan · ubah_status_pesanan · batalkan_pesanan
 ajukan_alumni · ajukan_jadi_penjual
-verifikasi_alumni · putuskan_penjual · minta_data_ulang
+antrean_alumni · verifikasi_alumni · putuskan_penjual · minta_data_ulang
 nonaktifkan_user · aktifkan_user · hapus_user · ubah_peran
 is_admin · is_superadmin · angkatan_yang_diampu · penjual_aktif
 ```
@@ -1654,6 +1716,40 @@ rollback;
 Yang benar: `status_penjual` kembali ke nilai lamanya, `nama` berubah jadi
 'UJI'. Selalu bungkus dengan `begin … rollback` supaya data sungguhan tidak
 ikut berubah, dan periksa ulang datanya setelah selesai.
+
+#### Lampu merah palsu: data uji yang disiapkan lewat UPDATE
+
+Arah sebaliknya, dan sudah memakan waktu di sini. Untuk menguji perilaku
+admin angkatan, akun uji dinaikkan perannya dengan UPDATE biasa lalu
+langsung dibaca hasilnya:
+
+```sql
+begin;
+  update users set role = 'admin_angkatan' where id = '<uuid>';   -- ditelan diam-diam
+  set local role authenticated;
+  set local request.jwt.claims to '{"sub":"<uuid>","role":"authenticated"}';
+  select is_admin(), angkatan_yang_diampu();   -- false, NULL
+rollback;
+```
+
+Hasilnya membuat `angkatan_yang_diampu()` **terlihat rusak** padahal fungsinya
+benar. Penyebabnya `jaga_field_sensitif`: `role` termasuk kolom terjaga, dan
+UPDATE tadi tidak lewat RPC maupun admin, jadi perannya **tidak pernah
+benar-benar berubah** — yang diuji sejak awal tetap akun `member`.
+
+Obatnya: **siapkan data uji lewat RPC yang sah**, bukan lewat UPDATE.
+
+```sql
+-- panggil ubah_peran sebagai superadmin, lalu baru berpindah peran
+select set_config('request.jwt.claims','{"sub":"<uuid-superadmin>"}', true);
+select ubah_peran('<uuid>', 'admin_angkatan');
+```
+
+Kalau benar-benar harus lewat UPDATE, pasang penandanya lebih dulu di
+transaksi yang sama — `select set_config('superfive.lewat_rpc','ya',true);` —
+dan **verifikasi nilainya sudah berubah** sebelum melanjutkan. Satu `SELECT`
+di antara keduanya cukup, dan itu yang membedakan uji yang sahih dari satu jam
+mengejar bug yang tidak ada.
 
 ### Temuan RLS yang akan berulang
 
@@ -1811,35 +1907,13 @@ Kalau butuh memastikan sesuatu di sisi data, pakai Supabase MCP untuk `SELECT`
   verifikasi untuk sekarang bersandar pada penilaian admin atas nama dan
   angkatan. Rinciannya di
   [Unggah bukti alumni DIMATIKAN SEMENTARA](#unggah-bukti-alumni-dimatikan-sementara-sejak-14-agustus-2026).
-- **⚠ Admin angkatan belum bisa melihat pendaftar apa pun.** `users` tidak
-  punya policy untuknya: `users_admin_all` memakai `is_admin()` yang memang
-  tidak memuat `admin_angkatan`, dan `users_select_own` hanya barisnya
-  sendiri. Sudah diuji dengan `set local role authenticated` memakai akun
-  ber-peran `admin_angkatan` — yang terbaca **1 baris**, yaitu dirinya
-  sendiri, dan antrean verifikasinya 0.
-
-  Akibatnya [/admin/verifikasi](app/admin/verifikasi/page.tsx) selalu kosong
-  untuk mereka, dan `verifikasi_alumni` yang sudah menerima mereka tidak akan
-  pernah terpanggil dari UI. Penyaringan di klien tidak menolong — datanya
-  memang tidak sampai.
-
-  Dua jalan keluar, keduanya urusan Inyo:
-
-  ```sql
-  -- (a) policy SELECT, mengikuti pola helper SECURITY DEFINER
-  create policy users_select_admin_angkatan on public.users
-  for select using (
-    angkatan_yang_diampu() is not null
-    and angkatan = angkatan_yang_diampu()
-  );
-  ```
-
-  Perlu diperhatikan sebelum memilih (a): policy tidak bisa membatasi kolom,
-  jadi admin angkatan akan ikut bisa membaca `bank_rekening`, alamat, dan
-  nomor HP seangkatannya. Kalau itu tidak diinginkan, **(b)** RPC
-  `antrean_alumni_saya()` yang `SECURITY DEFINER` dan hanya mengembalikan
-  kolom yang dibutuhkan panel — lebih sempit, dan tidak menyentuh RLS sama
-  sekali.
+- **Admin angkatan belum pernah dicoba dengan akun sungguhan.** Jalurnya sudah
+  lengkap — `antrean_alumni` menyaring di server, `verifikasi_alumni`
+  menerima mereka, dan panelnya sudah menyesuaikan — tapi belum ada satu pun
+  akun ber-peran `admin_angkatan` di database, jadi yang teruji baru
+  fungsinya lewat SQL, bukan halamannya. Yang perlu dilihat saat ada
+  akunnya: daftar hanya berisi seangkatan, tombol Minta Data Ulang tidak
+  muncul, dan /admin serta /admin/penjual menolaknya.
 - **`toko_insert_own` masih memeriksa sumbu lama** (`status_verifikasi =
   'terverifikasi'`), bukan `status_penjual = 'aktif'`. Untuk sekarang pagarnya
   ditegakkan di klien ([/produk/tambah](app/produk/tambah/page.tsx)), yang
