@@ -1,9 +1,6 @@
 import { normalizeFotoUrl } from '../../lib/foto'
+import { emojiKategori } from '../../lib/kategori'
 
-const emojiKategori: Record<string, string> = {
-  Teknologi: '💻', Fashion: '👗', Kuliner: '🍱',
-  Properti: '🏠', Jasa: '🛠️', UMKM: '🏪',
-}
 
 type Props = {
   src?: string | string[] | null
@@ -23,7 +20,7 @@ export default function FotoProduk({ src, kategori = '', height = 120, fontSize 
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontSize: `${fontSize}px`,
       }}>
-        {emojiKategori[kategori] ?? '📦'}
+        {emojiKategori(kategori)}
       </div>
 
       {/* Gambar di depan, hilang saat error sehingga emoji terlihat */}

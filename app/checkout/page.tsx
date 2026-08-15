@@ -10,6 +10,7 @@ import BadgePreorder, { WARNA_PO_TUA } from '../components/BadgePreorder'
 import PeringatanCampuranPO from '../components/PeringatanCampuranPO'
 import { useInfoPO } from '../hooks/useInfoPO'
 import { janjiKirim } from '../../lib/preorder'
+import { emojiKategori } from '../../lib/kategori'
 
 const metodeBayar = [
   { id: 'transfer_bca', label: 'Transfer BCA', icon: '🏦', info: 'BCA 1234567890 a/n Superfive Market' },
@@ -21,10 +22,6 @@ function fmt(n: number) {
   return 'Rp ' + n.toLocaleString('id-ID')
 }
 
-const emojiKategori: Record<string, string> = {
-  Teknologi: '💻', Fashion: '👗', Kuliner: '🍱',
-  Properti: '🏠', Jasa: '🛠️', UMKM: '🏪',
-}
 
 // Satu elemen per toko, dikembalikan RPC create_pesanan
 type PesananBaru = {
@@ -298,7 +295,7 @@ export default function CheckoutPage() {
           {items.map(item => (
             <div key={`${item.id}|${item.varian_id ?? ''}`} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
               <div style={{ width: '36px', height: '36px', background: '#E6F1FB', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>
-                {emojiKategori[item.kategori] ?? '📦'}
+                {emojiKategori(item.kategori)}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: '12px', color: '#1a1a1a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.nama}</div>

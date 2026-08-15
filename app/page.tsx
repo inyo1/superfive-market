@@ -10,6 +10,7 @@ import SkeletonCard from './components/SkeletonCard'
 import SectionOfficial from './components/SectionOfficial'
 import BadgePreorder, { WARNA_PO_TUA } from './components/BadgePreorder'
 import { janjiKirim } from '../lib/preorder'
+import { KATEGORI, EMOJI_KATEGORI } from '../lib/kategori'
 
 type Produk = {
   id: string
@@ -26,14 +27,6 @@ type Produk = {
 
 type Stats = { produk: number; toko: number; alumni: number }
 
-const kategoris = [
-  { key: 'Teknologi', emoji: '💻' },
-  { key: 'Fashion',   emoji: '👗' },
-  { key: 'Kuliner',   emoji: '🍱' },
-  { key: 'Properti',  emoji: '🏠' },
-  { key: 'Jasa',      emoji: '🛠️' },
-  { key: 'UMKM',      emoji: '🏪' },
-]
 
 function fmt(n: number | null | undefined) {
   if (!n) return 'Rp 0'
@@ -257,10 +250,10 @@ export default function Home() {
             Belanja per Kategori
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
-            {kategoris.map((k, i) => (
+            {KATEGORI.map((k, i) => (
               <Link
-                key={k.key}
-                href={`/produk?kategori=${encodeURIComponent(k.key)}`}
+                key={k}
+                href={`/produk?kategori=${encodeURIComponent(k)}`}
                 className="prod-card"
                 style={{
                   background: '#fff', border: '0.5px solid #e8f0f8', borderRadius: '12px',
@@ -270,8 +263,8 @@ export default function Home() {
                   animationDelay: `${i * 40}ms`,
                 }}
               >
-                <span style={{ fontSize: '26px', lineHeight: 1 }}>{k.emoji}</span>
-                <span style={{ fontSize: '11px', fontWeight: '600', color: '#444' }}>{k.key}</span>
+                <span style={{ fontSize: '26px', lineHeight: 1 }}>{EMOJI_KATEGORI[k]}</span>
+                <span style={{ fontSize: '11px', fontWeight: '600', color: '#444' }}>{k}</span>
               </Link>
             ))}
           </div>

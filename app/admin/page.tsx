@@ -9,6 +9,7 @@ import FotoProduk from '../components/FotoProduk'
 import DialogKonfirmasi from '../components/DialogKonfirmasi'
 import { adminPenuh, isSuperadmin, labelPeran, gayaPeran, type Peran } from '../../lib/peran'
 import { tanggalPeristiwa } from '../../lib/format'
+import { emojiKategori } from '../../lib/kategori'
 
 type Konfirmasi = { jenis: 'produk' | 'toko'; id: string; nama: string }
 
@@ -728,7 +729,7 @@ export default function AdminPage() {
                     background: 'linear-gradient(135deg, #0C447C, #185FA5)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px',
                   }}>
-                    {{ Teknologi: '💻', Fashion: '👗', Kuliner: '🍱', Properti: '🏠', Jasa: '🛠️', UMKM: '🏪' }[t.kategori] ?? '🏪'}
+                    {emojiKategori(t.kategori, '🏪')}
                   </div>
 
                   <div style={{ flex: 1, minWidth: 0 }}>

@@ -8,7 +8,7 @@ import Navbar from '../../components/Navbar'
 import FotoProduk from '../../components/FotoProduk'
 import Skeleton, { GridSkeletonProduk } from '../../components/Skeleton'
 import { useTampilSkeleton } from '../../hooks/useSkeleton'
-import { KATEGORI, type Kategori } from '../../../lib/kategori'
+import { KATEGORI, emojiKategori, type Kategori } from '../../../lib/kategori'
 
 type Toko = { id: string; nama_toko: string; kategori: string }
 type Produk = {
@@ -17,10 +17,6 @@ type Produk = {
   foto_url?: string | null
 }
 
-const emojiKategori: Record<string, string> = {
-  Teknologi: '💻', Fashion: '👗', Kuliner: '🍱',
-  Properti: '🏠', Jasa: '🛠️', UMKM: '🏪',
-}
 function fmt(n: number) { return 'Rp ' + (n || 0).toLocaleString('id-ID') }
 
 export default function TokoSayaPage() {
@@ -246,7 +242,7 @@ export default function TokoSayaPage() {
           <div style={{ fontSize: '11px', color: '#7eb8f0', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '4px' }}>Toko Saya</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
             <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', flexShrink: 0 }}>
-              {emojiKategori[toko.kategori] ?? '🏪'}
+              {emojiKategori(toko.kategori, '🏪')}
             </div>
             <div>
               <div style={{ fontSize: '18px', fontWeight: '800', color: '#fff' }}>{toko.nama_toko}</div>

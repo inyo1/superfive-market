@@ -13,11 +13,8 @@ import BadgePreorder, { WARNA_PO_TUA } from '../components/BadgePreorder'
 import PeringatanCampuranPO from '../components/PeringatanCampuranPO'
 import { useInfoPO } from '../hooks/useInfoPO'
 import { janjiKirim } from '../../lib/preorder'
+import { emojiKategori } from '../../lib/kategori'
 
-const emojiKategori: Record<string, string> = {
-  Teknologi: '💻', Fashion: '👗', Kuliner: '🍱',
-  Properti: '🏠', Jasa: '🛠️', UMKM: '🏪',
-}
 
 function fmt(n: number) {
   return 'Rp ' + n.toLocaleString('id-ID')
@@ -124,7 +121,7 @@ export default function KeranjangPage() {
                     onError={e => { e.currentTarget.style.display = 'none' }}
                   />
                 ) : (
-                  <span style={{ fontSize: '26px' }}>{emojiKategori[item.kategori] ?? '📦'}</span>
+                  <span style={{ fontSize: '26px' }}>{emojiKategori(item.kategori)}</span>
                 )}
               </div>
 

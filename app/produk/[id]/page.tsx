@@ -13,6 +13,7 @@ import BadgePreorder, { WARNA_PO, WARNA_PO_TUA } from '../../components/BadgePre
 import { useTampilSkeleton } from '../../hooks/useSkeleton'
 import { useHitungMundur } from '../../hooks/useHitungMundur'
 import { statusPO, alasanTidakBisa, tanggalPanjang, formatSisa, janjiKirim, type DataPO } from '../../../lib/preorder'
+import { emojiKategori } from '../../../lib/kategori'
 
 type Produk = DataPO & {
   id: string
@@ -44,14 +45,6 @@ type Varian = {
   harga_tambahan: number
 }
 
-const emojiKategori: Record<string, string> = {
-  Teknologi: '💻',
-  Fashion: '👗',
-  Kuliner: '🍱',
-  Properti: '🏠',
-  Jasa: '🛠️',
-  UMKM: '🏪',
-}
 
 function fmt(n: number) {
   if (!n) return 'Rp 0'
@@ -256,7 +249,7 @@ export default function DetailProduk() {
     )
   }
 
-  const emoji = emojiKategori[produk.kategori] ?? '📦'
+  const emoji = emojiKategori(produk.kategori)
   const angkatan = (produk.toko as any)?.users?.angkatan
   const resmi = Boolean((produk.toko as any)?.is_official)
 

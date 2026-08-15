@@ -31,3 +31,35 @@ export type PilihanKategori = Kategori | ''
 export function kategoriSah(nilai: string | null | undefined): nilai is Kategori {
   return !!nilai && (KATEGORI as readonly string[]).includes(nilai)
 }
+
+/**
+ * Emoji per kategori, dipakai sebagai gambar pengganti saat produk tidak
+ * punya foto dan sebagai ikon di petak kategori beranda.
+ *
+ * Tipenya `Record<Kategori, string>` DAN ITU YANG PENTING: menambah nilai ke
+ * KATEGORI tanpa menambah emoji-nya di sini langsung ditolak tsc. Sebelumnya
+ * peta ini disalin di sembilan berkas, jadi kategori baru akan muncul tanpa
+ * emoji di mana-mana tanpa satu pun error — dijaga ingatan, bukan compiler.
+ */
+export const EMOJI_KATEGORI: Record<Kategori, string> = {
+  Teknologi: '💻',
+  Fashion:   '👗',
+  Kuliner:   '🍱',
+  Properti:  '🏠',
+  Jasa:      '🛠️',
+  UMKM:      '🏪',
+}
+
+/**
+ * Untuk nilai yang belum tentu sah — mis. kategori dari database yang bertipe
+ * `any`, atau data lama dari sebelum kolomnya dikunci CHECK.
+ *
+ * `cadangan` sengaja bisa diganti: konteks produk memakai 📦 dan konteks toko
+ * memakai 🏪, dan itu perbedaan yang memang dikehendaki.
+ */
+export function emojiKategori(
+  nilai: string | null | undefined,
+  cadangan = '📦',
+): string {
+  return kategoriSah(nilai) ? EMOJI_KATEGORI[nilai] : cadangan
+}

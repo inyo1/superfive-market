@@ -15,6 +15,7 @@ import Image from 'next/image'
 import { useTampilSkeleton } from '../../hooks/useSkeleton'
 import BadgePreorder, { WARNA_PO_TUA } from '../../components/BadgePreorder'
 import { janjiKirim } from '../../../lib/preorder'
+import { emojiKategori } from '../../../lib/kategori'
 
 type Toko = {
   id: string
@@ -44,10 +45,6 @@ type Produk = {
   foto_url?: string | null
 }
 
-const emojiKategori: Record<string, string> = {
-  Teknologi: '💻', Fashion: '👗', Kuliner: '🍱',
-  Properti: '🏠', Jasa: '🛠️', UMKM: '🏪',
-}
 
 const EMAS = '#EF9F27'
 
@@ -280,7 +277,7 @@ export default function TokoPage() {
               border: resmi ? `1px solid ${EMAS}` : undefined,
               display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', flexShrink: 0,
             }}>
-              {resmi ? '★' : (emojiKategori[toko.kategori] ?? '🏪')}
+              {resmi ? '★' : emojiKategori(toko.kategori, '🏪')}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               {editMode ? (

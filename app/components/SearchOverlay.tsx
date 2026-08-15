@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 import BadgeOfficial from './BadgeOfficial'
 import BadgePreorder from './BadgePreorder'
+import { emojiKategori } from '../../lib/kategori'
 
 type ProdukResult = {
   id: string
@@ -23,10 +24,6 @@ type TokoResult = {
   is_official?: boolean
 }
 
-const emojiKategori: Record<string, string> = {
-  Teknologi: '💻', Fashion: '👗', Kuliner: '🍱',
-  Properti: '🏠', Jasa: '🛠️', UMKM: '🏪',
-}
 
 function fmt(n: number | null | undefined) {
   if (!n) return 'Rp 0'
@@ -273,7 +270,7 @@ export default function SearchOverlay({ open, onClose }: { open: boolean; onClos
                     background: '#E6F1FB', display: 'flex', alignItems: 'center',
                     justifyContent: 'center', fontSize: '22px', flexShrink: 0,
                   }}>
-                    {emojiKategori[p.kategori] ?? '📦'}
+                    {emojiKategori(p.kategori)}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, marginBottom: '2px' }}>
@@ -333,7 +330,7 @@ export default function SearchOverlay({ open, onClose }: { open: boolean; onClos
                     background: '#0C447C', display: 'flex', alignItems: 'center',
                     justifyContent: 'center', fontSize: '20px', flexShrink: 0,
                   }}>
-                    {emojiKategori[t.kategori] ?? '🏪'}
+                    {emojiKategori(t.kategori, '🏪')}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, marginBottom: '2px' }}>
