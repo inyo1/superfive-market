@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../../lib/supabase'
+import { urlBukti } from '../../../lib/buktiAlumni'
 import Navbar from '../../components/Navbar'
 import Skeleton, { SkeletonPanel } from '../../components/Skeleton'
 import { useTampilSkeleton } from '../../hooks/useSkeleton'
@@ -19,6 +20,9 @@ type Pendaftar = {
   is_institusi: boolean | null
   catatan_admin: string | null
   diminta_data_at: string | null
+  // NULL untuk admin angkatan — disaring di dalam antrean_alumni, bukan di
+  // sini. Jangan menambah pemeriksaan peran di klien untuk kolom ini.
+  bukti_alumni_url: string | null
   catatan_pendaftar: string | null
   alasan_tolak: string | null
   created_at: string
@@ -82,6 +86,10 @@ export default function VerifikasiAdminPage() {
   const [formId, setFormId] = useState<string | null>(null)
   const [formJenis, setFormJenis] = useState<'tolak' | 'minta'>('tolak')
   const [alasan, setAlasan] = useState('')
+
+  // Lightbox bukti
+  const [buktiUrl, setBuktiUrl] = useState<string | null>(null)
+  const [memuatBukti, setMemuatBukti] = useState<string | null>(null)
 
   function tampilkanPesan(text: string, ok: boolean) {
     setPesan({ text, ok })
@@ -209,6 +217,14 @@ export default function VerifikasiAdminPage() {
     setAlasan('')
   }
 
+  async function bukaBukti(p: Pendaftar) {
+    setMemuatBukti(p.id)
+    const url = await urlBukti(p.bukti_alumni_url)
+    setMemuatBukti(null)
+    if (!url) { tampilkanPesan('Bukti tidak bisa dibuka. File mungkin sudah dihapus.', false); return }
+    setBuktiUrl(url)
+  }
+
   // Tidak ada penyaringan angkatan di sini lagi: antrean_alumni sudah
   // menyaringnya di server, dan menyalinnya ke klien hanya akan terbaca
   // seolah lapisan inilah yang menjaga.
@@ -233,6 +249,23 @@ export default function VerifikasiAdminPage() {
   return (
     <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
       <Navbar />
+
+      {/* Lightbox bukti */}
+      {buktiUrl && (
+        <div
+          onClick={() => setBuktiUrl(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', cursor: 'zoom-out' }}
+        >
+          <img src={buktiUrl} alt="Bukti alumni" style={{ maxWidth: '100%', maxHeight: '90vh', objectFit: 'contain', borderRadius: '8px' }} />
+          <button
+            onClick={() => setBuktiUrl(null)}
+            style={{ position: 'absolute', top: '16px', right: '16px', background: 'rgba(255,255,255,0.2)', color: '#fff', border: 'none', width: '36px', height: '36px', borderRadius: '50%', fontSize: '18px', cursor: 'pointer' }}
+            aria-label="Tutup"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       <div style={{ maxWidth: '660px', margin: '0 auto', padding: '16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
@@ -347,12 +380,26 @@ export default function VerifikasiAdminPage() {
                 </div>
               )}
 
-              {/* Tombol "Lihat Bukti Alumni" untuk data lama sudah tidak ada:
-                  antrean_alumni tidak mengembalikan bukti_alumni_url, dan
-                  membacanya lewat jalur lain berarti menyentuh `users`
-                  langsung — persis yang dihindari RPC ini. Kolom, bucket, dan
-                  lib/buktiAlumni.ts tetap utuh; kalau buktinya mau ditampilkan
-                  lagi, kolomnya harus ditambahkan ke antrean_alumni. */}
+              {/* Bukti alumni — hanya untuk data lama, karena unggahnya sedang
+                  dimatikan. Tidak ada peringatan "belum mengunggah": itu akan
+                  menyala untuk hampir semua orang dan cepat diabaikan.
+
+                  Tombolnya muncul semata-mata karena kolomnya terisi. Untuk
+                  admin angkatan antrean_alumni mengembalikan NULL, jadi
+                  tombolnya hilang sendiri — JANGAN menambahkan pemeriksaan
+                  peran di sini. Dua pemeriksaan atas hal yang sama suatu saat
+                  akan berbeda pendapat, dan yang di klien pasti yang salah. */}
+              {p.bukti_alumni_url && (
+                <div style={{ margin: '0 14px 12px' }}>
+                  <button
+                    onClick={() => bukaBukti(p)}
+                    disabled={memuatBukti === p.id}
+                    style={{ width: '100%', background: '#E6F1FB', color: '#0C447C', border: '0.5px solid #c5d9ef', padding: '9px', borderRadius: '8px', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}
+                  >
+                    {memuatBukti === p.id ? 'Membuka...' : '🖼️ Lihat Bukti Alumni'}
+                  </button>
+                </div>
+              )}
 
               {/* Data yang sedang diminta admin — pendaftar melihat catatan
                   yang sama di halaman /verifikasi miliknya */}
