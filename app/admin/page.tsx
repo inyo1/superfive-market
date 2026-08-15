@@ -17,7 +17,14 @@ type UserRow = {
   angkatan: number | null
   role: string
   avatar_url: string | null
+  nonaktif_at: string | null
+  alasan_nonaktif: string | null
 }
+
+/** Dua aksi yang sengaja TIDAK digabung. Nonaktifkan menyembunyikan toko dan
+ *  produknya tapi riwayatnya utuh dan bisa dibatalkan; Hapus membuang profilnya
+ *  selamanya dan hanya boleh untuk akun yang belum meninggalkan jejak. */
+type AksiUser = { jenis: 'nonaktif' | 'hapus'; u: UserRow }
 type ProdukRow = {
   id: string
   nama: string
@@ -51,6 +58,19 @@ export default function AdminPage() {
   const [busyId, setBusyId] = useState<string | null>(null)
   const [konfirmasi, setKonfirmasi] = useState<Konfirmasi | null>(null)
 
+  // Modal aksi pengguna. `errAksi` sengaja tinggal di dalam modal, bukan jadi
+  // toast: kalau Hapus ditolak karena akunnya punya jejak, adminnya harus bisa
+  // langsung berpindah ke Nonaktifkan tanpa mengulang dari awal.
+  const [aksi, setAksi] = useState<AksiUser | null>(null)
+  const [alasan, setAlasan] = useState('')
+  const [errAksi, setErrAksi] = useState<string | null>(null)
+
+  function bukaAksi(jenis: AksiUser['jenis'], u: UserRow) {
+    setAksi({ jenis, u })
+    setAlasan('')
+    setErrAksi(null)
+  }
+
   useEffect(() => {
     async function init() {
       const { data: { user } } = await supabase.auth.getUser()
@@ -71,7 +91,7 @@ export default function AdminPage() {
   async function loadUsers() {
     const { data } = await supabase
       .from('users')
-      .select('id, nama, email, angkatan, role, avatar_url')
+      .select('id, nama, email, angkatan, role, avatar_url, nonaktif_at, alasan_nonaktif')
       .order('email')
     if (data) setUsers(data as unknown as UserRow[])
   }
@@ -118,6 +138,65 @@ export default function AdminPage() {
       showPesan(`${u.email} → ${peranBaru}`, true)
     } catch (e) {
       showPesan(e instanceof Error ? e.message : 'Gagal mengubah peran', false)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function nonaktifkanUser(u: UserRow) {
+    if (!alasan.trim()) { setErrAksi('Alasan wajib diisi.'); return }
+    setBusyId(u.id)
+    setErrAksi(null)
+    try {
+      const { error } = await supabase.rpc('nonaktifkan_user', {
+        p_user_id: u.id,
+        p_alasan: alasan.trim(),
+      })
+      if (error) throw new Error(error.message)
+
+      setUsers(prev => prev.map(x => x.id === u.id
+        ? { ...x, nonaktif_at: new Date().toISOString(), alasan_nonaktif: alasan.trim() }
+        : x))
+      showPesan(`${u.email} dinonaktifkan. Toko dan produknya turun dari Superfive.`, true)
+      setAksi(null)
+    } catch (e) {
+      setErrAksi(e instanceof Error ? e.message : 'Gagal menonaktifkan')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function aktifkanUser(u: UserRow) {
+    setBusyId(u.id)
+    try {
+      const { error } = await supabase.rpc('aktifkan_user', { p_user_id: u.id })
+      if (error) throw new Error(error.message)
+
+      setUsers(prev => prev.map(x => x.id === u.id
+        ? { ...x, nonaktif_at: null, alasan_nonaktif: null }
+        : x))
+      showPesan(`${u.email} diaktifkan kembali.`, true)
+    } catch (e) {
+      showPesan(e instanceof Error ? e.message : 'Gagal mengaktifkan', false)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function hapusUser(u: UserRow) {
+    setBusyId(u.id)
+    setErrAksi(null)
+    try {
+      const { error } = await supabase.rpc('hapus_user', { p_user_id: u.id })
+      if (error) throw new Error(error.message)
+
+      setUsers(prev => prev.filter(x => x.id !== u.id))
+      showPesan(`Profil ${u.email} dihapus permanen. Akun loginnya belum — hapus terpisah di Supabase Dashboard.`, true)
+      setAksi(null)
+    } catch (e) {
+      // Ditolak karena akunnya punya jejak. Dialognya sengaja TIDAK ditutup:
+      // pesannya tampil di tempat, beserta jalan keluar Nonaktifkan.
+      setErrAksi(e instanceof Error ? e.message : 'Gagal menghapus')
     } finally {
       setBusyId(null)
     }
@@ -188,6 +267,108 @@ export default function AdminPage() {
           else hapusProduk(konfirmasi.id)
         }}
       />
+
+      {/* Modal aksi pengguna — Nonaktifkan butuh isian alasan, jadi tidak bisa
+          memakai DialogKonfirmasi yang hanya menerima teks */}
+      {aksi && (
+        <div
+          onClick={busyId ? undefined : () => setAksi(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
+          role="dialog" aria-modal="true"
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: '#fff', borderRadius: '14px', padding: '22px 20px', width: '100%', maxWidth: '400px' }}
+          >
+            <div style={{ fontSize: '34px', textAlign: 'center', marginBottom: '10px' }}>
+              {aksi.jenis === 'hapus' ? '🗑️' : '🚫'}
+            </div>
+            <div style={{ fontSize: '15px', fontWeight: '700', color: '#1a1a1a', textAlign: 'center', marginBottom: '6px' }}>
+              {aksi.jenis === 'hapus' ? 'Hapus profil ini selamanya?' : 'Nonaktifkan akun ini?'}
+            </div>
+
+            {/* Konfirmasi hapus wajib menyebut siapa yang dihapus — nama saja
+                tidak cukup, dua orang bisa punya nama yang sama */}
+            <div style={{ background: '#f0f5fb', borderRadius: '8px', padding: '10px 12px', marginBottom: '12px', textAlign: 'center' }}>
+              <div style={{ fontSize: '13px', fontWeight: '600', color: '#1a1a1a' }}>
+                {aksi.u.nama || '(belum isi nama)'}
+              </div>
+              <div style={{ fontSize: '11px', color: '#5a7da0', wordBreak: 'break-all' }}>{aksi.u.email}</div>
+            </div>
+
+            {aksi.jenis === 'hapus' ? (
+              <>
+                <div style={{ fontSize: '12px', color: '#5a7da0', lineHeight: '1.7', marginBottom: '10px' }}>
+                  Profilnya <strong style={{ color: '#c62828' }}>dihapus selamanya</strong> dan
+                  tidak bisa dikembalikan. Hanya bisa untuk akun yang belum punya toko,
+                  pesanan, ulasan, atau chat.
+                </div>
+                <div style={{ background: '#fff8e1', border: '0.5px solid #ffe082', borderRadius: '8px', padding: '10px 12px', fontSize: '11px', color: '#8d6e26', lineHeight: '1.7', marginBottom: '12px' }}>
+                  <strong>Akun loginnya TIDAK ikut terhapus.</strong> Orangnya masih bisa
+                  masuk dan akan membuat profil baru. Hapus terpisah lewat Supabase
+                  Dashboard → Authentication → Users.
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: '12px', color: '#5a7da0', lineHeight: '1.7', marginBottom: '10px' }}>
+                  Toko dan produknya hilang dari Superfive, tapi riwayatnya tetap utuh
+                  dan akun ini bisa diaktifkan lagi kapan saja.
+                </div>
+                <label htmlFor="alasan-nonaktif" style={{ fontSize: '12px', fontWeight: '600', color: '#0C447C', display: 'block', marginBottom: '4px' }}>
+                  Alasan *
+                </label>
+                <textarea
+                  id="alasan-nonaktif"
+                  value={alasan}
+                  onChange={e => setAlasan(e.target.value)}
+                  rows={3}
+                  placeholder="Misal: berulang kali tidak mengirim pesanan"
+                  style={{ width: '100%', padding: '9px 11px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '12px', outline: 'none', resize: 'none', boxSizing: 'border-box', fontFamily: 'sans-serif', marginBottom: '12px' }}
+                />
+              </>
+            )}
+
+            {errAksi && (
+              <div style={{ background: '#fce4e4', border: '0.5px solid #f09595', borderRadius: '8px', padding: '10px 12px', marginBottom: '12px' }}>
+                <div style={{ fontSize: '12px', color: '#c62828', lineHeight: '1.6' }}>{errAksi}</div>
+                {/* Jangan biarkan admin buntu: kalau hapus ditolak, jalan
+                    keluarnya ditawarkan langsung di dialog yang sama */}
+                {aksi.jenis === 'hapus' && (
+                  <button
+                    onClick={() => bukaAksi('nonaktif', aksi.u)}
+                    style={{ marginTop: '8px', background: '#fff', color: '#0C447C', border: '1px solid #0C447C', padding: '8px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', minHeight: '38px' }}
+                  >
+                    Nonaktifkan saja →
+                  </button>
+                )}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={() => setAksi(null)}
+                disabled={!!busyId}
+                style={{ flex: 1, background: '#f0f5fb', color: '#5a7da0', border: 'none', padding: '12px', borderRadius: '9px', fontSize: '13px', minHeight: '44px', cursor: busyId ? 'not-allowed' : 'pointer' }}
+              >
+                Batal
+              </button>
+              <button
+                onClick={() => aksi.jenis === 'hapus' ? hapusUser(aksi.u) : nonaktifkanUser(aksi.u)}
+                disabled={!!busyId}
+                style={{
+                  flex: 1, background: busyId ? '#b0b0b0' : aksi.jenis === 'hapus' ? '#c62828' : '#e65100',
+                  color: '#fff', border: 'none', padding: '12px', borderRadius: '9px',
+                  fontSize: '13px', fontWeight: '600', minHeight: '44px',
+                  cursor: busyId ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {busyId ? 'Memproses...' : aksi.jenis === 'hapus' ? 'Hapus Permanen' : 'Nonaktifkan'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Header */}
       <div style={{
@@ -325,6 +506,11 @@ export default function AdminPage() {
                         Angkatan {u.angkatan}
                       </div>
                     )}
+                    {u.nonaktif_at && (
+                      <div style={{ fontSize: '10px', color: '#c62828', marginTop: '3px' }}>
+                        🚫 Nonaktif{u.alasan_nonaktif ? ` — ${u.alasan_nonaktif}` : ''}
+                      </div>
+                    )}
                   </div>
 
                   {/* Role badge + toggle */}
@@ -356,6 +542,38 @@ export default function AdminPage() {
                       >
                         {u.role === 'admin' ? '↓ Jadikan Member' : '↑ Jadikan Admin'}
                       </button>
+                    )}
+
+                    {/* Dua aksi berbeda, sengaja tidak digabung: yang satu bisa
+                        dibatalkan, yang satu selamanya. Keduanya tidak
+                        ditawarkan untuk akun sendiri — RPC-nya menolak. */}
+                    {u.id !== adminId && (
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        {u.nonaktif_at ? (
+                          <button
+                            onClick={() => aktifkanUser(u)}
+                            disabled={busyId === u.id}
+                            style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', border: '0.5px solid #a5d6a7', background: '#e8f5e9', color: '#2e7d32', opacity: busyId === u.id ? 0.5 : 1 }}
+                          >
+                            Aktifkan
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => bukaAksi('nonaktif', u)}
+                            disabled={busyId === u.id}
+                            style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', border: '0.5px solid #ffcc80', background: '#fff3e0', color: '#e65100', opacity: busyId === u.id ? 0.5 : 1 }}
+                          >
+                            Nonaktifkan
+                          </button>
+                        )}
+                        <button
+                          onClick={() => bukaAksi('hapus', u)}
+                          disabled={busyId === u.id}
+                          style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', border: '0.5px solid #f09595', background: '#fce4e4', color: '#c62828', opacity: busyId === u.id ? 0.5 : 1 }}
+                        >
+                          Hapus
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
