@@ -18,7 +18,15 @@ const geistMono = Geist_Mono({
 
 // Dipakai untuk mengubah path relatif jadi URL absolut di tag Open Graph.
 // Tanpa ini, WhatsApp dan Facebook tidak bisa mengambil gambar previewnya.
-const situs = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://superfivemarket.com'
+//
+// PAKAI www: superfivemarket.com menjawab 308 ke www, dan sebagian pengambil
+// pratinjau tidak mengikuti redirect saat menjemput gambarnya.
+const situs = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.superfivemarket.com'
+
+// JPG, bukan PNG: WhatsApp menolak memuat gambar besar dan diam-diam jatuh ke
+// pratinjau kotak kecil. Yang ini 40KB; PNG lamanya 215KB.
+// Dibuat ulang dengan `node scripts/buat-og-image.mjs`.
+const OG_GAMBAR = `${situs}/og-image.jpg`
 
 const DESKRIPSI =
   'Ekosistem bisnis alumni SMPN 5 Bandung. Belanja produk alumni, buka toko sendiri, ' +
@@ -38,13 +46,21 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'id_ID',
     siteName: 'Superfive Market',
-    title: 'Superfive Market — Ekosistem Bisnis Alumni SMPN 5 Bandung',
+    // Judul pratinjau sengaja pendek. Judul tab boleh panjang (lihat `title`
+    // di atas), tapi di kartu WhatsApp judul panjang terpotong di tengah
+    // kalimat — dan keterangannya sudah menjelaskan sisanya.
+    title: 'Superfive Market',
     description: DESKRIPSI,
     url: situs,
     images: [{
-      url: '/og-image.png',
+      // URL absolut, bukan relatif: sebagian pengambil pratinjau tidak
+      // menyelesaikan path relatif terhadap metadataBase
+      url: OG_GAMBAR,
+      // width dan height WAJIB ditulis eksplisit — tanpa keduanya WhatsApp
+      // sering memilih pratinjau kotak kecil meski gambarnya sudah 1200x630
       width: 1200,
       height: 630,
+      type: 'image/jpeg',
       alt: 'Superfive Market — Ekosistem Bisnis Alumni SMPN 5 Bandung',
     }],
   },
@@ -52,7 +68,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Superfive Market',
     description: DESKRIPSI,
-    images: ['/og-image.png'],
+    images: [OG_GAMBAR],
   },
   icons: {
     icon: [

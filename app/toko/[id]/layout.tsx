@@ -61,7 +61,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     count ? `${count} produk tersedia.` : null,
   ].filter(Boolean).join(' ')
 
-  const gambar = toko.foto_toko || '/og-image.png'
+  const gambar = toko.foto_toko || '/og-image.jpg'
 
   return {
     title: judul,

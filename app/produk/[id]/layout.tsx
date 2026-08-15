@@ -40,7 +40,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // Foto produk jadi gambar preview. Kalau produk belum punya foto, jatuh ke
   // gambar OG umum supaya preview tidak kosong.
   const foto = normalizeFotoUrl(data.foto_url as string | string[] | null)
-  const gambar = foto ?? '/og-image.png'
+  const gambar = foto ?? '/og-image.jpg'
 
   return {
     title: judul,
