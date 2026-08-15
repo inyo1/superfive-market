@@ -93,7 +93,6 @@ const LABEL_TAB: Record<Tab, string> = {
 }
 
 function fmt(n: number) { return 'Rp ' + (n || 0).toLocaleString('id-ID') }
-const fmtTgl = tanggalPeristiwa
 
 // Tanggal pesanan ditutup sendiri oleh tugas harian kalau pembeli tidak
 // pernah mengonfirmasi. Perkiraan, karena tugasnya berjalan sekali sehari.
@@ -106,7 +105,7 @@ function batasOtomatis(dikirimAt: string | null): string | null {
   if (!dikirimAt) return null
   const mulai = new Date(dikirimAt).getTime()
   if (isNaN(mulai)) return null
-  return fmtTgl(new Date(mulai + HARI_SELESAI_OTOMATIS * 86_400_000))
+  return tanggalPeristiwa(new Date(mulai + HARI_SELESAI_OTOMATIS * 86_400_000))
 }
 
 export default function PesananPage() {
@@ -353,7 +352,7 @@ export default function PesananPage() {
                   <div style={{ fontSize: '12px', fontWeight: '600', color: '#0C447C', fontFamily: 'monospace' }}>
                     {p.nomor_pesanan ?? '—'}
                   </div>
-                  <div style={{ fontSize: '11px', color: '#5a7da0', marginTop: '2px' }}>{fmtTgl(p.created_at)}</div>
+                  <div style={{ fontSize: '11px', color: '#5a7da0', marginTop: '2px' }}>{tanggalPeristiwa(p.created_at)}</div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px', flexShrink: 0 }}>
                   <span style={{ fontSize: '11px', fontWeight: '600', padding: '4px 11px', borderRadius: '20px', background: warna.bg, color: warna.color }}>
@@ -431,7 +430,7 @@ export default function PesananPage() {
                 <div style={{ margin: '10px 14px 0', background: '#fff3e0', borderRadius: '8px', padding: '10px 12px' }}>
                   <div style={{ fontSize: '11px', color: '#e65100', marginBottom: '2px' }}>
                     🚚 Dikirim lewat {p.kurir ?? 'kurir'}
-                    {p.dikirim_at && ` · ${fmtTgl(p.dikirim_at)}`}
+                    {p.dikirim_at && ` · ${tanggalPeristiwa(p.dikirim_at)}`}
                   </div>
                   <div style={{ fontSize: '13px', fontWeight: '700', color: '#e65100', fontFamily: 'monospace' }}>
                     {p.no_resi}
@@ -446,7 +445,7 @@ export default function PesananPage() {
                 <div style={{ margin: '10px 14px 0', background: '#fce4e4', borderRadius: '8px', padding: '10px 12px' }}>
                   <div style={{ fontSize: '11px', fontWeight: '600', color: '#c62828', marginBottom: '2px' }}>
                     Pesanan dibatalkan
-                    {p.dibatalkan_at && ` · ${fmtTgl(p.dibatalkan_at)}`}
+                    {p.dibatalkan_at && ` · ${tanggalPeristiwa(p.dibatalkan_at)}`}
                   </div>
                   <div style={{ fontSize: '12px', color: '#1a1a1a', lineHeight: 1.6 }}>
                     {p.alasan_batal || 'Tanpa keterangan.'}
@@ -459,7 +458,7 @@ export default function PesananPage() {
                       </div>
                       <div style={{ fontSize: '12px', fontWeight: '700', color: WARNA_REFUND[refund[p.id].status] ?? '#5a7da0' }}>
                         {LABEL_REFUND[refund[p.id].status] ?? refund[p.id].status}
-                        {refund[p.id].selesai_at && ` · ${fmtTgl(refund[p.id].selesai_at!)}`}
+                        {refund[p.id].selesai_at && ` · ${tanggalPeristiwa(refund[p.id].selesai_at!)}`}
                       </div>
                     </div>
                   ) : p.payment_status === 'refund' && (

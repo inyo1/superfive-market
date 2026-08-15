@@ -59,7 +59,6 @@ type Pesanan = {
 const kategoris = ['Teknologi', 'Fashion', 'Kuliner', 'Properti', 'Jasa', 'UMKM']
 
 function fmt(n: number) { return 'Rp ' + (n || 0).toLocaleString('id-ID') }
-const fmtTgl = tanggalPeristiwa
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -604,7 +603,7 @@ export default function DashboardPage() {
                   <div style={{ fontSize: '13px', fontWeight: '500', color: '#1a1a1a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {p.penerima_nama ?? 'Tanpa nama'}
                   </div>
-                  <div style={{ fontSize: '11px', color: '#5a7da0' }}>{fmtTgl(p.created_at)} · {fmt(p.total ?? 0)}</div>
+                  <div style={{ fontSize: '11px', color: '#5a7da0' }}>{tanggalPeristiwa(p.created_at)} · {fmt(p.total ?? 0)}</div>
                 </div>
                 <span style={{ fontSize: '11px', fontWeight: '600', padding: '3px 10px', borderRadius: '20px', flexShrink: 0, ...warnaStatus(p.status) }}>
                   {p.status}
@@ -690,7 +689,7 @@ export default function DashboardPage() {
                         {p.penerima_nama ?? 'Tanpa nama'}
                       </div>
                       <div style={{ fontSize: '11px', color: '#5a7da0' }}>
-                        {p.penerima_hp ?? '-'} · {fmtTgl(p.created_at)}
+                        {p.penerima_hp ?? '-'} · {tanggalPeristiwa(p.created_at)}
                       </div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px', flexShrink: 0 }}>
@@ -756,7 +755,7 @@ export default function DashboardPage() {
                     </div>
                     <div style={{ fontSize: '11px', color: '#5a7da0' }}>
                       💳 {(p.metode_bayar ?? '-').replace(/_/g, ' ')}
-                      {p.paid_at && ` · dibayar ${fmtTgl(p.paid_at)}`}
+                      {p.paid_at && ` · dibayar ${tanggalPeristiwa(p.paid_at)}`}
                     </div>
 
                     {/* Tenggat kirim hanya relevan selama barangnya belum

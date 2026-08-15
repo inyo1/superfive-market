@@ -44,7 +44,6 @@ type TokoRow = {
 }
 
 function fmt(n: number) { return 'Rp ' + (n || 0).toLocaleString('id-ID') }
-const fmtTgl = tanggalPeristiwa
 
 export default function AdminPage() {
   const router = useRouter()
@@ -672,7 +671,7 @@ export default function AdminPage() {
                     {fmt(p.harga)}
                   </div>
                   <div style={{ fontSize: '11px', color: '#5a7da0' }}>
-                    {(p.toko as any)?.nama_toko ?? '—'} · {fmtTgl(p.created_at)}
+                    {(p.toko as any)?.nama_toko ?? '—'} · {tanggalPeristiwa(p.created_at)}
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', flexShrink: 0 }}>

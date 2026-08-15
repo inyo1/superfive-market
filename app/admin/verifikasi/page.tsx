@@ -42,7 +42,6 @@ const LABEL_TAB: Record<Tab, string> = {
   ditolak: 'Ditolak',
 }
 
-const fmtTgl = tanggalPeristiwa
 
 function Avatar({ nama, url, size = 48 }: { nama: string | null; url: string | null; size?: number }) {
   const initials = nama
@@ -361,8 +360,8 @@ export default function VerifikasiAdminPage() {
                     {p.email ?? '-'}
                   </div>
                   <div style={{ fontSize: '11px', color: '#9ab4cc', marginTop: '2px' }}>
-                    Daftar {fmtTgl(p.created_at)}
-                    {p.diverifikasi_at && ` · diputuskan ${fmtTgl(p.diverifikasi_at)}`}
+                    Daftar {tanggalPeristiwa(p.created_at)}
+                    {p.diverifikasi_at && ` · diputuskan ${tanggalPeristiwa(p.diverifikasi_at)}`}
                   </div>
                 </div>
               </div>
@@ -405,7 +404,7 @@ export default function VerifikasiAdminPage() {
               {p.catatan_admin && (
                 <div style={{ margin: '0 14px 12px', background: '#E6F1FB', borderRadius: '8px', padding: '10px 12px' }}>
                   <div style={{ fontSize: '10px', color: '#0C447C', marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    Diminta melengkapi{p.diminta_data_at ? ` · ${fmtTgl(p.diminta_data_at)}` : ''}
+                    Diminta melengkapi{p.diminta_data_at ? ` · ${tanggalPeristiwa(p.diminta_data_at)}` : ''}
                   </div>
                   <div style={{ fontSize: '12px', color: '#0C447C', whiteSpace: 'pre-line' }}>{p.catatan_admin}</div>
                 </div>

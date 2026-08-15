@@ -49,8 +49,6 @@ function StarDisplay({ value, size = 14 }: { value: number; size?: number }) {
   )
 }
 
-// Bulan dieja penuh di sini — ulasan dibaca sambil lalu, bukan dibandingkan
-const fmtTgl = (s: string) => tanggalPeristiwa(s, true)
 
 export default function ReviewSection({ produkId }: { produkId: string }) {
   const [reviews, setReviews] = useState<Review[]>([])
@@ -313,7 +311,8 @@ export default function ReviewSection({ produkId }: { produkId: string }) {
                       <span style={{ fontSize: '12px', fontWeight: '500', color: '#1a1a1a' }}>{r.nama_reviewer}</span>
                       <BadgeAngkatan angkatan={profilPengulas[r.user_id]?.angkatan} kecil />
                     </div>
-                    <div style={{ fontSize: '10px', color: '#5a7da0' }}>{fmtTgl(r.created_at)}</div>
+                    {/* Bulan dieja penuh — ulasan dibaca sambil lalu, bukan dibandingkan */}
+                    <div style={{ fontSize: '10px', color: '#5a7da0' }}>{tanggalPeristiwa(r.created_at, true)}</div>
                   </div>
                 </div>
                 <StarDisplay value={r.rating} size={13} />

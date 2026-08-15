@@ -54,7 +54,6 @@ const LABEL_ALUMNI: Record<string, { teks: string; warna: string; latar: string 
   umum:     { teks: 'Belum mengaku alumni', warna: '#5a7da0', latar: '#f0f5fb' },
 }
 
-const fmtTgl = tanggalPeristiwa
 
 function Avatar({ nama, url, size = 48 }: { nama: string | null; url: string | null; size?: number }) {
   const initial = nama
@@ -270,7 +269,7 @@ export default function PenjualAdminPage() {
                         keputusannya sepenuhnya di tangan admin. */}
                     {p.jml_telat_kirim > 0 && (
                       <span
-                        title={p.telat_terakhir_at ? `Terakhir telat ${fmtTgl(p.telat_terakhir_at)}` : undefined}
+                        title={p.telat_terakhir_at ? `Terakhir telat ${tanggalPeristiwa(p.telat_terakhir_at)}` : undefined}
                         style={{ background: '#fce4e4', color: '#c62828', fontSize: '10px', fontWeight: '700', padding: '3px 9px', borderRadius: '20px' }}
                       >
                         ⚠ {p.jml_telat_kirim}× telat kirim
@@ -278,8 +277,8 @@ export default function PenjualAdminPage() {
                     )}
                   </div>
                   <div style={{ fontSize: '11px', color: '#9ab4cc', marginTop: '6px' }}>
-                    Mengajukan {fmtTgl(p.ajukan_penjual_at)}
-                    {p.penjual_diputus_at && ` · diputuskan ${fmtTgl(p.penjual_diputus_at)}`}
+                    Mengajukan {tanggalPeristiwa(p.ajukan_penjual_at)}
+                    {p.penjual_diputus_at && ` · diputuskan ${tanggalPeristiwa(p.penjual_diputus_at)}`}
                   </div>
                 </div>
               </div>
