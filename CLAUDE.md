@@ -1172,12 +1172,125 @@ menyembunyikan tombolnya:
   Mereka pembeli biasa dan memang tidak punya apa pun untuk dilengkapi; panel
   verifikasi pun tidak menampilkan mereka sama sekali
 
+### `ubah_peran` — hanya admin
+
+**Satu-satunya cara mengubah `users.role`.** Jangan pernah `.update()` kolom
+itu dari klien.
+
+```ts
+await supabase.rpc('ubah_peran', { p_user_id: id, p_peran: 'admin' })  // atau 'member'
+// data: { ok: true, nama, peran }
+```
+
+Menolak menurunkan diri sendiri, menurunkan admin aktif terakhir, dan
+mengangkat akun nonaktif jadi admin.
+
+#### Kenapa ini bukan sekadar kerapian
+
+`jaga_field_sensitif` melewatkan siapa pun yang `is_admin()`. Artinya
+`.update({ role })` dari panel admin **berhasil** — dan karena berhasil, tidak
+ada satu pun aturan yang menahannya: tidak ada yang mencegah admin menurunkan
+dirinya sendiri, dan tidak ada yang menghitung sisa admin.
+
+Ini bukan risiko teoretis, sudah terjadi: satu akun admin turun jadi member
+sehingga Superfive tinggal punya satu admin, dan tombol "Jadikan Member" di
+baris admin yang sedang login tinggal sekali klik dari mengunci keluar seluruh
+sistem — tanpa jalan pulih dari dalam aplikasi.
+
+Pelajaran yang sama dengan penjaga lain di dokumen ini: **lolos karena
+`is_admin()` bukan berarti aman, itu justru berarti tidak ada yang memeriksa.**
+
+### `hapus_user` — hanya admin, permanen
+
+Menghapus baris `users` selamanya. **Hanya boleh untuk akun yang belum
+meninggalkan jejak** — kalau ada, fungsinya menolak dan menyebutkan jejaknya:
+
+> Tidak bisa dihapus karena punya toko, punya riwayat pesanan — menghapusnya
+> akan merusak riwayat orang lain. Nonaktifkan saja.
+
+```ts
+await supabase.rpc('hapus_user', { p_user_id: id })
+// data: { ok: true, nama, email }
+```
+
+Juga menolak akun sendiri dan akun ber-`role = 'admin'` (turunkan dulu jadi
+member).
+
+Alasan syaratnya ada di skema: **semua foreign key ke `public.users` bertipe
+`NO ACTION`** — `toko.seller_id`, `pesanan.buyer_id`, `ulasan.buyer_id`,
+`chat.sender_id`/`receiver_id`, `refund.diproses_oleh`, dan empat kolom jejak
+admin di `users` sendiri (`diverifikasi_oleh`, `nonaktif_oleh`,
+`penjual_diputus_oleh`, `diminta_data_oleh`). Tidak ada CASCADE di mana pun,
+dan itu memang disengaja: menghapus anggota yang punya jejak akan merusak
+riwayat **orang lain**, bukan cuma riwayatnya sendiri.
+
+**Dua hal yang harus diingat pemanggilnya:**
+
+- `auth.users` **tidak ikut terhapus.** Orangnya masih bisa masuk dan akan
+  membuat profil baru. Penghapusan akun login harus lewat Supabase Dashboard →
+  Authentication → Users. UI wajib menyebutkan ini, kalau tidak admin mengira
+  pekerjaannya sudah selesai
+- Kalau ditolak, **tawarkan `nonaktifkan_user` sebagai gantinya.** Itu jalan
+  keluar yang benar untuk hampir semua kasus nyata, dan tanpa tawaran itu
+  admin buntu di dialog yang sama
+
+#### ⚠ `hapus_user` GAGAL untuk semua input (per 15 Agustus 2026)
+
+Tombolnya sudah terpasang di [/admin](app/admin/page.tsx), tapi fungsinya
+belum bisa berhasil sekali pun. Tiga cacat, ketiganya di blok pemeriksa jejak,
+dan semuanya sudah dibuktikan dengan menjalankannya:
+
+| Baris | Masalah |
+|---|---|
+| `v_jejak := v_jejak \|\| 'punya toko'` | menggabung `text` polos ke `text[]`; Postgres mencoba menafsirkannya sebagai literal array → `malformed array literal: "punya toko"` |
+| `FROM ulasan WHERE user_id = ...` | `ulasan` tidak punya kolom `user_id`, kolomnya `buyer_id` |
+| `FROM chat_pesan WHERE pengirim_id = ...` | tabel `chat_pesan` **tidak ada**; yang ada `chat` (`sender_id`, `receiver_id`) |
+
+Dua yang terakhir dijalankan untuk **setiap** pemanggilan, bukan hanya saat
+jejaknya ada, jadi tidak ada satu pun input yang bisa lolos.
+
+Perbaikannya (jalankan Inyo di SQL editor) — perhatikan `::text` dan nama
+tabel yang benar-benar dirujuk foreign key:
+
+```sql
+  v_jejak := ARRAY[]::text[];
+  IF EXISTS (SELECT 1 FROM toko    WHERE seller_id = p_user_id) THEN
+    v_jejak := v_jejak || 'punya toko'::text; END IF;
+  IF EXISTS (SELECT 1 FROM pesanan WHERE buyer_id  = p_user_id) THEN
+    v_jejak := v_jejak || 'punya riwayat pesanan'::text; END IF;
+  IF EXISTS (SELECT 1 FROM ulasan  WHERE buyer_id  = p_user_id) THEN
+    v_jejak := v_jejak || 'pernah menulis ulasan'::text; END IF;
+  IF EXISTS (SELECT 1 FROM chat
+              WHERE sender_id = p_user_id OR receiver_id = p_user_id) THEN
+    v_jejak := v_jejak || 'punya riwayat chat'::text; END IF;
+  IF EXISTS (SELECT 1 FROM refund  WHERE diproses_oleh = p_user_id) THEN
+    v_jejak := v_jejak || 'pernah memproses refund'::text; END IF;
+  IF EXISTS (SELECT 1 FROM users
+              WHERE diverifikasi_oleh    = p_user_id
+                 OR nonaktif_oleh        = p_user_id
+                 OR penjual_diputus_oleh = p_user_id
+                 OR diminta_data_oleh    = p_user_id) THEN
+    v_jejak := v_jejak || 'pernah memutuskan verifikasi orang lain'::text; END IF;
+```
+
+Dua pemeriksa terakhir **bukan tambahan pemanis** — `refund.diproses_oleh` dan
+keempat kolom jejak admin di `users` sama-sama punya FK `NO ACTION` ke
+`users`. Tanpa keduanya, menghapus bekas admin akan gagal dengan error
+Postgres mentah, bukan kalimat yang bisa dibaca admin.
+
+Perlu diketahui juga: `reviews`, `messages`, dan `conversations` **tidak**
+punya FK ke `public.users` — semuanya menunjuk `auth.users`. Jadi ulasan dan
+chat versi baru tidak memblokir penghapusan, dan barisnya akan tertinggal
+menunjuk profil yang sudah hilang. Kalau itu tidak diinginkan, yang perlu
+diubah FK-nya, bukan daftar pemeriksa di atas.
+
 ### `nonaktifkan_user` / `aktifkan_user` — hanya admin
 
 Menonaktifkan akun (`nonaktif_at`, `alasan_nonaktif`) dan membuka kembali.
-Akun nonaktif hilang dari `alumni_publik` dan `penjual_aktif()` ikut
-mengembalikan false, jadi tokonya turun. Menolak menonaktifkan diri sendiri
-dan admin aktif terakhir. Belum ada UI yang memanggil keduanya.
+Akun nonaktif hilang dari `alumni_publik` dan `pengguna_publik`, dan
+`penjual_aktif()` ikut mengembalikan false, jadi tokonya turun. Menolak
+menonaktifkan diri sendiri dan admin aktif terakhir. Tombolnya ada di
+[/admin](app/admin/page.tsx), di daftar pengguna.
 
 ### `is_admin()` dan `penjual_aktif(uuid)` — helper policy
 
@@ -1369,13 +1482,13 @@ where table_schema='public' and table_name='nama_objek'
 
 ## ATURAN: Hak EXECUTE Fungsi Baru
 
-Dua belas fungsi boleh dipanggil pengguna login:
+Empat belas fungsi boleh dipanggil pengguna login:
 
 ```
 create_pesanan · ubah_status_pesanan · batalkan_pesanan
 ajukan_alumni · ajukan_jadi_penjual
 verifikasi_alumni · putuskan_penjual · minta_data_ulang
-nonaktifkan_user · aktifkan_user
+nonaktifkan_user · aktifkan_user · hapus_user · ubah_peran
 is_admin · penjual_aktif
 ```
 
@@ -1648,10 +1761,14 @@ Kalau butuh memastikan sesuatu di sisi data, pakai Supabase MCP untuk `SELECT`
   verifikasi untuk sekarang bersandar pada penilaian admin atas nama dan
   angkatan. Rinciannya di
   [Unggah bukti alumni DIMATIKAN SEMENTARA](#unggah-bukti-alumni-dimatikan-sementara-sejak-14-agustus-2026).
-- **Dua RPC admin belum punya tombol.** `nonaktifkan_user` dan `aktifkan_user`
-  jalan dan sudah diberi EXECUTE ke `authenticated`, tapi tidak ada halaman
-  yang memanggilnya — jadi belum ada cara menonaktifkan anggota dari UI.
-  Tempat yang wajar: [/admin](app/admin/page.tsx), di daftar pengguna.
+- **⚠ `hapus_user` belum bisa berhasil sekali pun.** Tombolnya sudah ada di
+  [/admin](app/admin/page.tsx) dan menampilkan penolakannya dengan benar, tapi
+  yang muncul untuk sekarang selalu error Postgres mentah, bukan kalimat yang
+  dimaksud. Tiga cacat di blok pemeriksa jejaknya, beserta SQL perbaikannya,
+  ada di
+  [peringatan `hapus_user`](#-hapus_user-gagal-untuk-semua-input-per-15-agustus-2026).
+  Sampai diperbaiki, yang berfungsi hanya Nonaktifkan — dan dialognya memang
+  sudah menawarkan itu sebagai jalan keluar.
 - **`toko_insert_own` masih memeriksa sumbu lama** (`status_verifikasi =
   'terverifikasi'`), bukan `status_penjual = 'aktif'`. Untuk sekarang pagarnya
   ditegakkan di klien ([/produk/tambah](app/produk/tambah/page.tsx)), yang
