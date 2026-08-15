@@ -93,6 +93,9 @@ export default function TokoSayaPage() {
 
   async function simpanEdit() {
     if (!editId) return
+    // Ditangkap di sini supaya penjual tidak melihat bunyi CHECK constraint
+    // dari Postgres — produk.kategori NOT NULL dan dibatasi enam nilai
+    if (!editData.kategori) { notif('Pilih dulu kategori produknya.', false); return }
     setSaving(true)
     let foto_url: string | null | undefined = editData.foto_url
     if (editFoto) {
@@ -199,6 +202,9 @@ export default function TokoSayaPage() {
             <div style={{ marginBottom: '10px' }}>
               <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '4px' }}>Kategori</label>
               <select value={editData.kategori ?? ''} onChange={e => setEditData(prev => ({ ...prev, kategori: e.target.value }))} style={{ width: '100%', padding: '9px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#fff' }}>
+                {/* Tanpa opsi kosong ini, produk berkategori kosong tampil
+                    sebagai "Teknologi" padahal nilainya belum terisi */}
+                <option value="">-- Pilih Kategori --</option>
                 {['Teknologi', 'Fashion', 'Kuliner', 'Properti', 'Jasa', 'UMKM'].map(k => <option key={k}>{k}</option>)}
               </select>
             </div>
