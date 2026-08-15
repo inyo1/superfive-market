@@ -629,13 +629,19 @@ export default function AdminPage() {
                             Nonaktifkan
                           </button>
                         )}
-                        <button
-                          onClick={() => bukaAksi('hapus', u)}
-                          disabled={busyId === u.id}
-                          style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', border: '0.5px solid #f09595', background: '#fce4e4', color: '#c62828', opacity: busyId === u.id ? 0.5 : 1 }}
-                        >
-                          Hapus
-                        </button>
+                        {/* Hapus hanya superadmin. Nonaktifkan bisa
+                            dibatalkan, penghapusan memusnahkan data pribadi
+                            tanpa jalan pulih — wewenang yang tidak bisa
+                            dibatalkan ditahan di satu tangan. */}
+                        {isSuperadmin(peranSaya) && (
+                          <button
+                            onClick={() => bukaAksi('hapus', u)}
+                            disabled={busyId === u.id}
+                            style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', border: '0.5px solid #f09595', background: '#fce4e4', color: '#c62828', opacity: busyId === u.id ? 0.5 : 1 }}
+                          >
+                            Hapus
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
