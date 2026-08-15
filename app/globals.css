@@ -140,12 +140,15 @@ main {
   .tab-label { font-size: 11px !important; }
 }
 
-/* ── Statistik beranda — di layar sangat sempit, label menyingkir ──
-   Ikon dan angkanya sudah cukup terbaca sendiri, dan itu lebih baik
-   daripada tiga statistik yang berdesakan atau turun ke baris berikutnya.
-   Yang menyingkir labelnya, susunan tiga-sejajarnya tetap. */
-@media (max-width: 359px) {
-  .stat-label { display: none; }
+/* ── Statistik beranda ──
+   Tiga kolom tetap sejajar di HP; yang menyesuaikan jarak dan ukurannya.
+   Baris keterangan menyingkir karena tanpa itu tiap blok jadi dua baris dan
+   sectionnya terlalu tinggi di layar sempit. */
+@media (max-width: 767px) {
+  .stat-baris { gap: 10px !important; padding-left: 12px !important; padding-right: 12px !important; }
+  .stat-blok  { padding-left: 10px !important; }
+  .stat-angka { font-size: 21px !important; }
+  .stat-ket   { display: none; }
 }
 
 /* ── Sticky bottom CTA (product detail page) ── */

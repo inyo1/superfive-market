@@ -6,7 +6,9 @@
 //   lencana — pil kecil, untuk disandingkan dengan nama produk atau toko
 //   pita    — menempel di pojok kartu produk
 
-const EMAS = '#EF9F27'
+// Diekspor supaya pemakai lain — mis. garis aksen statistik di beranda —
+// memakai warna yang sama persis, bukan menyalin ulang hex-nya.
+export const EMAS = '#EF9F27'
 const EMAS_TUA = '#8a5a05'
 
 type Props = {

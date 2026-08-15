@@ -8,7 +8,8 @@ import Navbar from './components/Navbar'
 import FotoProduk from './components/FotoProduk'
 import SkeletonCard from './components/SkeletonCard'
 import SectionOfficial from './components/SectionOfficial'
-import BadgePreorder, { WARNA_PO_TUA } from './components/BadgePreorder'
+import BadgePreorder, { WARNA_PO, WARNA_PO_TUA } from './components/BadgePreorder'
+import { EMAS } from './components/BadgeOfficial'
 import { janjiKirim } from '../lib/preorder'
 import { KATEGORI, EMOJI_KATEGORI } from '../lib/kategori'
 
@@ -49,96 +50,53 @@ function useCountUp(target: number, duration = 900) {
   return count
 }
 
-// Ikon statistik digambar inline sebagai SVG garis, bukan emoji. Emoji
-// dirender lain-lain di tiap sistem operasi dan warnanya tidak bisa diatur —
-// "🏪" misalnya muncul sebagai minimarket lengkap dengan tulisan 24H, yang
-// sama sekali bukan toko alumni. Ini juga sebabnya tidak ada pustaka ikon
-// ditambahkan: tiga bentuk sederhana tidak sepadan dengan satu dependensi.
-
-const IKON = {
-  strokeWidth: 1.5,
-  strokeLinecap: 'round' as const,
-  strokeLinejoin: 'round' as const,
-  fill: 'none',
-  stroke: 'currentColor',
-  // 18px, bukan 24: susunannya mendatar sekarang, jadi ikon ikut menentukan
-  // tinggi baris — dan barisnya memang harus pendek
-  width: 18,
-  height: 18,
-  viewBox: '0 0 24 24',
-  'aria-hidden': true,
-}
-
-/** Paket sederhana — kotak dengan lipatan tutup dan sambungan tengah */
-function IkonProduk() {
-  return (
-    <svg {...IKON}>
-      <path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5v-9Z" />
-      <path d="m3 7.5 9 4.5 9-4.5" />
-      <path d="M12 12v9" />
-    </svg>
-  )
-}
-
-/** Etalase toko — atap tenda dan pintu, tanpa tulisan apa pun */
-function IkonToko() {
-  return (
-    <svg {...IKON}>
-      <path d="M4 10v9a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-9" />
-      <path d="M3 10 4.7 5.3a1 1 0 0 1 .95-.65h12.7a1 1 0 0 1 .95.65L21 10Z" />
-      <path d="M9.5 20v-5.5h5V20" />
-    </svg>
-  )
-}
-
-/** Topi wisuda */
-function IkonAlumni() {
-  return (
-    <svg {...IKON}>
-      <path d="M12 3.5 2.5 8.2 12 13l9.5-4.8L12 3.5Z" />
-      <path d="M6.5 10.6V15c0 1.7 2.5 3 5.5 3s5.5-1.3 5.5-3v-4.4" />
-      <path d="M21.5 8.2v5" />
-    </svg>
-  )
-}
-
-/** Pemisah antar statistik. Titik, bukan garis vertikal — garis membagi
- *  barisnya jadi kolom yang terasa kaku, titik hanya memberi jeda. */
-function Titik() {
-  return (
-    <span aria-hidden style={{ color: '#c5d9ef', fontSize: '13px', lineHeight: 1, flexShrink: 0 }}>
-      ·
-    </span>
-  )
-}
-
-// Satu statistik dalam SATU BARIS mendatar: [ikon] 6 Produk.
+// Satu blok statistik: garis aksen berwarna di kiri, lalu angka + label
+// sebaris, lalu keterangan pendek di bawahnya.
 //
-// Sebelumnya menumpuk tiga tingkat, dan tinggi sectionnya jadi tidak bisa
-// turun berapa pun paddingnya dikecilkan — susunannya yang menahan, bukan
-// jaraknya. Mendatar, ketiganya cukup satu tinggi baris.
-function Statistik({ label, value, ikon }: { label: string; value: number; ikon: React.ReactNode }) {
+// Garis aksennya yang jadi penanda visual, jadi TIDAK ada ikon di sini —
+// keduanya sekaligus hanya membuat barisnya ramai. Komponen ikonnya pindah ke
+// components/IkonStatistik.tsx, bukan dihapus.
+//
+// Keterangannya ditulis tetap, bukan dihitung dari data: kalimatnya
+// menjelaskan arti angkanya ("Siap dibeli hari ini"), bukan melaporkan angka
+// kedua yang harus ikut benar.
+function Statistik({ label, value, keterangan, warna }: {
+  label: string
+  value: number
+  keterangan: string
+  warna: string
+}) {
   const count = useCountUp(value)
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '7px', minWidth: 0 }}>
-      <span style={{ color: '#8fb3d4', lineHeight: 0, flexShrink: 0 }}>{ikon}</span>
-      <span style={{
-        fontSize: '19px', fontWeight: '800', color: '#0C447C',
-        lineHeight: 1, letterSpacing: '-0.3px',
-        // Angka berubah selama animasi hitung naik; tabular-nums menjaga
-        // lebarnya tetap supaya barisnya tidak bergeser-geser
-        fontVariantNumeric: 'tabular-nums',
+    <div className="stat-blok" style={{
+      flex: 1, minWidth: 0,
+      borderLeft: `3px solid ${warna}`,
+      paddingLeft: '15px',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '7px', minWidth: 0 }}>
+        <span className="stat-angka" style={{
+          fontSize: '27px', fontWeight: '800', color: '#0C447C',
+          lineHeight: 1.1, letterSpacing: '-0.5px',
+          // Angka berubah selama animasi hitung naik; tabular-nums menjaga
+          // lebarnya tetap supaya barisnya tidak bergeser-geser
+          fontVariantNumeric: 'tabular-nums',
+        }}>
+          {count}
+        </span>
+        <span style={{
+          fontSize: '13px', fontWeight: '600', color: '#5a7da0',
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        }}>
+          {label}
+        </span>
+      </div>
+      {/* Disembunyikan di HP lewat CSS — tanpa itu tiap blok jadi dua baris
+          dan sectionnya terlalu tinggi di layar sempit */}
+      <div className="stat-ket" style={{
+        fontSize: '11.5px', color: '#9ab4cc', marginTop: '3px', lineHeight: 1.45,
       }}>
-        {count}
-      </span>
-      {/* Di layar tersempit label disembunyikan lewat CSS — ikon dan angkanya
-          sudah cukup, dan itu lebih baik daripada tiga kolom yang berdesakan */}
-      <span className="stat-label" style={{
-        fontSize: '13px', color: '#5a7da0', lineHeight: 1,
-        whiteSpace: 'nowrap',
-      }}>
-        {label}
-      </span>
+        {keterangan}
+      </div>
     </div>
   )
 }
@@ -293,27 +251,33 @@ export default function Home() {
       </div>
 
       {/* ── Statistik ──
-          Satu baris pendek tepat di bawah hero. Latar putih polos, dibatasi
-          satu garis tipis di bawahnya — bukan kotak berlatar yang mengurung
-          ketiganya.
+          Tiga blok bergaris aksen, tepat di bawah hero. Latar putih polos
+          dengan garis tipis di bawah section sebagai pembatas — bukan kotak
+          berlatar yang mengurung ketiganya.
 
-          Pemisahnya titik tengah, bukan garis vertikal: garis membagi jadi
-          kolom-kolom yang terasa kaku, titik hanya memberi jeda.
+          Warna aksennya diambil dari bahasa warna yang sudah ada, bukan warna
+          baru: emas OFFICIAL, navy merek, dan ungu PRE-ORDER.
 
-          Tetap tiga sejajar di HP — `flex` tanpa `flexWrap`. Labelnya yang
-          menyingkir duluan kalau layarnya sangat sempit, bukan susunannya. */}
+          Tiga kolom sejajar di lebar berapa pun — `flex` tanpa `flexWrap`.
+          Di HP jaraknya dirapatkan, angkanya mengecil, dan baris keterangan
+          menyingkir; semuanya lewat CSS di globals.css. */}
       <div style={{ background: '#fff', borderBottom: '0.5px solid #eef3f8' }}>
-        <div style={{
-          maxWidth: '700px', margin: '0 auto', padding: '0 16px',
-          minHeight: '68px',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          gap: '14px',
+        <div className="stat-baris" style={{
+          maxWidth: '700px', margin: '0 auto', padding: '18px 16px',
+          display: 'flex', alignItems: 'center', gap: '22px',
         }}>
-          <Statistik label="Produk" value={stats.produk} ikon={<IkonProduk />} />
-          <Titik />
-          <Statistik label="Toko"   value={stats.toko}   ikon={<IkonToko />} />
-          <Titik />
-          <Statistik label="Alumni" value={stats.alumni} ikon={<IkonAlumni />} />
+          <Statistik
+            label="Produk" value={stats.produk}
+            keterangan="Siap dibeli hari ini" warna={EMAS}
+          />
+          <Statistik
+            label="Toko" value={stats.toko}
+            keterangan="Dikelola alumni" warna="#0C447C"
+          />
+          <Statistik
+            label="Alumni" value={stats.alumni}
+            keterangan="Terverifikasi" warna={WARNA_PO}
+          />
         </div>
       </div>
 
