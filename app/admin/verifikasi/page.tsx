@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../../lib/supabase'
-import { urlBukti } from '../../../lib/buktiAlumni'
 import Navbar from '../../components/Navbar'
 import Skeleton, { SkeletonPanel } from '../../components/Skeleton'
 import { useTampilSkeleton } from '../../hooks/useSkeleton'
@@ -20,7 +19,6 @@ type Pendaftar = {
   is_institusi: boolean | null
   catatan_admin: string | null
   diminta_data_at: string | null
-  bukti_alumni_url: string | null
   catatan_pendaftar: string | null
   alasan_tolak: string | null
   created_at: string
@@ -70,7 +68,9 @@ export default function VerifikasiAdminPage() {
   const [ready, setReady] = useState(false)
   const tampilSkeleton = useTampilSkeleton(!ready)
   const [tab, setTab] = useState<Tab>('menunggu')
-  const [pendaftar, setPendaftar] = useState<Pendaftar[]>([])
+  const [antrean, setAntrean] = useState<Record<Tab, Pendaftar[]>>({
+    menunggu: [], alumni: [], ditolak: [],
+  })
   const [pesan, setPesan] = useState<{ text: string; ok: boolean } | null>(null)
   const [prosesId, setProsesId] = useState<string | null>(null)
   const [adminId, setAdminId] = useState<string | null>(null)
@@ -83,24 +83,35 @@ export default function VerifikasiAdminPage() {
   const [formJenis, setFormJenis] = useState<'tolak' | 'minta'>('tolak')
   const [alasan, setAlasan] = useState('')
 
-  // Lightbox bukti
-  const [buktiUrl, setBuktiUrl] = useState<string | null>(null)
-  const [memuatBukti, setMemuatBukti] = useState<string | null>(null)
-
   function tampilkanPesan(text: string, ok: boolean) {
     setPesan({ text, ok })
     setTimeout(() => setPesan(null), 4000)
   }
 
+  // Satu-satunya sumber antrean, untuk SEMUA peran — bukan hanya admin
+  // angkatan. Tabel `users` tidak disentuh dari sini sama sekali: penyaringan
+  // angkatan, pengecualian akun nonaktif, dan urutannya semua di dalam
+  // antrean_alumni. Satu jalur yang bisa meleset, bukan dua.
+  //
+  // Ketiga status diambil sekaligus supaya angka di tab tetap ada. Urutan
+  // tiap daftar datang dari fungsinya (paling lama menunggu di atas) —
+  // JANGAN diurutkan ulang di sini.
   async function muat() {
-    const { data, error } = await supabase
-      .from('users')
-      .select('id, nama, email, angkatan, avatar_url, status_alumni, is_institusi, bukti_alumni_url, catatan_pendaftar, alasan_tolak, catatan_admin, diminta_data_at, created_at, diverifikasi_at')
-      .neq('status_alumni', 'umum')
-      .order('created_at', { ascending: false })
+    const hasil = await Promise.all(
+      TABS.map(t => supabase.rpc('antrean_alumni', { p_status: t })),
+    )
 
-    if (error) { tampilkanPesan('Gagal memuat pendaftar: ' + error.message, false); return }
-    setPendaftar((data ?? []) as unknown as Pendaftar[])
+    const gagal = hasil.find(r => r.error)
+    if (gagal?.error) {
+      tampilkanPesan('Gagal memuat antrean: ' + gagal.error.message, false)
+      return
+    }
+
+    setAntrean({
+      menunggu: (hasil[0].data ?? []) as Pendaftar[],
+      alumni:   (hasil[1].data ?? []) as Pendaftar[],
+      ditolak:  (hasil[2].data ?? []) as Pendaftar[],
+    })
   }
 
   useEffect(() => {
@@ -135,21 +146,10 @@ export default function VerifikasiAdminPage() {
 
       if (error) throw new Error(error.message)
 
-      // verifikasi_alumni mengembalikan nilai status_alumni: 'alumni' | 'ditolak'
+      // Barisnya berpindah antar tab, jadi antreannya dibaca ulang — lebih
+      // murah daripada memindahkan sendiri dan salah menebak urutannya
       const hasil = data as { nama: string | null; status: string } | null
-      const statusBaru = hasil?.status ?? (setujui ? 'alumni' : 'ditolak')
-
-      setPendaftar(prev => prev.map(p => p.id === id
-        ? {
-            ...p,
-            status_alumni: statusBaru,
-            alasan_tolak: setujui ? null : (alasanTolak ?? p.alasan_tolak),
-            // verifikasi_alumni mengosongkan catatan_admin, jadi permintaan
-            // data yang lama tidak boleh tertinggal di layar
-            catatan_admin: null,
-            diverifikasi_at: new Date().toISOString(),
-          }
-        : p))
+      await muat()
 
       tampilkanPesan(
         `${hasil?.nama ?? 'Pendaftar'} ${setujui ? 'diverifikasi' : 'ditolak'}.`,
@@ -177,16 +177,7 @@ export default function VerifikasiAdminPage() {
       if (error) throw new Error(error.message)
 
       const hasil = data as { nama: string | null } | null
-      setPendaftar(prev => prev.map(p => p.id === id
-        ? {
-            ...p,
-            status_alumni: 'menunggu',
-            catatan_admin: catatan,
-            alasan_tolak: null,
-            diverifikasi_at: null,
-            diminta_data_at: new Date().toISOString(),
-          }
-        : p))
+      await muat()
 
       tampilkanPesan(`Permintaan data terkirim ke ${hasil?.nama ?? 'pendaftar'}.`, true)
       setFormId(null)
@@ -218,23 +209,11 @@ export default function VerifikasiAdminPage() {
     setAlasan('')
   }
 
-  async function bukaBukti(p: Pendaftar) {
-    setMemuatBukti(p.id)
-    const url = await urlBukti(p.bukti_alumni_url)
-    setMemuatBukti(null)
-    if (!url) { tampilkanPesan('Bukti tidak bisa dibuka. File mungkin sudah dihapus.', false); return }
-    setBuktiUrl(url)
-  }
-
-  // Admin angkatan hanya mengurus angkatannya sendiri. Penyaringan di sini
-  // BUKAN pengaman — verifikasi_alumni yang menegakkannya, dan RLS `users`
-  // yang seharusnya membatasi barisnya. Ini hanya supaya daftarnya masuk akal.
-  const seangkatan = adminPenuh(peranSaya)
-    ? pendaftar
-    : pendaftar.filter(p => p.angkatan === angkatanSaya)
-
-  const terlihat = seangkatan.filter(p => p.status_alumni === tab)
-  function jumlah(t: Tab) { return seangkatan.filter(p => p.status_alumni === t).length }
+  // Tidak ada penyaringan angkatan di sini lagi: antrean_alumni sudah
+  // menyaringnya di server, dan menyalinnya ke klien hanya akan terbaca
+  // seolah lapisan inilah yang menjaga.
+  const terlihat = antrean[tab]
+  function jumlah(t: Tab) { return antrean[t].length }
 
   if (tampilSkeleton) return (
     <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
@@ -254,23 +233,6 @@ export default function VerifikasiAdminPage() {
   return (
     <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
       <Navbar />
-
-      {/* Lightbox bukti */}
-      {buktiUrl && (
-        <div
-          onClick={() => setBuktiUrl(null)}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', cursor: 'zoom-out' }}
-        >
-          <img src={buktiUrl} alt="Bukti alumni" style={{ maxWidth: '100%', maxHeight: '90vh', objectFit: 'contain', borderRadius: '8px' }} />
-          <button
-            onClick={() => setBuktiUrl(null)}
-            style={{ position: 'absolute', top: '16px', right: '16px', background: 'rgba(255,255,255,0.2)', color: '#fff', border: 'none', width: '36px', height: '36px', borderRadius: '50%', fontSize: '18px', cursor: 'pointer' }}
-            aria-label="Tutup"
-          >
-            ✕
-          </button>
-        </div>
-      )}
 
       <div style={{ maxWidth: '660px', margin: '0 auto', padding: '16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
@@ -385,23 +347,12 @@ export default function VerifikasiAdminPage() {
                 </div>
               )}
 
-              {/* Bukti alumni — hanya untuk data lama.
-                  Unggah bukti sudah dimatikan, jadi TIDAK ADA peringatan
-                  "belum mengunggah": peringatan itu akan menyala untuk hampir
-                  semua orang dan cepat diabaikan, termasuk nanti saat ada
-                  peringatan yang benar-benar penting. Tautannya tetap
-                  ditampilkan kalau berkasnya memang ada. */}
-              {p.bukti_alumni_url && (
-                <div style={{ margin: '0 14px 12px' }}>
-                  <button
-                    onClick={() => bukaBukti(p)}
-                    disabled={memuatBukti === p.id}
-                    style={{ width: '100%', background: '#E6F1FB', color: '#0C447C', border: '0.5px solid #c5d9ef', padding: '9px', borderRadius: '8px', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}
-                  >
-                    {memuatBukti === p.id ? 'Membuka...' : '🖼️ Lihat Bukti Alumni'}
-                  </button>
-                </div>
-              )}
+              {/* Tombol "Lihat Bukti Alumni" untuk data lama sudah tidak ada:
+                  antrean_alumni tidak mengembalikan bukti_alumni_url, dan
+                  membacanya lewat jalur lain berarti menyentuh `users`
+                  langsung — persis yang dihindari RPC ini. Kolom, bucket, dan
+                  lib/buktiAlumni.ts tetap utuh; kalau buktinya mau ditampilkan
+                  lagi, kolomnya harus ditambahkan ke antrean_alumni. */}
 
               {/* Data yang sedang diminta admin — pendaftar melihat catatan
                   yang sama di halaman /verifikasi miliknya */}
