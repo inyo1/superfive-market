@@ -361,9 +361,21 @@ Dua hal lagi:
   tulisnya dicabut. Jangan diubah ke `true` — view akan mengembalikan 0 baris.
 
 ### `toko`
-`id`✳ · `seller_id` → users.id · `nama_toko` · `deskripsi` · `kategori` ·
+`id`✳ · `seller_id` → users.id · `nama_toko` · `deskripsi` · `kategori`✳ ·
 `foto_toko` · `rating` numeric (default 0) · `is_official`✳ bool (default false) ·
 `created_at`
+
+`kategori` NOT NULL dan dibatasi CHECK ke enam nilai yang sama dengan
+`produk.kategori` — lihat
+[Kategori ditulis di DUA tempat](#-kategori-ditulis-di-dua-tempat--ubah-keduanya-bersamaan).
+
+**Tidak ada form buat/edit toko.** Barisnya dibuat sekali secara otomatis saat
+produk pertama disimpan ([/produk/tambah](app/produk/tambah/page.tsx)), dan
+kategorinya diambil dari kategori produk itu — jadi pemeriksaan kategori di
+form tambah harus berjalan **sebelum** insert toko, bukan hanya sebelum insert
+produk. Satu-satunya penyuntingan toko dari UI ada di
+[/toko/[id]](app/toko/[id]/page.tsx), dan itu hanya menyentuh `nama_toko` dan
+`deskripsi`.
 
 `is_official` menandai toko resmi INILIMA. Pengaruhnya ke UI besar:
 
@@ -382,13 +394,49 @@ mengubah admin. Seperti `jaga_field_sensitif`, tidak melempar error — jadi cli
 
 ### `produk`
 `id`✳ · `toko_id` → toko.id · `nama` · `deskripsi` · `harga` int · `stok` int ·
-`kategori` · `foto_url` · `rating` numeric (default 0) · `terjual` int (default 0) ·
+`kategori`✳ · `foto_url` · `rating` numeric (default 0) · `terjual` int (default 0) ·
 `urutan` int (default 0) · `is_unggulan` bool (default false) ·
 `is_preorder`✳ bool (default false) · `po_mulai` timestamptz ·
 `po_selesai` timestamptz · `po_janji_kirim` **date** · `po_target` int ·
 `po_maks` int · `po_catatan` · `created_at`
 
-Kategori yang dipakai UI: Teknologi, Fashion, Kuliner, Properti, Jasa, UMKM.
+### ⚠ Kategori ditulis di DUA tempat — ubah keduanya bersamaan
+
+```
+Teknologi · Fashion · Kuliner · Properti · Jasa · UMKM
+```
+
+Enam nilai ini dikunci database di **dua kolom sekaligus**: `produk.kategori`
+dan `toko.kategori`, keduanya NOT NULL dengan CHECK yang membatasi ke daftar
+di atas. Daftar yang sama juga tertulis di klien, di **empat berkas**:
+
+| Berkas | Bentuk |
+|---|---|
+| [app/produk/tambah/page.tsx](app/produk/tambah/page.tsx) | pemilih di form tambah |
+| [app/dashboard/page.tsx](app/dashboard/page.tsx) | `kategoris`, pemilih di form edit |
+| [app/toko/saya/page.tsx](app/toko/saya/page.tsx) | pemilih di form edit kedua |
+| [app/produk/page.tsx](app/produk/page.tsx) | `kategoris`, penyaring etalase (ditambah `'semua'`) |
+
+**Menambah atau mengganti kategori harus mengubah database dan keempat berkas
+itu bersamaan.** Kalau hanya klien yang diubah, penjual bisa memilih nilai
+yang ditolak CHECK dan yang muncul bunyi constraint Postgres, bukan kalimat.
+Kalau hanya database yang diubah, kategori barunya tidak akan pernah bisa
+dipilih siapa pun.
+
+Pasangan yang sama sifatnya dengan `trg_kurangi_stok` dan
+`trg_kembalikan_stok` — dua tempat yang harus selalu sepakat, dan yang
+tidak akan mengeluh kalau salah satunya ketinggalan.
+
+Dua hal turunannya, keduanya sudah terpasang:
+
+- **Tidak ada nilai awal di pemilih mana pun.** Opsi pertamanya
+  `-- Pilih Kategori --`, sama seperti pemilih status barang di
+  [EditorPreorder](app/components/EditorPreorder.tsx). Tidak boleh ada produk
+  berkategori Teknologi hanya karena itu kebetulan huruf paling awal
+- **Ketiga form menolak kategori kosong sebelum menyimpan**, supaya yang
+  terlihat penjual kalimat, bukan bunyi CHECK. Ada **tiga** form produk, dan
+  ini gampang terlewat: form tambah, form edit di dashboard, dan form edit
+  kedua di `/toko/saya`
 
 `urutan` hanya bermakna untuk toko resmi — itu yang menentukan susunan carousel
 merchandise di beranda. `is_unggulan` ada di skema tapi belum dipakai UI mana pun.
