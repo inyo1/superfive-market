@@ -197,6 +197,63 @@ export function tanggalWIB(waktu: string | Date | null | undefined): string | nu
   return isNaN(d.getTime()) ? null : formatYMD.format(d)
 }
 
+// Pratinjau tanggal untuk form PO. Alasannya ada di bentuk <input> itu
+// sendiri: type="date" dan type="datetime-local" dirender browser mengikuti
+// bahasa sistem, jadi laptop berbahasa Inggris menampilkan MM/DD/YYYY dan
+// tidak ada atribut maupun CSS yang bisa mengubahnya. Yang bisa dikendalikan
+// hanya teks di sebelahnya — dan nama bulan yang dieja menghilangkan seluruh
+// keraguan urutan hari/bulan.
+
+const formatWaktuWIB = new Intl.DateTimeFormat('id-ID', {
+  timeZone: ZONA,
+  weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+  hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+})
+
+// Tanpa timeZone: nilainya tanggal kalender, bukan titik waktu. Memaksanya
+// ke WIB justru bisa memundurkan harinya untuk penjual di zona timur.
+const formatHari = new Intl.DateTimeFormat('id-ID', {
+  weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+})
+
+function bagian(f: Intl.DateTimeFormat, d: Date): Record<string, string> {
+  return Object.fromEntries(f.formatToParts(d).map(p => [p.type, p.value]))
+}
+
+/**
+ * "Senin, 1 September 2026, 00:00 WIB" — untuk nilai datetime-local.
+ *
+ * Waktunya ditampilkan dalam WIB, bukan zona peramban, dan itu disengaja:
+ * `dariInputLokal` menyimpan apa yang diketik menurut zona peramban, lalu
+ * database menilainya dalam WIB. Jadi untuk penjual yang sedang di luar
+ * negeri, angka di pratinjau ini memang akan berbeda dari yang ia ketik —
+ * dan justru itu yang perlu ia lihat, karena itulah yang dibaca pembeli.
+ * Untuk penjual di WIB hasilnya sama persis dengan isian formnya.
+ */
+export function waktuLengkapWIB(nilai: string | null | undefined): string | null {
+  if (!nilai) return null
+  const d = new Date(nilai)
+  if (isNaN(d.getTime())) return null
+  const p = bagian(formatWaktuWIB, d)
+  return `${p.weekday}, ${p.day} ${p.month} ${p.year}, ${p.hour}:${p.minute} WIB`
+}
+
+/**
+ * "Senin, 14 September 2026" — untuk nilai kolom date ("2026-09-14").
+ *
+ * Diurai manual, sama alasannya dengan `janjiKirim`: string date polos
+ * dianggap UTC oleh `new Date(string)`, dan di WIB itu bisa mundur sehari.
+ */
+export function tanggalLengkap(ymd: string | null | undefined): string | null {
+  if (!ymd) return null
+  const [t, b, h] = ymd.slice(0, 10).split('-').map(Number)
+  if (!t || !b || !h) return null
+  const d = new Date(t, b - 1, h)
+  if (isNaN(d.getTime())) return null
+  const p = bagian(formatHari, d)
+  return `${p.weekday}, ${p.day} ${p.month} ${p.year}`
+}
+
 /** "2026-09-30" → "2026-10-01". Aman melewati akhir bulan dan tahun kabisat. */
 export function tanggalBesok(ymd: string): string {
   const [t, b, h] = ymd.split('-').map(Number)

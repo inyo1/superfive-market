@@ -1,6 +1,9 @@
 'use client'
 import { WARNA_PO, WARNA_PO_TUA } from './BadgePreorder'
-import { tanggalWIB, tanggalBesok, type FormPO, type StatusBarang } from '../../lib/preorder'
+import {
+  tanggalWIB, tanggalBesok, waktuLengkapWIB, tanggalLengkap,
+  type FormPO, type StatusBarang,
+} from '../../lib/preorder'
 
 // Pilihan status barang di form produk. Dipakai form tambah maupun form edit
 // di dashboard, supaya aturannya tidak bercabang jadi dua versi.
@@ -18,6 +21,19 @@ const gayaInput: React.CSSProperties = {
   width: '100%', padding: '10px 12px', border: '0.5px solid #c5d9ef',
   borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#fff',
   fontFamily: 'inherit',
+}
+
+// Pratinjau di bawah kolom tanggal. Kotak tanggalnya sendiri dirender browser
+// mengikuti bahasa sistem — laptop berbahasa Inggris menampilkan MM/DD/YYYY
+// dan itu tidak bisa diubah dari sini. Yang bisa dikendalikan cuma teks ini,
+// dan nama bulan yang dieja menghilangkan keraguan urutan hari/bulan.
+function Pratinjau({ teks }: { teks: string | null }) {
+  if (!teks) return null
+  return (
+    <div style={{ fontSize: '11px', color: WARNA_PO_TUA, marginTop: '4px', fontWeight: 600 }}>
+      {teks}
+    </div>
+  )
 }
 
 type Props = {
@@ -76,6 +92,7 @@ export default function EditorPreorder({ nilai, onChange }: Props) {
                 onChange={e => ubah({ mulai: e.target.value })}
                 style={gayaInput}
               />
+              <Pratinjau teks={waktuLengkapWIB(nilai.mulai)} />
             </div>
             <div style={{ flex: '1 1 150px' }}>
               <label style={gayaLabel}>Tutup PO *</label>
@@ -85,6 +102,7 @@ export default function EditorPreorder({ nilai, onChange }: Props) {
                 onChange={e => ubah({ selesai: e.target.value })}
                 style={gayaInput}
               />
+              <Pratinjau teks={waktuLengkapWIB(nilai.selesai)} />
             </div>
           </div>
 
@@ -99,6 +117,7 @@ export default function EditorPreorder({ nilai, onChange }: Props) {
               onChange={e => ubah({ janji: e.target.value })}
               style={gayaInput}
             />
+            <Pratinjau teks={tanggalLengkap(nilai.janji)} />
             <div style={{
               marginTop: '6px', padding: '8px 10px', borderRadius: '6px',
               background: 'rgba(124,77,255,0.1)',
