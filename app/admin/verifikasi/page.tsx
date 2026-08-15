@@ -226,8 +226,15 @@ export default function VerifikasiAdminPage() {
     setBuktiUrl(url)
   }
 
-  const terlihat = pendaftar.filter(p => p.status_alumni === tab)
-  function jumlah(t: Tab) { return pendaftar.filter(p => p.status_alumni === t).length }
+  // Admin angkatan hanya mengurus angkatannya sendiri. Penyaringan di sini
+  // BUKAN pengaman — verifikasi_alumni yang menegakkannya, dan RLS `users`
+  // yang seharusnya membatasi barisnya. Ini hanya supaya daftarnya masuk akal.
+  const seangkatan = adminPenuh(peranSaya)
+    ? pendaftar
+    : pendaftar.filter(p => p.angkatan === angkatanSaya)
+
+  const terlihat = seangkatan.filter(p => p.status_alumni === tab)
+  function jumlah(t: Tab) { return seangkatan.filter(p => p.status_alumni === t).length }
 
   if (tampilSkeleton) return (
     <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
@@ -275,6 +282,15 @@ export default function VerifikasiAdminPage() {
           sebelum menyetujui. Yang tampil di sini hanya yang mengaku alumni; pembeli
           biasa tidak diperiksa. Untuk izin berjualan, lihat <Link href="/admin/penjual" style={{ color: '#0C447C' }}>Pengajuan Penjual</Link>.
         </div>
+
+        {/* Batas kuasanya disebut terang-terangan, supaya admin angkatan tidak
+            mengira daftarnya sedang bermasalah saat isinya sedikit */}
+        {!adminPenuh(peranSaya) && (
+          <div style={{ background: '#E6F1FB', border: '0.5px solid #b3d1ee', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', color: '#0C447C', marginBottom: '12px', lineHeight: '1.7' }}>
+            Kamu <strong>admin angkatan {angkatanSaya ?? '—'}</strong>. Yang bisa kamu
+            verifikasi hanya pendaftar angkatan yang sama.
+          </div>
+        )}
 
         {pesan && (
           <div style={{ background: pesan.ok ? '#e8f5e9' : '#fce4e4', border: `0.5px solid ${pesan.ok ? '#a5d6a7' : '#f09595'}`, borderRadius: '8px', padding: '10px 14px', fontSize: '12px', color: pesan.ok ? '#2e7d32' : '#c62828', marginBottom: '12px' }}>
@@ -485,7 +501,9 @@ export default function VerifikasiAdminPage() {
                         diperiksa"), dan yang 'umum' tidak pernah sampai ke
                         halaman ini — keduanya tidak perlu ditawari tombol
                         yang sudah pasti gagal. */}
-                    {(p.status_alumni === 'alumni' || p.status_alumni === 'ditolak') && (
+                    {/* minta_data_ulang menuntut is_admin(), yang tidak memuat
+                        admin angkatan — tombolnya pasti gagal untuk mereka */}
+                    {adminPenuh(peranSaya) && (p.status_alumni === 'alumni' || p.status_alumni === 'ditolak') && (
                       <button
                         onClick={() => bukaForm(p.id, 'minta')}
                         disabled={sedangProses}
