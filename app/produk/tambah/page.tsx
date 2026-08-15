@@ -22,7 +22,11 @@ export default function TambahProduk() {
   const [nama, setNama] = useState('')
   const [harga, setHarga] = useState('')
   const [deskripsi, setDeskripsi] = useState('')
-  const [kategori, setKategori] = useState('Teknologi')
+  // Tanpa nilai awal, sama seperti pemilih status barang di EditorPreorder:
+  // tidak boleh ada produk berkategori Teknologi hanya karena itu kebetulan
+  // huruf paling awal di daftar. String kosong berarti penjual belum memilih,
+  // dan handleTambah menolaknya sebelum apa pun disimpan.
+  const [kategori, setKategori] = useState('')
   const [stok, setStok] = useState('')
   const [foto, setFoto] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
@@ -73,6 +77,9 @@ export default function TambahProduk() {
 
   async function handleTambah() {
     if (!nama.trim() || !harga) { setPesan('Nama dan harga wajib diisi.'); return }
+    // Diperiksa sebelum apa pun disimpan — kategori ikut dipakai saat toko
+    // dibuat otomatis di bawah, jadi tidak boleh kosong sampai sana
+    if (!kategori) { setPesan('Pilih dulu kategori produknya.'); return }
 
     // Diperiksa di sini supaya penjual dapat pesan yang jelas, bukan bunyi
     // constraint chk_po_periode dari Postgres
@@ -120,7 +127,11 @@ export default function TambahProduk() {
       setPesan('Gagal: ' + error.message)
     } else {
       setPesan('Produk berhasil ditambahkan!')
-      setNama(''); setHarga(''); setDeskripsi(''); setStok('')
+      // Kategori ikut dikosongkan, seperti status barang di FORM_PO_KOSONG.
+      // Kalau dibiarkan menempel, produk kedua bisa terkategori sisa pilihan
+      // produk pertama — persis kecelakaan yang dicegah dengan membuang nilai
+      // awalnya tadi.
+      setNama(''); setHarga(''); setDeskripsi(''); setStok(''); setKategori('')
       setFormPo(FORM_PO_KOSONG)
       hapusFoto()
     }
@@ -252,8 +263,9 @@ export default function TambahProduk() {
 
           {/* Kategori */}
           <div style={{ marginBottom: '12px' }}>
-            <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '4px' }}>Kategori</label>
+            <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '4px' }}>Kategori *</label>
             <select value={kategori} onChange={e => setKategori(e.target.value)} style={{ width: '100%', padding: '9px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#fff' }}>
+              <option value="">-- Pilih Kategori --</option>
               {['Teknologi', 'Fashion', 'Kuliner', 'Properti', 'Jasa', 'UMKM'].map(k => <option key={k}>{k}</option>)}
             </select>
           </div>

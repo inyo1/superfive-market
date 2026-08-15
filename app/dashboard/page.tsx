@@ -188,6 +188,7 @@ export default function DashboardPage() {
     // jelas dan tidak ada foto terlanjur terunggah untuk data yang ditolak
     const salahPo = validasiFormPO(formPo)
     if (salahPo) { notif(salahPo); return }
+    if (!editData.kategori) { notif('Pilih dulu kategori produknya.'); return }
 
     setSaving(true)
 
@@ -495,6 +496,11 @@ export default function DashboardPage() {
               <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '4px' }}>Kategori</label>
               <select value={editData.kategori ?? ''} onChange={e => setEditData(prev => ({ ...prev, kategori: e.target.value }))}
                 style={{ width: '100%', padding: '8px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#fff' }}>
+                {/* produk.kategori boleh NULL di database. Tanpa opsi kosong
+                    ini, produk tanpa kategori akan tampil sebagai "Teknologi"
+                    padahal nilainya masih kosong — penjual menyimpan dan
+                    mengira kategorinya sudah terisi. */}
+                <option value="">-- Pilih Kategori --</option>
                 {kategoris.map(k => <option key={k}>{k}</option>)}
               </select>
             </div>
