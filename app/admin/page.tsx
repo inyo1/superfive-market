@@ -189,15 +189,37 @@ export default function AdminPage() {
     setBusyId(u.id)
     setErrAksi(null)
     try {
-      const { error } = await supabase.rpc('hapus_user', { p_user_id: u.id })
+      const { data, error } = await supabase.rpc('hapus_user', { p_user_id: u.id })
       if (error) throw new Error(error.message)
 
-      setUsers(prev => prev.filter(x => x.id !== u.id))
-      showPesan(`Profil ${u.email} dihapus permanen. Akun loginnya belum — hapus terpisah di Supabase Dashboard.`, true)
+      // Hasilnya bergantung jejak akun, dan itu diputuskan database — jangan
+      // ditebak dari sini. 'dihapus' = barisnya hilang, 'dianonimkan' = data
+      // pribadinya dimusnahkan tapi barisnya bertahan menopang riwayat.
+      const cara = (data as { cara?: string } | null)?.cara
+
+      if (cara === 'dianonimkan') {
+        setUsers(prev => prev.map(x => x.id === u.id
+          ? {
+              ...x,
+              nama: 'Akun Dihapus', angkatan: null, avatar_url: null, role: 'member',
+              nonaktif_at: new Date().toISOString(), alasan_nonaktif: 'Akun dihapus admin',
+            }
+          : x))
+        showPesan(
+          `Data pribadi ${u.email} dimusnahkan. Riwayat transaksinya tetap tersimpan atas nama "Akun Dihapus". Akun loginnya belum terhapus — hapus terpisah di Supabase Dashboard.`,
+          true,
+        )
+      } else {
+        setUsers(prev => prev.filter(x => x.id !== u.id))
+        showPesan(
+          `Profil ${u.email} dihapus permanen. Akun loginnya belum — hapus terpisah di Supabase Dashboard.`,
+          true,
+        )
+      }
       setAksi(null)
     } catch (e) {
-      // Ditolak karena akunnya punya jejak. Dialognya sengaja TIDAK ditutup:
-      // pesannya tampil di tempat, beserta jalan keluar Nonaktifkan.
+      // Dialognya sengaja TIDAK ditutup: pesannya tampil di tempat, beserta
+      // jalan keluar Nonaktifkan.
       setErrAksi(e instanceof Error ? e.message : 'Gagal menghapus')
     } finally {
       setBusyId(null)
@@ -286,7 +308,7 @@ export default function AdminPage() {
               {aksi.jenis === 'hapus' ? '🗑️' : '🚫'}
             </div>
             <div style={{ fontSize: '15px', fontWeight: '700', color: '#1a1a1a', textAlign: 'center', marginBottom: '6px' }}>
-              {aksi.jenis === 'hapus' ? 'Hapus profil ini selamanya?' : 'Nonaktifkan akun ini?'}
+              {aksi.jenis === 'hapus' ? 'Hapus data akun ini?' : 'Nonaktifkan akun ini?'}
             </div>
 
             {/* Konfirmasi hapus wajib menyebut siapa yang dihapus — nama saja
@@ -300,10 +322,21 @@ export default function AdminPage() {
 
             {aksi.jenis === 'hapus' ? (
               <>
+                {/* Jujur bahwa hasilnya bergantung jejak akun. Menjanjikan
+                    "hilang total" lalu meninggalkan baris "Akun Dihapus" akan
+                    terbaca seperti penghapusan yang gagal. */}
                 <div style={{ fontSize: '12px', color: '#5a7da0', lineHeight: '1.7', marginBottom: '10px' }}>
-                  Profilnya <strong style={{ color: '#c62828' }}>dihapus selamanya</strong> dan
-                  tidak bisa dikembalikan. Hanya bisa untuk akun yang belum punya toko,
-                  pesanan, ulasan, atau chat.
+                  Data pribadinya <strong style={{ color: '#c62828' }}>dimusnahkan
+                  selamanya</strong> — nama, email, nomor HP, alamat, rekening, angkatan,
+                  dan foto. Tidak bisa dikembalikan.
+                </div>
+                <div style={{ background: '#f0f5fb', borderRadius: '8px', padding: '10px 12px', fontSize: '11px', color: '#5a7da0', lineHeight: '1.7', marginBottom: '10px' }}>
+                  Hasilnya tergantung jejak akun ini:
+                  <br />• <strong>Belum pernah bertransaksi</strong> — barisnya benar-benar
+                  hilang dari database.
+                  <br />• <strong>Sudah pernah bertransaksi</strong> — riwayat transaksinya
+                  tetap tersimpan atas nama <strong>&quot;Akun Dihapus&quot;</strong>, karena
+                  riwayat itu milik lawan transaksinya juga.
                 </div>
                 <div style={{ background: '#fff8e1', border: '0.5px solid #ffe082', borderRadius: '8px', padding: '10px 12px', fontSize: '11px', color: '#8d6e26', lineHeight: '1.7', marginBottom: '12px' }}>
                   <strong>Akun loginnya TIDAK ikut terhapus.</strong> Orangnya masih bisa
