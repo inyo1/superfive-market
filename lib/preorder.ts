@@ -77,20 +77,43 @@ export function formatSisa(selisihMs: number): string {
   return 'kurang dari semenit'
 }
 
-/** 14 Agustus 2026 */
+const ZONA = 'Asia/Jakarta'
+
+// ── Dua golongan tanggal, dan JANGAN diseragamkan ───────────────────────────
+//
+// (a) TITIK WAKTU — po_mulai, po_selesai. Kolomnya timestamptz, satu momen
+//     yang sama untuk semua orang. Ditampilkan dengan timeZone: Asia/Jakarta
+//     karena server yang menilai batasnya juga memakai kalender WIB; tanpa
+//     dipatok, penjual di luar negeri bisa membaca tanggal tutup PO beda satu
+//     hari dari yang diputuskan database.
+//
+// (b) TANGGAL KALENDER — po_janji_kirim. Kolomnya date, "2026-09-28", tidak
+//     menunjuk momen apa pun. Justru TIDAK BOLEH dipatok ke WIB: nilainya
+//     diurai jadi tengah malam waktu setempat, dan memaksanya ke WIB akan
+//     memundurkan harinya untuk pengguna di zona timur. Diurai manual, karena
+//     new Date("2026-09-28") dianggap UTC dan di WIB bisa mundur sehari.
+//
+// Yang golongan (a): tanggalPanjang, tanggalSingkat, waktuLengkapWIB.
+// Yang golongan (b): janjiKirim, tanggalLengkap.
+
+const formatPanjangWIB = new Intl.DateTimeFormat('id-ID', {
+  timeZone: ZONA, day: 'numeric', month: 'long', year: 'numeric',
+})
+
+const formatSingkatWIB = new Intl.DateTimeFormat('id-ID', {
+  timeZone: ZONA, day: 'numeric', month: 'short', year: 'numeric',
+  hour: '2-digit', minute: '2-digit',
+})
+
+/** (a) "14 Agustus 2026" — dalam WIB */
 export function tanggalPanjang(iso: string | null | undefined): string {
   if (!iso) return '-'
-  return new Date(iso).toLocaleDateString('id-ID', {
-    day: 'numeric', month: 'long', year: 'numeric',
-  })
+  return formatPanjangWIB.format(new Date(iso))
 }
 
 /**
- * Janji kirim untuk ditampilkan: "Dikirim 28 September 2026".
- *
- * po_janji_kirim bertipe date, jadi nilainya "2026-09-28" tanpa zona waktu.
- * Diurai manual, bukan lewat new Date(string) — string date polos dianggap
- * UTC oleh JavaScript, dan di WIB itu bisa mundur sehari.
+ * (b) Janji kirim untuk ditampilkan: "Dikirim 28 September 2026".
+ * Tanggal kalender — sengaja tanpa timeZone, lihat catatan di atas.
  */
 export function janjiKirim(tanggal: string | null | undefined): string | null {
   if (!tanggal) return null
@@ -101,13 +124,15 @@ export function janjiKirim(tanggal: string | null | undefined): string | null {
   })
 }
 
-/** 14 Agu 2026, 17.00 */
+/**
+ * (a) "14 Agu 2026, 17.00 WIB" — dalam WIB.
+ *
+ * "WIB" wajib ikut karena yang ditampilkan di sini jam tutup PO. Tanpa
+ * keterangan zona, "tutup 14 Agu, 17.00" tidak memberi tahu jam siapa.
+ */
 export function tanggalSingkat(iso: string | null | undefined): string {
   if (!iso) return '-'
-  return new Date(iso).toLocaleString('id-ID', {
-    day: 'numeric', month: 'short', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  })
+  return formatSingkatWIB.format(new Date(iso)) + ' WIB'
 }
 
 /** Untuk input datetime-local: "2026-08-14T17:00" */
@@ -174,8 +199,6 @@ export function formPODari(p: DataPO | null | undefined): FormPO {
 export function formPOAktif(f: FormPO) {
   return f.status === 'preorder'
 }
-
-const ZONA = 'Asia/Jakarta'
 
 // en-CA memberi format YYYY-MM-DD, sama persis dengan bentuk kolom date
 const formatYMD = new Intl.DateTimeFormat('en-CA', {
