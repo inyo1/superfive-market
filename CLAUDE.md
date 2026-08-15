@@ -67,6 +67,7 @@ lib/
   preorder.ts        aturan status PO, format tanggal, isian form PO
   statusPesanan.ts   kosakata dan warna status pesanan
   peran.ts           kosakata empat peran + lencananya
+  kategori.ts        enam kategori + emoji-nya, pasangan CHECK di database
   format.ts, foto.ts helper kecil
 ```
 
@@ -420,6 +421,21 @@ Tipe `Kategori` diturunkan dari konstanta itu (`as const` + `typeof [number]`),
 jadi salah ketik di kode ditolak `tsc` — tidak perlu menunggu ditolak Postgres.
 Jangan menulis ulang daftarnya sebagai literal di mana pun; impor
 konstantanya.
+
+**Emoji kategori ada di berkas yang sama**, sebagai `EMOJI_KATEGORI` bertipe
+`Record<Kategori, string>` — dan tipe itu yang menjaga pasangannya: menambah
+nilai ke `KATEGORI` tanpa menambah emoji-nya **gagal di `tsc`**, bukan diam-diam
+lolos. Sudah dibuktikan: menambahkan `'Otomotif'` saja menghasilkan
+`TS2741: Property 'Otomotif' is missing`.
+
+Untuk nilai yang belum tentu sah — kategori dari database bertipe `any`, atau
+data lama dari sebelum kolomnya dikunci — pakai `emojiKategori(nilai, cadangan)`.
+Cadangannya sengaja bisa diganti: konteks produk memakai 📦 dan konteks toko
+memakai 🏪.
+
+Jadi menambah kategori ketujuh sekarang menyentuh tepat dua tempat: CHECK di
+database, dan [lib/kategori.ts](lib/kategori.ts) — di mana `tsc` akan
+memaksamu melengkapi emoji-nya sekalian.
 
 Satu yang sengaja **tidak** ikut: `'semua'` di penyaring etalase
 [/produk](app/produk/page.tsx). Itu keadaan penyaring, bukan kategori, dan
@@ -2000,13 +2016,6 @@ lihat [Utang Teknis](#utang-teknis-yang-diketahui).
   Sampai itu terjadi, aturannya ada di
   [Tiga form produk](#tiga-form-produk-yang-harus-selalu-diperiksa-bersamaan):
   siapa pun yang mengubah aturan produk memeriksa ketiganya.
-- **Peta emoji kategori disalin di delapan berkas** — `FotoProduk`,
-  `SearchOverlay`, `checkout`, `keranjang`, `toko/saya`, `toko/[id]`,
-  `produk/[id]`, `admin`, ditambah bentuk lain di `page.tsx`. Isinya enam
-  kunci yang sama dengan `KATEGORI`, tapi tidak ikut ditarik ke
-  [lib/kategori.ts](lib/kategori.ts) saat daftarnya disatukan. Akibatnya
-  menambah kategori ketujuh tetap menyentuh sembilan berkas, meski daftarnya
-  sendiri sudah satu tempat. Pekerjaan kecil, tapi berdiri sendiri.
 - Tabel `ulasan` dan `chat` sudah tidak terpakai tapi belum dihapus.
 - **Antrean refund belum punya panel admin.** Barisnya tercipta sendiri saat
   pesanan lunas dibatalkan, pembeli dan penjual bisa melihat statusnya, tapi
