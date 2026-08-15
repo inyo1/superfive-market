@@ -10,6 +10,7 @@ import Tombol from '../../components/Tombol'
 import { keAngka } from '../../../lib/format'
 import EditorPreorder from '../../components/EditorPreorder'
 import { FORM_PO_KOSONG, validasiFormPO, formPOKeKolom, formPOAktif, type FormPO } from '../../../lib/preorder'
+import { KATEGORI, type PilihanKategori } from '../../../lib/kategori'
 
 export default function TambahProduk() {
   const router = useRouter()
@@ -26,7 +27,7 @@ export default function TambahProduk() {
   // tidak boleh ada produk berkategori Teknologi hanya karena itu kebetulan
   // huruf paling awal di daftar. String kosong berarti penjual belum memilih,
   // dan handleTambah menolaknya sebelum apa pun disimpan.
-  const [kategori, setKategori] = useState('')
+  const [kategori, setKategori] = useState<PilihanKategori>('')
   const [stok, setStok] = useState('')
   const [foto, setFoto] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
@@ -264,9 +265,9 @@ export default function TambahProduk() {
           {/* Kategori */}
           <div style={{ marginBottom: '12px' }}>
             <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '4px' }}>Kategori *</label>
-            <select value={kategori} onChange={e => setKategori(e.target.value)} style={{ width: '100%', padding: '9px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#fff' }}>
+            <select value={kategori} onChange={e => setKategori(e.target.value as PilihanKategori)} style={{ width: '100%', padding: '9px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#fff' }}>
               <option value="">-- Pilih Kategori --</option>
-              {['Teknologi', 'Fashion', 'Kuliner', 'Properti', 'Jasa', 'UMKM'].map(k => <option key={k}>{k}</option>)}
+              {KATEGORI.map(k => <option key={k}>{k}</option>)}
             </select>
           </div>
 

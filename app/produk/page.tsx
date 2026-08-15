@@ -12,6 +12,7 @@ import BadgeOfficial from '../components/BadgeOfficial'
 import BadgePreorder, { WARNA_PO_TUA } from '../components/BadgePreorder'
 import { janjiKirim } from '../../lib/preorder'
 import { useTampilSkeleton } from '../hooks/useSkeleton'
+import { KATEGORI } from '../../lib/kategori'
 
 type Produk = {
   id: string
@@ -28,7 +29,9 @@ type Produk = {
   users: { angkatan: number }
 }
 
-const kategoris = ['semua', 'Teknologi', 'Fashion', 'Kuliner', 'Properti', 'Jasa', 'UMKM']
+// 'semua' bukan kategori, hanya keadaan penyaring — karena itu ditambahkan
+// di sini, bukan ikut masuk ke KATEGORI yang harus cocok dengan CHECK
+const kategoris = ['semua', ...KATEGORI]
 
 export default function ProdukPage() {
   const [produk, setProduk] = useState<Produk[]>([])

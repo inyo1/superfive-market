@@ -14,6 +14,7 @@ import DialogKonfirmasi from '../components/DialogKonfirmasi'
 import Tombol from '../components/Tombol'
 import { useTampilSkeleton } from '../hooks/useSkeleton'
 import { keAngka, tanggalPeristiwa } from '../../lib/format'
+import { KATEGORI, type Kategori } from '../../lib/kategori'
 import EditorVarian, { muatVarian, simpanVarian, totalStok, type BarisVarian } from '../components/EditorVarian'
 import BadgePreorder, { WARNA_PO_TUA } from '../components/BadgePreorder'
 import EditorPreorder from '../components/EditorPreorder'
@@ -22,7 +23,7 @@ import TenggatKirim from '../components/TenggatKirim'
 import { FORM_PO_KOSONG, formPODari, validasiFormPO, formPOKeKolom, formPOAktif, janjiKirim, type FormPO, type DataPO } from '../../lib/preorder'
 
 type Toko = { id: string; nama_toko: string; kategori: string; is_official: boolean }
-type Produk = DataPO & { id: string; nama: string; harga: number; kategori: string; stok: number; terjual: number; rating: number; deskripsi: string; urutan: number | null; foto_url?: string | null }
+type Produk = DataPO & { id: string; nama: string; harga: number; kategori: Kategori; stok: number; terjual: number; rating: number; deskripsi: string; urutan: number | null; foto_url?: string | null }
 
 type PesananItem = {
   id: string
@@ -56,7 +57,6 @@ type Pesanan = {
   pesanan_items: PesananItem[]
 }
 
-const kategoris = ['Teknologi', 'Fashion', 'Kuliner', 'Properti', 'Jasa', 'UMKM']
 
 function fmt(n: number) { return 'Rp ' + (n || 0).toLocaleString('id-ID') }
 
@@ -494,14 +494,14 @@ export default function DashboardPage() {
 
             <div style={{ marginBottom: '10px' }}>
               <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '4px' }}>Kategori</label>
-              <select value={editData.kategori ?? ''} onChange={e => setEditData(prev => ({ ...prev, kategori: e.target.value }))}
+              <select value={editData.kategori ?? ''} onChange={e => setEditData(prev => ({ ...prev, kategori: e.target.value as Kategori }))}
                 style={{ width: '100%', padding: '8px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#fff' }}>
                 {/* produk.kategori boleh NULL di database. Tanpa opsi kosong
                     ini, produk tanpa kategori akan tampil sebagai "Teknologi"
                     padahal nilainya masih kosong — penjual menyimpan dan
                     mengira kategorinya sudah terisi. */}
                 <option value="">-- Pilih Kategori --</option>
-                {kategoris.map(k => <option key={k}>{k}</option>)}
+                {KATEGORI.map(k => <option key={k}>{k}</option>)}
               </select>
             </div>
             <div style={{ marginBottom: '16px' }}>

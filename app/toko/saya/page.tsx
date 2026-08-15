@@ -8,10 +8,11 @@ import Navbar from '../../components/Navbar'
 import FotoProduk from '../../components/FotoProduk'
 import Skeleton, { GridSkeletonProduk } from '../../components/Skeleton'
 import { useTampilSkeleton } from '../../hooks/useSkeleton'
+import { KATEGORI, type Kategori } from '../../../lib/kategori'
 
 type Toko = { id: string; nama_toko: string; kategori: string }
 type Produk = {
-  id: string; nama: string; harga: number; kategori: string
+  id: string; nama: string; harga: number; kategori: Kategori
   stok: number; terjual: number; rating: number; deskripsi: string
   foto_url?: string | null
 }
@@ -201,11 +202,11 @@ export default function TokoSayaPage() {
 
             <div style={{ marginBottom: '10px' }}>
               <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '4px' }}>Kategori</label>
-              <select value={editData.kategori ?? ''} onChange={e => setEditData(prev => ({ ...prev, kategori: e.target.value }))} style={{ width: '100%', padding: '9px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#fff' }}>
+              <select value={editData.kategori ?? ''} onChange={e => setEditData(prev => ({ ...prev, kategori: e.target.value as Kategori }))} style={{ width: '100%', padding: '9px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#fff' }}>
                 {/* Tanpa opsi kosong ini, produk berkategori kosong tampil
                     sebagai "Teknologi" padahal nilainya belum terisi */}
                 <option value="">-- Pilih Kategori --</option>
-                {['Teknologi', 'Fashion', 'Kuliner', 'Properti', 'Jasa', 'UMKM'].map(k => <option key={k}>{k}</option>)}
+                {KATEGORI.map(k => <option key={k}>{k}</option>)}
               </select>
             </div>
 
