@@ -1026,10 +1026,48 @@ const { error } = await supabase.rpc('ajukan_alumni', {
 // data: { ok: true, status: 'menunggu' }
 ```
 
-Menolak kalau sudah `alumni`, sudah `menunggu`, akunnya nonaktif, angkatannya
-tidak masuk akal (< 1950 atau melebihi tahun berjalan), atau `p_nama` dikirim
-tapi isinya spasi belaka ("Nama tidak boleh kosong"). Kolom `angkatan` dan
-`nama` diisi RPC ini, jadi UI **tidak boleh** menulisnya terpisah.
+Menolak kalau sudah `alumni`, akunnya nonaktif, angkatannya tidak masuk akal
+(< 1950 atau melebihi tahun berjalan), atau `p_nama` dikirim tapi isinya spasi
+belaka ("Nama tidak boleh kosong"). Kolom `angkatan` dan `nama` diisi RPC ini,
+jadi UI **tidak boleh** menulisnya terpisah.
+
+**Status `menunggu` TIDAK ditolak** — lihat di bawah. Nilai baliknya membawa
+`diperbarui`: `true` kalau yang bersangkutan tadinya memang sudah mengantre.
+Pakai itu untuk membedakan kalimat konfirmasi, **jangan menyimpulkannya dari
+state klien** yang bisa saja sudah tertinggal dari keadaan sebenarnya.
+
+#### Boleh dipanggil ulang saat masih mengantre
+
+Mengirim ulang saat `status_alumni = 'menunggu'` **menimpa baris yang sama**,
+bukan membuat antrean baru. Ini bukan kelonggaran yang kebetulan — ini yang
+membuat fiturnya berguna.
+
+Versi sebelumnya menolak pengiriman kedua, dan klien menguncikan formulirnya
+selama menunggu. Akibatnya baru terlihat saat dipakai sungguhan: akun bernama
+"inyo 3" **tidak bisa dibetulkan sama sekali**. Orang justru paling sering
+sadar namanya salah setelah mengirim — dan nama yang salah persis itulah yang
+membuat admin tidak bisa mencocokkannya dengan daftar alumni. Penguncian itu
+menutup satu-satunya jalan keluar dari masalah yang paling sering terjadi.
+
+Karena itu di [/verifikasi](app/verifikasi/page.tsx): ketiga kolom tetap bisa
+diubah saat menunggu, peringatan nama ikut tampil di keadaan itu, dan tombolnya
+berganti label jadi "Perbarui Pengajuan" — **bukan disembunyikan**. Yang
+terkunci hanya status `alumni`, karena di situ memang sudah selesai.
+
+#### Pelajaran umumnya, karena ini akan berulang
+
+**Sebelum mengunci sebuah kontrol di suatu keadaan, tanyakan dulu apakah
+keadaan itu justru saat orang paling butuh mengubahnya.**
+
+Mengunci saat "sedang diproses" terasa benar — kesannya melindungi data yang
+sedang dipakai pihak lain. Tapi kalau yang diproses itu justru **hasil
+kesalahan pengguna**, mengunci berarti menahan orang di dalam kesalahannya,
+dan jalan keluarnya jadi menghubungi admin untuk hal yang seharusnya bisa dia
+betulkan sendiri dalam dua detik.
+
+Pertanyaan yang membedakan keduanya sederhana: kalau data ini salah, siapa
+yang paling mungkin menyadarinya lebih dulu, dan apa yang bisa dia lakukan
+setelah sadar?
 
 **Bentuk namanya sengaja tidak divalidasi di server**, dan jangan ditambahkan.
 Banyak orang Indonesia bernama satu kata; aturan "harus dua kata" akan menolak
