@@ -91,10 +91,11 @@ export default function VerifikasiPage() {
       // permintaan REST tidak punya transaksi bersama, jadi cara lama bisa
       // meninggalkan nama yang sudah berubah tanpa pengajuan yang menyertainya.
       //
-      // Semua aturannya ada di dalam RPC — angkatan yang masuk akal, nama tidak
-      // kosong, dan larangan mengajukan dua kali. UI tidak mengulang
-      // validasinya, cukup menampilkan error.message apa adanya.
-      const { error } = await supabase.rpc('ajukan_alumni', {
+      // Semua aturannya ada di dalam RPC — angkatan yang masuk akal dan nama
+      // tidak kosong. Mengirim ulang saat masih mengantre BOLEH: barisnya
+      // ditimpa, bukan jadi antrean baru. UI tidak mengulang validasinya,
+      // cukup menampilkan error.message apa adanya.
+      const { data, error } = await supabase.rpc('ajukan_alumni', {
         p_angkatan: parseInt(angkatan),
         p_catatan: catatan.trim() || null,
         p_nama: nama.trim(),
@@ -103,11 +104,17 @@ export default function VerifikasiPage() {
       // di formulir supaya orangnya tinggal membetulkan lalu kirim lagi.
       if (error) throw new Error(error.message)
 
+      // Dibaca dari nilai balik RPC, bukan disimpulkan dari state: `status`
+      // di klien bisa saja sudah tertinggal dari keadaan sebenarnya.
+      const diperbarui = Boolean((data as { diperbarui?: boolean } | null)?.diperbarui)
+
       setStatus('menunggu')
       setAlasanTolak(null)
       setCatatanAdmin(null)
       setPesan({
-        text: 'Pengajuan terkirim. Admin akan memeriksa datamu, biasanya dalam 1–2 hari.',
+        text: diperbarui
+          ? 'Pengajuanmu diperbarui. Data yang baru ini yang akan diperiksa admin.'
+          : 'Pengajuan terkirim. Admin akan memeriksa datamu, biasanya dalam 1–2 hari.',
         ok: true,
       })
     } catch (e) {
@@ -180,6 +187,9 @@ export default function VerifikasiPage() {
             <div style={{ fontSize: '12px', color: '#8d6e26', lineHeight: '1.7' }}>
               Biasanya 1–2 hari. Sambil menunggu, belanjamu tidak dibatasi sama sekali —
               yang belum bisa hanya berjualan.
+              <br />
+              <strong>Datamu masih bisa diperbaiki selama admin belum memutuskan</strong> —
+              ubah di bawah, lalu perbarui pengajuanmu.
             </div>
           </div>
         )}
@@ -233,18 +243,22 @@ export default function VerifikasiPage() {
             <div style={{ fontSize: '11px', color: '#5a7da0', marginBottom: '8px' }}>
               Pakai nama seperti yang tertulis di data sekolah dulu.
             </div>
+            {/* TIDAK dikunci saat menunggu. Orang justru paling sering sadar
+                namanya salah setelah mengirim, dan mengunci kolomnya di situ
+                menghapus satu-satunya kesempatan membetulkannya. */}
             <input
               id="nama"
               value={nama}
               onChange={e => setNama(e.target.value)}
-              disabled={menunggu}
               placeholder="Nama lengkapmu"
-              style={{ width: '100%', padding: '11px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', background: menunggu ? '#f8fbff' : '#fff', boxSizing: 'border-box', minHeight: '44px' }}
+              style={{ width: '100%', padding: '11px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#fff', boxSizing: 'border-box', minHeight: '44px' }}
             />
 
             {/* Peringatan, bukan pagar: tombolnya tetap hidup. Kita tidak tahu
-                nama orang, jadi yang salah di sini cuma boleh diingatkan. */}
-            {!menunggu && namaTerlihatBelumLengkap(nama, email) && (
+                nama orang, jadi yang salah di sini cuma boleh diingatkan.
+                Ikut tampil saat menunggu — di situ justru paling penting,
+                karena nama yang salah sedang mengantre di meja admin. */}
+            {namaTerlihatBelumLengkap(nama, email) && (
               <div style={{ marginTop: '8px', background: '#fff8e1', border: '0.5px solid #ffe082', borderRadius: '8px', padding: '9px 12px', fontSize: '11px', color: '#8d6e26', lineHeight: '1.7' }}>
                 Nama ini akan dicocokkan admin dengan daftar alumni. Pakai nama
                 lengkapmu saat sekolah dulu.
@@ -263,8 +277,7 @@ export default function VerifikasiPage() {
               id="angkatan"
               value={angkatan}
               onChange={e => setAngkatan(e.target.value)}
-              disabled={menunggu}
-              style={{ width: '100%', padding: '11px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', background: menunggu ? '#f8fbff' : '#fff', boxSizing: 'border-box', minHeight: '44px' }}
+              style={{ width: '100%', padding: '11px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#fff', boxSizing: 'border-box', minHeight: '44px' }}
             >
               <option value="">-- Pilih Angkatan --</option>
               {Array.from({ length: TAHUN_INI - 1970 + 1 }, (_, i) => TAHUN_INI - i).map(y => (
@@ -286,9 +299,8 @@ export default function VerifikasiPage() {
               value={catatan}
               onChange={e => setCatatan(e.target.value)}
               rows={4}
-              disabled={menunggu}
               placeholder="Misal: kelas 9C, wali kelas Bu Rina"
-              style={{ width: '100%', padding: '9px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', resize: 'none', boxSizing: 'border-box', fontFamily: 'sans-serif', background: menunggu ? '#f8fbff' : '#fff' }}
+              style={{ width: '100%', padding: '9px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', resize: 'none', boxSizing: 'border-box', fontFamily: 'sans-serif', background: '#fff' }}
             />
           </div>
         </div>
@@ -299,17 +311,17 @@ export default function VerifikasiPage() {
           </div>
         )}
 
-        {!menunggu && (
-          <Tombol
-            onClick={kirim}
-            loading={mengirim}
-            teksLoading="Mengirim..."
-            penuh
-            style={{ padding: '15px', fontSize: '14px', borderRadius: '10px', marginBottom: '10px' }}
-          >
-            {ditolak ? 'Kirim Ulang Pengajuan' : 'Kirim Pengajuan'}
-          </Tombol>
-        )}
+        {/* Tombolnya berubah, bukan hilang. Yang sedang mengantre tetap punya
+            jalan untuk membetulkan datanya. */}
+        <Tombol
+          onClick={kirim}
+          loading={mengirim}
+          teksLoading={menunggu ? 'Memperbarui...' : 'Mengirim...'}
+          penuh
+          style={{ padding: '15px', fontSize: '14px', borderRadius: '10px', marginBottom: '10px' }}
+        >
+          {menunggu ? 'Perbarui Pengajuan' : ditolak ? 'Kirim Ulang Pengajuan' : 'Kirim Pengajuan'}
+        </Tombol>
 
         <Link href="/" style={{ display: 'block', textAlign: 'center', color: '#5a7da0', fontSize: '13px', textDecoration: 'none', paddingBottom: '24px' }}>
           ← Kembali ke Beranda
