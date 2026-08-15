@@ -378,21 +378,35 @@ produk. Satu-satunya penyuntingan toko dari UI ada di
 [/toko/[id]](app/toko/[id]/page.tsx), dan itu hanya menyentuh `nama_toko` dan
 `deskripsi`.
 
-`is_official` menandai toko resmi INILIMA. Pengaruhnya ke UI besar:
+`is_official` menandai toko resmi INILIMA. Pengaruhnya ke UI:
 
-- produknya **tidak muncul** di etalase umum `/produk` dan tidak ikut section
-  Produk Terbaru — keduanya menyaring dengan `toko!inner(...)` +
-  `.eq('toko.is_official', false)`
-- **tapi tetap ikut hitungan PRODUK di hero beranda.** Angka hero menjawab
-  "seberapa ramai Superfive", bukan "berapa isi etalase umum". Pernah
-  disaring seperti dua di atas, dan akibatnya hero menampilkan `1 PRODUK`
-  padahal ada 6 — lima di antaranya milik toko resmi. Hitungannya sekarang
-  polos tanpa penyaring apa pun; yang menentukan apa yang boleh terlihat
-  sudah RLS
-- gantinya punya rak sendiri: carousel di [SectionOfficial](app/components/SectionOfficial.tsx),
-  diurutkan `produk.urutan` menaik
-- tetap muncul di pencarian, dengan lencana OFFICIAL dan diletakkan paling atas
-- lencana OFFICIAL menggantikan badge angkatan, karena pemiliknya akun institusi
+- punya rak sorotan sendiri: carousel di
+  [SectionOfficial](app/components/SectionOfficial.tsx), diurutkan
+  `produk.urutan` menaik
+- **tetap muncul di etalase `/produk`** seperti produk lain, dibedakan pita
+  dan lencana OFFICIAL di kartunya
+- di pencarian ikut muncul dan diletakkan paling atas
+- lencana OFFICIAL menggantikan badge angkatan, karena pemiliknya akun
+  institusi
+
+**Penyaring `.eq('toko.is_official', false)` sekarang hanya berlaku di satu
+tempat: section Produk Terbaru di beranda.** Dulu dipakai di tiga tempat, dan
+dua di antaranya keliru:
+
+| Tempat | Menyaring? | Kenapa |
+|---|---|---|
+| Produk Terbaru (beranda) | **ya** | rak merchandise ada tepat di atasnya; dua rak berisi barang sama persis terlihat aneh |
+| Etalase `/produk` | tidak | katalog utama harus memuat semua yang dijual |
+| Hitungan PRODUK di hero | tidak | angkanya menjawab "seberapa ramai Superfive", bukan "berapa isi etalase" |
+
+Dua yang terakhir sempat ikut menyaring, dan akibatnya nyata: dari enam produk
+yang ada, lima milik toko resmi — jadi hero menampilkan `1 PRODUK` dan etalase
+`/produk` hanya berisi satu barang. **Rak sorotan seharusnya menonjolkan
+barang, bukan mengeluarkannya dari katalog.** Yang membedakan merchandise di
+etalase cukup lencana OFFICIAL di kartunya.
+
+Untuk hitungan hero, yang menentukan apa yang boleh terlihat sudah RLS, jadi
+`count` polos tanpa penyaring memang angka yang benar.
 
 Trigger `trg_jaga_toko_official` (BEFORE INSERT OR UPDATE) mengembalikan diam-diam
 `is_official` ke `false` saat INSERT dan ke nilai lama saat UPDATE, kecuali yang

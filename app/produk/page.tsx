@@ -51,16 +51,21 @@ export default function ProdukPage() {
   }, [])
 
   async function fetchProduk() {
-    // Etalase umum hanya berisi produk member. Merchandise resmi dikecualikan
-    // di sini supaya punya rak sendiri, dan tetap bisa dicari lewat pencarian
-    // maupun dibuka langsung lewat tautannya.
+    // Etalase memuat SEMUA produk, termasuk merchandise resmi. Dulu merchandise
+    // dikecualikan di sini, dan akibatnya lima dari enam produk hilang dari
+    // katalog utama: rak sorotan justru mengeluarkan barang, bukan
+    // menonjolkannya. Orang yang membuka menu Produk berharap melihat semua
+    // yang dijual.
     //
-    // toko!inner penting: dengan embed biasa, filter hanya mengosongkan objek
-    // toko-nya sementara produknya tetap ikut terambil.
+    // Yang membedakan merchandise resmi cukup lencana OFFICIAL di kartunya.
+    // SectionOfficial di beranda tetap jadi rak sorotan — tidak menggantikan
+    // tempat produknya di sini.
+    //
+    // toko!inner tetap dipakai supaya `is_official` ikut terambil untuk
+    // lencananya, dan produk tanpa toko tidak lolos.
     const { data, error } = await supabase
       .from('produk')
       .select(`*, toko!inner(nama_toko, seller_id, is_official)`)
-      .eq('toko.is_official', false)
       .order('created_at', { ascending: false })
 
     if (error || !data) { setLoading(false); return }
