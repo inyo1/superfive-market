@@ -40,6 +40,7 @@ function fmtTgl(s: string) { return new Date(s).toLocaleDateString('id-ID', { da
 export default function AdminPage() {
   const router = useRouter()
   const [ready, setReady] = useState(false)
+  const [adminId, setAdminId] = useState<string | null>(null)
   const [tab, setTab] = useState<'users' | 'produk' | 'toko'>('users')
 
   const [users, setUsers] = useState<UserRow[]>([])
@@ -59,6 +60,7 @@ export default function AdminPage() {
         .from('users').select('role').eq('id', user.id).single()
 
       if (!profile || profile.role !== 'admin') { router.push('/'); return }
+      setAdminId(user.id)
 
       await Promise.all([loadUsers(), loadProduk(), loadToko()])
       setReady(true)
@@ -95,18 +97,30 @@ export default function AdminPage() {
     setTimeout(() => setPesan(null), 3000)
   }
 
+  // Peran HANYA lewat ubah_peran. UPDATE langsung ke users.role sempat jalan
+  // karena jaga_field_sensitif melewatkan siapa pun yang is_admin() — artinya
+  // tidak ada satu pun aturan yang menahannya. Akibatnya sudah terjadi: satu
+  // admin turun jadi member dan Superfive nyaris kehabisan admin.
   async function toggleRole(u: UserRow) {
     if (busyId) return
-    const newRole = u.role === 'admin' ? 'member' : 'admin'
+    const peranBaru = u.role === 'admin' ? 'member' : 'admin'
     setBusyId(u.id)
-    const { error } = await supabase.from('users').update({ role: newRole }).eq('id', u.id)
-    if (error) {
-      showPesan('Gagal ubah role: ' + error.message, false)
-    } else {
-      setUsers(prev => prev.map(x => x.id === u.id ? { ...x, role: newRole } : x))
-      showPesan(`${u.email} → ${newRole}`, true)
+    try {
+      const { error } = await supabase.rpc('ubah_peran', {
+        p_user_id: u.id,
+        p_peran: peranBaru,
+      })
+      // Menurunkan diri sendiri dan menurunkan admin aktif terakhir ditolak
+      // di dalam RPC. Pesannya sudah berbahasa Indonesia — tampilkan apa adanya.
+      if (error) throw new Error(error.message)
+
+      setUsers(prev => prev.map(x => x.id === u.id ? { ...x, role: peranBaru } : x))
+      showPesan(`${u.email} → ${peranBaru}`, true)
+    } catch (e) {
+      showPesan(e instanceof Error ? e.message : 'Gagal mengubah peran', false)
+    } finally {
+      setBusyId(null)
     }
-    setBusyId(null)
   }
 
   async function hapusProduk(id: string) {
@@ -323,20 +337,26 @@ export default function AdminPage() {
                     }}>
                       {u.role === 'admin' ? '⭐ Admin' : 'Member'}
                     </span>
-                    <button
-                      onClick={() => toggleRole(u)}
-                      disabled={busyId === u.id}
-                      style={{
-                        fontSize: '11px', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer',
-                        border: '0.5px solid',
-                        borderColor: u.role === 'admin' ? '#f09595' : '#a5d6a7',
-                        background: u.role === 'admin' ? '#fce4e4' : '#e8f5e9',
-                        color: u.role === 'admin' ? '#c62828' : '#2e7d32',
-                        opacity: busyId === u.id ? 0.5 : 1,
-                      }}
-                    >
-                      {u.role === 'admin' ? '↓ Jadikan Member' : '↑ Jadikan Admin'}
-                    </button>
+                    {/* Menurunkan diri sendiri ditolak database, jadi tombolnya
+                        tidak perlu ada — yang pasti gagal cuma jadi jebakan */}
+                    {u.id === adminId && u.role === 'admin' ? (
+                      <span style={{ fontSize: '10px', color: '#9ab4cc' }}>akun kamu</span>
+                    ) : (
+                      <button
+                        onClick={() => toggleRole(u)}
+                        disabled={busyId === u.id}
+                        style={{
+                          fontSize: '11px', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer',
+                          border: '0.5px solid',
+                          borderColor: u.role === 'admin' ? '#f09595' : '#a5d6a7',
+                          background: u.role === 'admin' ? '#fce4e4' : '#e8f5e9',
+                          color: u.role === 'admin' ? '#c62828' : '#2e7d32',
+                          opacity: busyId === u.id ? 0.5 : 1,
+                        }}
+                      >
+                        {u.role === 'admin' ? '↓ Jadikan Member' : '↑ Jadikan Admin'}
+                      </button>
+                    )}
                   </div>
                 </div>
               )
