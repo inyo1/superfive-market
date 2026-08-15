@@ -1210,13 +1210,16 @@ const { data } = await supabase.rpc('antrean_alumni', { p_status: 'menunggu' })
 
 Mengembalikan `id · nama · email · angkatan · avatar_url · foto_url ·
 catatan_pendaftar · catatan_admin · status_alumni · is_institusi ·
-created_at · diverifikasi_at · diminta_data_at · alasan_tolak`.
+created_at · diverifikasi_at · diminta_data_at · alasan_tolak ·
+bukti_alumni_url`.
 
-Tiga hal dikerjakan di dalamnya, jadi klien tidak perlu dan **tidak boleh**
+Empat hal dikerjakan di dalamnya, jadi klien tidak perlu dan **tidak boleh**
 mengulanginya:
 
-- **Penyaringan angkatan.** Admin umum dan superadmin melihat semua; admin
-  angkatan hanya angkatannya sendiri
+- **Penyaringan baris menurut angkatan.** Admin umum dan superadmin melihat
+  semua; admin angkatan hanya angkatannya sendiri
+- **Penyaringan satu kolom menurut peran.** `bukti_alumni_url` berisi NULL
+  untuk admin angkatan — lihat di bawah
 - **Akun nonaktif dikecualikan**
 - **Urutannya**: `coalesce(diminta_data_at, created_at)` menaik — yang paling
   lama menunggu di atas. Jangan diurutkan ulang di klien
@@ -1245,11 +1248,30 @@ butuh salah satunya, tambahkan kolomnya ke fungsi ini dan pertimbangkan
 akibatnya; **jangan membacanya lewat jalur lain.** Membaca `users` langsung
 "cuma untuk satu kolom" mengembalikan persis lubang yang ditutup di sini.
 
-Akibat yang sudah terasa: kolom `bukti_alumni_url` tidak ada di daftar, jadi
-tombol "Lihat Bukti Alumni" untuk data lama sudah dilepas dari panel. Kolom,
-bucket, dan [lib/buktiAlumni.ts](lib/buktiAlumni.ts) sengaja dipertahankan —
-kalau buktinya mau ditampilkan lagi, jalannya lewat menambah kolom di
-`antrean_alumni`.
+#### `bukti_alumni_url` NULL untuk admin angkatan
+
+Ini contoh paling jelas kenapa policy tidak cukup, dan bukan kelalaian:
+
+```sql
+CASE WHEN v_penuh THEN u.bukti_alumni_url ELSE NULL END
+```
+
+Bukti alumni itu **ijazah atau rapor — dokumen identitas**, bukan sekelas
+nama dan angkatan. Wewenang admin angkatan adalah mengenali orang yang ia
+kenal seangkatan; menyerahkan dokumen identitas temannya melampaui itu.
+
+Kalau pembatasan ini dipaksakan lewat policy, tidak ada tempat untuk
+menuliskannya: policy memutuskan baris boleh dibaca atau tidak, dan begitu
+barisnya lolos, **seluruh kolomnya ikut** — termasuk berkas ijazah
+seangkatannya. Satu kolom yang berbeda perlakuan menurut peran hanya bisa
+diungkapkan di dalam RPC.
+
+Konsekuensinya untuk UI: tombol "Lihat Bukti Alumni" di
+[/admin/verifikasi](app/admin/verifikasi/page.tsx) muncul semata-mata karena
+kolomnya terisi. **Jangan menambahkan pemeriksaan peran di klien** — untuk
+admin angkatan nilainya sudah NULL, jadi tombolnya hilang sendiri. Dua
+pemeriksaan atas hal yang sama suatu saat akan berbeda pendapat, dan yang di
+klien pasti yang salah.
 
 ### `minta_data_ulang` — hanya admin
 
