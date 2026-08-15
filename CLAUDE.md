@@ -1946,6 +1946,27 @@ Palet warna:
 | Emas | `#EF9F27` | Aksen identitas, lencana OFFICIAL |
 | Ungu PO | `#7c4dff` / `#4527a0` | Pre-order — jangan dipakai untuk hal lain, ekspor `WARNA_PO` dan `WARNA_PO_TUA` dari [BadgePreorder](app/components/BadgePreorder.tsx) |
 
+### Dua logo, dan jangan tertukar
+
+**Logo Superfive mewakili PLATFORM. Logo IniLima mewakili KOMUNITAS dan toko
+resminya. Keduanya tidak saling menggantikan.**
+
+| Berkas | Mewakili | Dipakai di |
+|---|---|---|
+| `/LOGO-512.png` | Superfive Market, platformnya | navbar, hero beranda, halaman auth, about, error, not-found |
+| `/logo-inilima.png` | komunitas alumni IniLima | spanduk toko resmi, avatar toko resmi, section merchandise di beranda |
+| `/icon-*.png`, `/favicon-32.png`, `/apple-touch-icon.png`, `/og-image.png` | platform | metadata, manifest, gambar bagikan |
+
+Pertanyaan yang membedakannya: **yang sedang diwakili ini lapaknya, atau yang
+punya lapak?** Navbar dan hero mewakili lapaknya — itu Superfive. Spanduk dan
+avatar toko resmi mewakili yang punya lapak — itu IniLima.
+
+Pemakaian logo IniLima selalu lewat
+[LogoInilima](app/components/LogoInilima.tsx), bukan `<Image>` langsung,
+supaya alt text dan larangan bingkainya ditulis satu kali. Logonya lencana
+bundar bercincin abu dengan sudut transparan — **jangan menambahkan bingkai,
+lingkaran, atau bayangan**, karena akan jadi cincin kedua.
+
 Konvensi lain:
 
 - Hampir semua halaman `'use client'` — data diambil di `useEffect` lewat client
