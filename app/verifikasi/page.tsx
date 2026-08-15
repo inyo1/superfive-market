@@ -22,6 +22,19 @@ import { useTampilSkeleton } from '../hooks/useSkeleton'
 
 const TAHUN_INI = new Date().getFullYear()
 
+/** Tanda-tanda nama yang hampir pasti bukan nama sebenarnya. Hasilnya HANYA
+ *  dipakai untuk memunculkan peringatan — tidak pernah untuk memblokir, karena
+ *  kita tidak tahu nama orang. Yang ditangkap sengaja cuma yang tidak mungkin
+ *  benar: ada angkanya, terlalu pendek, atau cuma menyalin alamat email. */
+function namaTerlihatBelumLengkap(nama: string, email: string) {
+  const n = nama.trim()
+  if (!n) return false                                   // kosong sudah ditolak tombolnya
+  if (/\d/.test(n)) return true                          // "inyo 3"
+  if (n.replace(/\s+/g, '').length < 3) return true      // "AB"
+  const lokal = email.split('@')[0]?.trim().toLowerCase()
+  return Boolean(lokal) && n.toLowerCase() === lokal     // "inyots1"
+}
+
 export default function VerifikasiPage() {
   const router = useRouter()
   const [userId, setUserId] = useState<string | null>(null)
@@ -233,6 +246,15 @@ export default function VerifikasiPage() {
               placeholder="Nama lengkapmu"
               style={{ width: '100%', padding: '11px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', background: menunggu ? '#f8fbff' : '#fff', boxSizing: 'border-box', minHeight: '44px' }}
             />
+
+            {/* Peringatan, bukan pagar: tombolnya tetap hidup. Kita tidak tahu
+                nama orang, jadi yang salah di sini cuma boleh diingatkan. */}
+            {!menunggu && namaTerlihatBelumLengkap(nama, email) && (
+              <div style={{ marginTop: '8px', background: '#fff8e1', border: '0.5px solid #ffe082', borderRadius: '8px', padding: '9px 12px', fontSize: '11px', color: '#8d6e26', lineHeight: '1.7' }}>
+                Nama ini akan dicocokkan admin dengan daftar alumni. Pakai nama
+                lengkapmu saat sekolah dulu.
+              </div>
+            )}
           </div>
 
           <div style={{ marginBottom: '14px' }}>
