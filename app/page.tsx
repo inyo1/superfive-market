@@ -49,19 +49,24 @@ function useCountUp(target: number, duration = 900) {
   return count
 }
 
-function StatCard({ label, value, icon }: { label: string; value: number; icon: string }) {
+// Satu angka di baris statistik. Bentuknya sengaja tipis — bukan kartu tebal
+// dengan latar dan garis — karena barisnya berdiri di atas latar terang tepat
+// di bawah hero, dan tugasnya cuma menyebut angka.
+function Statistik({ label, value, icon }: { label: string; value: number; icon: string }) {
   const count = useCountUp(value)
   return (
-    <div style={{
-      flex: 1, background: 'rgba(255,255,255,0.13)', borderRadius: '12px',
-      padding: '14px 8px', textAlign: 'center',
-      border: '0.5px solid rgba(255,255,255,0.15)',
-    }}>
-      <div style={{ fontSize: '22px', marginBottom: '4px' }}>{icon}</div>
-      <div style={{ fontSize: '22px', fontWeight: '800', color: '#fff', lineHeight: 1 }}>
+    <div style={{ flex: 1, textAlign: 'center', minWidth: 0 }}>
+      <div style={{ fontSize: '15px', lineHeight: 1, marginBottom: '5px' }}>{icon}</div>
+      <div style={{ fontSize: '20px', fontWeight: '800', color: '#0C447C', lineHeight: 1 }}>
         {count}
       </div>
-      <div style={{ fontSize: '11px', color: '#B5D4F4', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.8px' }}>{label}</div>
+      <div style={{
+        fontSize: '10px', color: '#5a7da0', marginTop: '3px',
+        textTransform: 'uppercase', letterSpacing: '0.8px',
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      }}>
+        {label}
+      </div>
     </div>
   )
 }
@@ -190,13 +195,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* Statistik */}
-        <div style={{ display: 'flex', gap: '8px', maxWidth: '50%' }}>
-          <StatCard label="Produk" value={stats.produk} icon="📦" />
-          <StatCard label="Toko"   value={stats.toko}   icon="🏪" />
-          <StatCard label="Alumni" value={stats.alumni} icon="🎓" />
-        </div>
-
         {/* Foto gedung SMPN 5 — desktop only, blends with hero gradient */}
         <div
           className="hero-building"
@@ -219,6 +217,26 @@ export default function Home() {
               maskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.6) 30%, black 60%)',
             }}
           />
+        </div>
+      </div>
+
+      {/* ── Statistik ──
+          Section tipis sendiri, tepat di bawah hero. Latarnya putih supaya
+          jelas terpisah dari hero yang biru tua.
+
+          Tiga kolom sejajar di lebar berapa pun — `flex` tanpa `flexWrap`,
+          jadi tidak pernah menumpuk ke bawah di HP. Angkanya kecil-kecil,
+          jadi tiga kolom masih lega bahkan di layar tersempit. */}
+      <div style={{ background: '#fff', borderBottom: '0.5px solid #e8f0f8' }}>
+        <div style={{
+          maxWidth: '700px', margin: '0 auto', padding: '14px 16px',
+          display: 'flex', alignItems: 'center', gap: '8px',
+        }}>
+          <Statistik label="Produk" value={stats.produk} icon="📦" />
+          <span aria-hidden style={{ width: '1px', alignSelf: 'stretch', background: '#e8f0f8', flexShrink: 0 }} />
+          <Statistik label="Toko"   value={stats.toko}   icon="🏪" />
+          <span aria-hidden style={{ width: '1px', alignSelf: 'stretch', background: '#e8f0f8', flexShrink: 0 }} />
+          <Statistik label="Alumni" value={stats.alumni} icon="🎓" />
         </div>
       </div>
 
