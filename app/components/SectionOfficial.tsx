@@ -1,5 +1,6 @@
 'use client'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { supabase } from '../../lib/supabase'
 import { useTampilSkeleton } from '../hooks/useSkeleton'
@@ -203,6 +204,14 @@ export default function SectionOfficial() {
     >
       <div style={{ maxWidth: '700px', margin: '0 auto', padding: '0 16px' }}>
 
+        {/* Di HP logonya di ATAS judul, bukan jadi kolom kiri: dua kolom di
+            layar sempit menyisakan kartu yang terlalu ramping. */}
+        {mobile && (
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '14px' }}>
+            <LogoInilima lebar={90} />
+          </div>
+        )}
+
         {/* Judul */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
           <h2 style={{ fontSize: '18px', fontWeight: '800', margin: 0, color: EMAS, letterSpacing: '0.3px' }}>
@@ -221,6 +230,26 @@ export default function SectionOfficial() {
         </p>
 
         <div style={{ width: '54px', height: '3px', background: EMAS, borderRadius: '2px', margin: '12px 0 14px' }} />
+
+        {/* Dua kolom: logo di kiri, deretan kartu bergeser ke kanan.
+            Rata tengah vertikal terhadap deretan kartu.
+
+            Batasnya 160px, bukan 200px: logonya lencana bundar, dan bentuk
+            bundar terbaca lebih besar daripada logo persegi seukuran sama.
+            Jaraknya juga dirapatkan jadi 16px — tepi bundar sudah memberi
+            ruang kosong sendiri di sudut-sudutnya, jadi jarak selebar logo
+            persegi akan terasa menganga. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          {!mobile && (
+            <div style={{
+              flex: '0 0 22%', maxWidth: '160px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <LogoInilima lebar="100%" />
+            </div>
+          )}
+
+          <div style={{ flex: 1, minWidth: 0 }}>
 
         {/* ── Skeleton ── */}
         {tampilSkeleton ? (
@@ -284,6 +313,9 @@ export default function SectionOfficial() {
           </div>
         )}
 
+          </div>
+        </div>
+
         {/* Titik indikator — hanya kalau memang ada yang bisa digeser */}
         {!tampilSkeleton && bisaGeser && (
           <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', marginTop: '14px' }}>
@@ -331,6 +363,38 @@ export default function SectionOfficial() {
         )}
       </div>
     </section>
+  )
+}
+
+/**
+ * Logo IniLima — lencana bundar putih bercincin abu, 512×512 RGBA.
+ *
+ * Yang transparan hanya putih di luar lingkaran; putih di DALAM lencana
+ * sengaja dipertahankan karena itu bagian desainnya. Jadi yang tayang adalah
+ * cakram putih di atas biru tua, terbaca seperti stempel resmi — itu memang
+ * yang dimaksud.
+ *
+ * JANGAN menambahkan bingkai, lingkaran, atau bayangan apa pun di sini:
+ * logonya sudah punya cincinnya sendiri, dan tambahan apa pun akan jadi
+ * cincin kedua.
+ *
+ * `object-fit: contain` menjaga rasionya — tidak pernah melar maupun
+ * terpotong berapa pun lebar kolomnya.
+ */
+function LogoInilima({ lebar }: { lebar: number | string }) {
+  return (
+    <Image
+      src="/logo-inilima.png"
+      alt="Logo IniLima — Alumni SMPN 5 Bandung"
+      width={200}
+      height={200}
+      unoptimized
+      style={{
+        width: typeof lebar === 'number' ? `${lebar}px` : lebar,
+        height: 'auto', maxWidth: '100%',
+        objectFit: 'contain', flexShrink: 0,
+      }}
+    />
   )
 }
 
