@@ -66,6 +66,7 @@ lib/
   buktiAlumni.ts     signed URL bukti alumni
   preorder.ts        aturan status PO, format tanggal, isian form PO
   statusPesanan.ts   kosakata dan warna status pesanan
+  peran.ts           kosakata empat peran + lencananya
   format.ts, foto.ts helper kecil
 ```
 
@@ -115,8 +116,48 @@ tidak akan terbaca, dan hasilnya bukan error yang jelas melainkan nama kosong
 di layar. Yang tersisa membaca `users` langsung dari klien hanyalah tiga hal
 di atas: baris sendiri, panel admin, dan tulis-menulis milik sendiri.
 
-`role` bernilai `member` atau `admin`. `status_verifikasi` bernilai
-`menunggu` | `terverifikasi` | `ditolak`.
+`status_verifikasi` bernilai `menunggu` | `terverifikasi` | `ditolak`.
+
+### Empat tingkat peran
+
+`role` dijaga CHECK `chk_role`. Nilai `admin` yang lama **sudah tidak ada** —
+semuanya dipindahkan ke `admin_umum`.
+
+```
+member · admin_angkatan · admin_umum · superadmin
+```
+
+| Peran | Boleh apa |
+|---|---|
+| `member` | pengguna biasa |
+| `admin_angkatan` | **hanya** memverifikasi alumni seangkatannya. Tidak punya kuasa atas produk, toko, pesanan, maupun peran orang lain |
+| `admin_umum` | panel admin penuh |
+| `superadmin` | admin penuh, **plus** satu-satunya yang boleh mengangkat dan menurunkan `admin_umum`. Perannya sendiri tidak bisa diubah dari aplikasi |
+
+Tiga fungsi membaca peran, dan bedanya penting:
+
+| Fungsi | Mengembalikan |
+|---|---|
+| `is_admin()` | true untuk `admin_umum` dan `superadmin` **saja** |
+| `is_superadmin()` | true untuk `superadmin` |
+| `angkatan_yang_diampu()` | angkatan yang boleh diverifikasi `admin_angkatan`; NULL untuk peran lain |
+
+Ketiganya `SECURITY DEFINER` dan mengabaikan akun nonaktif.
+
+#### ⚠ JANGAN menambahkan `admin_angkatan` ke `is_admin()`
+
+Terlihat seperti kelalaian, padahal justru itu intinya. `is_admin()` dipakai
+di policy `produk`, `toko`, dan `users`, serta di dalam
+`jaga_field_sensitif` — **satu baris tambahan di fungsi itu memberi admin
+angkatan kuasa menghapus produk siapa pun, mengubah toko orang, membaca
+seluruh tabel `users`, dan melewati penjaga kolom sensitif.** Wewenangnya
+yang sempit bukan datang dari daftar tombol di UI, melainkan dari fungsi ini.
+
+Kalau admin angkatan perlu izin baru, tambahkan pemeriksaan terpisah
+(`angkatan_yang_diampu() IS NOT NULL`), jangan melebarkan `is_admin()`.
+
+Cerminannya di klien ada di [lib/peran.ts](lib/peran.ts): `adminPenuh()`
+sengaja tidak memuat `admin_angkatan`, dengan peringatan yang sama di sana.
 
 Trigger `jaga_field_sensitif` mengembalikan diam-diam nilai `role`,
 `status_verifikasi`, `diverifikasi_at`, `diverifikasi_oleh`, `alasan_tolak`,
@@ -1146,8 +1187,19 @@ const { data, error } = await supabase.rpc('verifikasi_alumni', {
 
 Menulis **kedua** kolom status sekaligus (`status_alumni` dan
 `status_verifikasi` lama). Menolak kalau sasarannya diri sendiri, kalau
-sasarannya sesama admin dan keputusannya menolak, atau kalau angkatannya masih
-kosong untuk akun non-institusi.
+sasarannya sesama pengurus dan keputusannya menolak, atau kalau angkatannya
+masih kosong untuk akun non-institusi.
+
+**Admin angkatan ikut boleh memanggilnya**, tapi hanya untuk pendaftar yang
+angkatannya sama:
+
+> Kamu hanya bisa memverifikasi alumni angkatan 2000
+
+Ini satu-satunya RPC yang menerima `admin_angkatan`. Yang lain semuanya
+menuntut `is_admin()`, jadi `minta_data_ulang`, `putuskan_penjual`,
+`nonaktifkan_user`, `aktifkan_user`, `hapus_user`, dan `ubah_peran` akan
+menolak mereka — UI menyembunyikan tombolnya, lihat
+[/admin/verifikasi](app/admin/verifikasi/page.tsx).
 
 ### `minta_data_ulang` — hanya admin
 
@@ -1178,12 +1230,25 @@ menyembunyikan tombolnya:
 itu dari klien.
 
 ```ts
-await supabase.rpc('ubah_peran', { p_user_id: id, p_peran: 'admin' })  // atau 'member'
+await supabase.rpc('ubah_peran', { p_user_id: id, p_peran: 'admin_angkatan' })
 // data: { ok: true, nama, peran }
 ```
 
-Menolak menurunkan diri sendiri, menurunkan admin aktif terakhir, dan
-mengangkat akun nonaktif jadi admin.
+Yang ditolak database:
+
+- **menyentuh superadmin sama sekali**, termasuk oleh dirinya sendiri, dan
+  mengangkat superadmin dari sini. Itu titik pulih terakhir Superfive; kalau
+  ia bisa diturunkan, sistem bisa kehilangan seluruh jalur pemulihannya
+- **mengubah peran diri sendiri**, apa pun perannya
+- **mengangkat atau menurunkan `admin_umum` oleh yang bukan superadmin** —
+  tanpa batas ini, seorang admin umum bisa memperbanyak dirinya tanpa
+  sepengetahuan siapa pun
+- **`admin_angkatan` tanpa angkatan terisi**
+- memberi peran ke akun nonaktif
+
+UI-nya di [/admin](app/admin/page.tsx) hanya menampilkan pilihan yang bisa
+berhasil, jadi sebagian besar penolakan itu tidak akan pernah terpicu dari
+sana.
 
 #### Kenapa ini bukan sekadar kerapian
 
@@ -1200,89 +1265,57 @@ sistem — tanpa jalan pulih dari dalam aplikasi.
 Pelajaran yang sama dengan penjaga lain di dokumen ini: **lolos karena
 `is_admin()` bukan berarti aman, itu justru berarti tidak ada yang memeriksa.**
 
-### `hapus_user` — hanya admin, permanen
+### `hapus_user` — hanya admin, dua cara
 
-Menghapus baris `users` selamanya. **Hanya boleh untuk akun yang belum
-meninggalkan jejak** — kalau ada, fungsinya menolak dan menyebutkan jejaknya:
-
-> Tidak bisa dihapus karena punya toko, punya riwayat pesanan — menghapusnya
-> akan merusak riwayat orang lain. Nonaktifkan saja.
+**Tidak pernah menolak karena jejak.** Yang menentukan caranya adalah database,
+dan hasilnya ada di kunci `cara`:
 
 ```ts
-await supabase.rpc('hapus_user', { p_user_id: id })
-// data: { ok: true, nama, email }
+const { data } = await supabase.rpc('hapus_user', { p_user_id: id })
+// data: { ok: true, cara: 'dihapus' | 'dianonimkan', nama, email }
 ```
 
-Juga menolak akun sendiri dan akun ber-`role = 'admin'` (turunkan dulu jadi
-member).
+| `cara` | Kapan | Yang terjadi |
+|---|---|---|
+| `dihapus` | akun belum meninggalkan jejak | barisnya benar-benar hilang dari `users` |
+| `dianonimkan` | akun pernah bertransaksi | nama jadi "Akun Dihapus", email diacak jadi `…@superfivemarket.invalid`, dan HP, alamat, rekening, angkatan, foto, catatan, semuanya dimusnahkan. Barisnya bertahan dalam keadaan nonaktif |
 
-Alasan syaratnya ada di skema: **semua foreign key ke `public.users` bertipe
-`NO ACTION`** — `toko.seller_id`, `pesanan.buyer_id`, `ulasan.buyer_id`,
+**Jangan menebak caranya dari sisi klien** — pakai `cara` dari nilai balik,
+karena jejaknya tidak selalu terlihat dari layar admin.
+
+Masih menolak: akun sendiri, superadmin, dan siapa pun yang bukan `member`
+(turunkan perannya dulu).
+
+#### Kenapa dianonimkan, bukan dihapus paksa
+
+**Semua foreign key ke `public.users` bertipe `NO ACTION`** —
+`toko.seller_id`, `pesanan.buyer_id`, `ulasan.buyer_id`,
 `chat.sender_id`/`receiver_id`, `refund.diproses_oleh`, dan empat kolom jejak
 admin di `users` sendiri (`diverifikasi_oleh`, `nonaktif_oleh`,
-`penjual_diputus_oleh`, `diminta_data_oleh`). Tidak ada CASCADE di mana pun,
-dan itu memang disengaja: menghapus anggota yang punya jejak akan merusak
-riwayat **orang lain**, bukan cuma riwayatnya sendiri.
+`penjual_diputus_oleh`, `diminta_data_oleh`).
 
-**Dua hal yang harus diingat pemanggilnya:**
+Jadi menghapus baris berjejak akan ditolak Postgres. Dan **memaksanya dengan
+CASCADE justru pilihan terburuk**: yang ikut lenyap adalah riwayat pesanan
+**pembeli lain** — persis bukti yang paling dibutuhkan kalau akun itu ternyata
+palsu. Anonimisasi memusnahkan data pribadinya tanpa menyentuh riwayat orang
+yang pernah bertransaksi dengannya.
 
-- `auth.users` **tidak ikut terhapus.** Orangnya masih bisa masuk dan akan
-  membuat profil baru. Penghapusan akun login harus lewat Supabase Dashboard →
-  Authentication → Users. UI wajib menyebutkan ini, kalau tidak admin mengira
-  pekerjaannya sudah selesai
-- Kalau ditolak, **tawarkan `nonaktifkan_user` sebagai gantinya.** Itu jalan
-  keluar yang benar untuk hampir semua kasus nyata, dan tanpa tawaran itu
-  admin buntu di dialog yang sama
+Jangan mengubah FK-nya jadi CASCADE untuk "merapikan" ini.
 
-#### ⚠ `hapus_user` GAGAL untuk semua input (per 15 Agustus 2026)
+#### `auth.users` tidak ikut terhapus
 
-Tombolnya sudah terpasang di [/admin](app/admin/page.tsx), tapi fungsinya
-belum bisa berhasil sekali pun. Tiga cacat, ketiganya di blok pemeriksa jejak,
-dan semuanya sudah dibuktikan dengan menjalankannya:
+Orangnya **masih bisa masuk** dan akan membuat profil baru. Penghapusan akun
+login harus lewat Supabase Dashboard → Authentication → Users. UI wajib
+menyebutkan ini di kedua jalur, kalau tidak admin mengira pekerjaannya sudah
+selesai.
 
-| Baris | Masalah |
-|---|---|
-| `v_jejak := v_jejak \|\| 'punya toko'` | menggabung `text` polos ke `text[]`; Postgres mencoba menafsirkannya sebagai literal array → `malformed array literal: "punya toko"` |
-| `FROM ulasan WHERE user_id = ...` | `ulasan` tidak punya kolom `user_id`, kolomnya `buyer_id` |
-| `FROM chat_pesan WHERE pengirim_id = ...` | tabel `chat_pesan` **tidak ada**; yang ada `chat` (`sender_id`, `receiver_id`) |
+#### Yang TIDAK menghalangi penghapusan
 
-Dua yang terakhir dijalankan untuk **setiap** pemanggilan, bukan hanya saat
-jejaknya ada, jadi tidak ada satu pun input yang bisa lolos.
-
-Perbaikannya (jalankan Inyo di SQL editor) — perhatikan `::text` dan nama
-tabel yang benar-benar dirujuk foreign key:
-
-```sql
-  v_jejak := ARRAY[]::text[];
-  IF EXISTS (SELECT 1 FROM toko    WHERE seller_id = p_user_id) THEN
-    v_jejak := v_jejak || 'punya toko'::text; END IF;
-  IF EXISTS (SELECT 1 FROM pesanan WHERE buyer_id  = p_user_id) THEN
-    v_jejak := v_jejak || 'punya riwayat pesanan'::text; END IF;
-  IF EXISTS (SELECT 1 FROM ulasan  WHERE buyer_id  = p_user_id) THEN
-    v_jejak := v_jejak || 'pernah menulis ulasan'::text; END IF;
-  IF EXISTS (SELECT 1 FROM chat
-              WHERE sender_id = p_user_id OR receiver_id = p_user_id) THEN
-    v_jejak := v_jejak || 'punya riwayat chat'::text; END IF;
-  IF EXISTS (SELECT 1 FROM refund  WHERE diproses_oleh = p_user_id) THEN
-    v_jejak := v_jejak || 'pernah memproses refund'::text; END IF;
-  IF EXISTS (SELECT 1 FROM users
-              WHERE diverifikasi_oleh    = p_user_id
-                 OR nonaktif_oleh        = p_user_id
-                 OR penjual_diputus_oleh = p_user_id
-                 OR diminta_data_oleh    = p_user_id) THEN
-    v_jejak := v_jejak || 'pernah memutuskan verifikasi orang lain'::text; END IF;
-```
-
-Dua pemeriksa terakhir **bukan tambahan pemanis** — `refund.diproses_oleh` dan
-keempat kolom jejak admin di `users` sama-sama punya FK `NO ACTION` ke
-`users`. Tanpa keduanya, menghapus bekas admin akan gagal dengan error
-Postgres mentah, bukan kalimat yang bisa dibaca admin.
-
-Perlu diketahui juga: `reviews`, `messages`, dan `conversations` **tidak**
-punya FK ke `public.users` — semuanya menunjuk `auth.users`. Jadi ulasan dan
-chat versi baru tidak memblokir penghapusan, dan barisnya akan tertinggal
-menunjuk profil yang sudah hilang. Kalau itu tidak diinginkan, yang perlu
-diubah FK-nya, bukan daftar pemeriksa di atas.
+`reviews`, `messages`, dan `conversations` **tidak** punya FK ke
+`public.users` — semuanya menunjuk `auth.users`. Jadi ulasan dan chat versi
+baru tidak ikut menentukan `cara`, dan barisnya akan tertinggal menunjuk
+profil yang sudah hilang atau sudah jadi "Akun Dihapus". Kalau itu tidak
+diinginkan, yang perlu diubah FK-nya — bukan isi `hapus_user`.
 
 ### `nonaktifkan_user` / `aktifkan_user` — hanya admin
 
@@ -1292,12 +1325,20 @@ Akun nonaktif hilang dari `alumni_publik` dan `pengguna_publik`, dan
 menonaktifkan diri sendiri dan admin aktif terakhir. Tombolnya ada di
 [/admin](app/admin/page.tsx), di daftar pengguna.
 
-### `is_admin()` dan `penjual_aktif(uuid)` — helper policy
+### Helper policy — `is_admin`, `is_superadmin`, `angkatan_yang_diampu`, `penjual_aktif`
 
-Dipakai **di dalam policy**, bukan dari aplikasi. Keduanya `SECURITY DEFINER`
-dan **sengaja punya EXECUTE untuk `anon`** — alasannya di
-[Temuan RLS](#temuan-rls-yang-akan-berulang). Di client cukup baca
-`users.role` milik sendiri.
+Dipakai **di dalam policy dan RPC**, bukan dari aplikasi. Keempatnya
+`SECURITY DEFINER` dan **sengaja punya EXECUTE untuk `anon`** — alasannya di
+[Temuan RLS](#temuan-rls-yang-akan-berulang): helper yang muncul di policy
+harus bisa dipanggil peran yang mengevaluasinya, dan tanpa itu yang terlihat
+bukan error melainkan halaman kosong.
+
+`is_superadmin` dan `angkatan_yang_diampu` belum dipakai policy mana pun hari
+ini — grant `anon`-nya sudah disiapkan untuk saat policy admin angkatan
+dipasang. Semuanya aman untuk `anon`: hasilnya false atau NULL.
+
+Di client jangan memanggil keempatnya; baca `users.role` milik sendiri dan
+pakai helper di [lib/peran.ts](lib/peran.ts).
 
 ## Trigger Otomatis
 
@@ -1482,19 +1523,28 @@ where table_schema='public' and table_name='nama_objek'
 
 ## ATURAN: Hak EXECUTE Fungsi Baru
 
-Empat belas fungsi boleh dipanggil pengguna login:
+Enam belas fungsi boleh dipanggil pengguna login:
 
 ```
 create_pesanan · ubah_status_pesanan · batalkan_pesanan
 ajukan_alumni · ajukan_jadi_penjual
 verifikasi_alumni · putuskan_penjual · minta_data_ulang
 nonaktifkan_user · aktifkan_user · hapus_user · ubah_peran
-is_admin · penjual_aktif
+is_admin · is_superadmin · angkatan_yang_diampu · penjual_aktif
 ```
 
-Dua di antaranya — **`is_admin` dan `penjual_aktif`** — juga punya EXECUTE
-untuk `anon`, dan itu **wajib**, bukan kelalaian. Alasannya di
+Empat di antaranya — **`is_admin`, `is_superadmin`, `angkatan_yang_diampu`,
+dan `penjual_aktif`** — juga punya EXECUTE untuk `anon`, dan itu **wajib**
+untuk helper policy, bukan kelalaian. Alasannya di
 [Temuan RLS](#temuan-rls-yang-akan-berulang). Sisanya `anon_bisa = false`.
+
+Jangan menyalin angka di atas kalau nanti ada fungsi baru — hitung ulang:
+
+```sql
+select count(*) filter (where has_function_privilege('authenticated', oid,'EXECUTE')) as auth,
+       count(*) filter (where has_function_privilege('anon', oid,'EXECUTE'))          as anon
+from pg_proc where pronamespace = 'public'::regnamespace and prokind = 'f';
+```
 
 Semua fungsi lain — fungsi trigger, `batalkan_pesanan_sistem`, dan
 `jalankan_tugas_pesanan` — tidak punya EXECUTE untuk `anon` maupun
@@ -1761,14 +1811,35 @@ Kalau butuh memastikan sesuatu di sisi data, pakai Supabase MCP untuk `SELECT`
   verifikasi untuk sekarang bersandar pada penilaian admin atas nama dan
   angkatan. Rinciannya di
   [Unggah bukti alumni DIMATIKAN SEMENTARA](#unggah-bukti-alumni-dimatikan-sementara-sejak-14-agustus-2026).
-- **⚠ `hapus_user` belum bisa berhasil sekali pun.** Tombolnya sudah ada di
-  [/admin](app/admin/page.tsx) dan menampilkan penolakannya dengan benar, tapi
-  yang muncul untuk sekarang selalu error Postgres mentah, bukan kalimat yang
-  dimaksud. Tiga cacat di blok pemeriksa jejaknya, beserta SQL perbaikannya,
-  ada di
-  [peringatan `hapus_user`](#-hapus_user-gagal-untuk-semua-input-per-15-agustus-2026).
-  Sampai diperbaiki, yang berfungsi hanya Nonaktifkan — dan dialognya memang
-  sudah menawarkan itu sebagai jalan keluar.
+- **⚠ Admin angkatan belum bisa melihat pendaftar apa pun.** `users` tidak
+  punya policy untuknya: `users_admin_all` memakai `is_admin()` yang memang
+  tidak memuat `admin_angkatan`, dan `users_select_own` hanya barisnya
+  sendiri. Sudah diuji dengan `set local role authenticated` memakai akun
+  ber-peran `admin_angkatan` — yang terbaca **1 baris**, yaitu dirinya
+  sendiri, dan antrean verifikasinya 0.
+
+  Akibatnya [/admin/verifikasi](app/admin/verifikasi/page.tsx) selalu kosong
+  untuk mereka, dan `verifikasi_alumni` yang sudah menerima mereka tidak akan
+  pernah terpanggil dari UI. Penyaringan di klien tidak menolong — datanya
+  memang tidak sampai.
+
+  Dua jalan keluar, keduanya urusan Inyo:
+
+  ```sql
+  -- (a) policy SELECT, mengikuti pola helper SECURITY DEFINER
+  create policy users_select_admin_angkatan on public.users
+  for select using (
+    angkatan_yang_diampu() is not null
+    and angkatan = angkatan_yang_diampu()
+  );
+  ```
+
+  Perlu diperhatikan sebelum memilih (a): policy tidak bisa membatasi kolom,
+  jadi admin angkatan akan ikut bisa membaca `bank_rekening`, alamat, dan
+  nomor HP seangkatannya. Kalau itu tidak diinginkan, **(b)** RPC
+  `antrean_alumni_saya()` yang `SECURITY DEFINER` dan hanya mengembalikan
+  kolom yang dibutuhkan panel — lebih sempit, dan tidak menyentuh RLS sama
+  sekali.
 - **`toko_insert_own` masih memeriksa sumbu lama** (`status_verifikasi =
   'terverifikasi'`), bukan `status_penjual = 'aktif'`. Untuk sekarang pagarnya
   ditegakkan di klien ([/produk/tambah](app/produk/tambah/page.tsx)), yang
