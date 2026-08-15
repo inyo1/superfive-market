@@ -37,7 +37,6 @@ function namaTerlihatBelumLengkap(nama: string, email: string) {
 
 export default function VerifikasiPage() {
   const router = useRouter()
-  const [userId, setUserId] = useState<string | null>(null)
   const [email, setEmail] = useState('')
   const [status, setStatus] = useState<string | null>(null)
   const [alasanTolak, setAlasanTolak] = useState<string | null>(null)
@@ -58,7 +57,6 @@ export default function VerifikasiPage() {
         return
       }
 
-      setUserId(user.id)
       setEmail(user.email ?? '')
 
       const { data } = await supabase
@@ -86,26 +84,23 @@ export default function VerifikasiPage() {
     // nama yang justru benar.
     if (!nama.trim()) { setPesan({ text: 'Isi dulu nama lengkapmu.', ok: false }); return }
     if (!angkatan) { setPesan({ text: 'Pilih dulu angkatanmu.', ok: false }); return }
-    if (!userId) return
 
     setMengirim(true)
     try {
-      // Nama disimpan lebih dulu, baru pengajuannya dikirim. `nama` kolom
-      // biasa — tidak dijaga jaga_field_sensitif — jadi memang lewat UPDATE
-      // langsung, bukan lewat RPC.
-      const { error: errNama } = await supabase
-        .from('users')
-        .update({ nama: nama.trim() })
-        .eq('id', userId)
-      if (errNama) throw new Error('Gagal menyimpan nama: ' + errNama.message)
-
-      // Semua aturannya ada di dalam RPC — termasuk angkatan yang masuk akal
-      // dan larangan mengajukan dua kali. UI tidak mengulang validasinya,
-      // cukup menampilkan error.message apa adanya.
+      // Nama ikut dikirim ke RPC, BUKAN di-UPDATE terpisah lebih dulu. Dua
+      // permintaan REST tidak punya transaksi bersama, jadi cara lama bisa
+      // meninggalkan nama yang sudah berubah tanpa pengajuan yang menyertainya.
+      //
+      // Semua aturannya ada di dalam RPC — angkatan yang masuk akal, nama tidak
+      // kosong, dan larangan mengajukan dua kali. UI tidak mengulang
+      // validasinya, cukup menampilkan error.message apa adanya.
       const { error } = await supabase.rpc('ajukan_alumni', {
         p_angkatan: parseInt(angkatan),
         p_catatan: catatan.trim() || null,
+        p_nama: nama.trim(),
       })
+      // Sengaja tidak ada reset state di jalur gagal: yang sudah diketik tetap
+      // di formulir supaya orangnya tinggal membetulkan lalu kirim lagi.
       if (error) throw new Error(error.message)
 
       setStatus('menunggu')

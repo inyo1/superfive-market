@@ -101,6 +101,7 @@ function AuthContent() {
         await supabase.rpc('ajukan_alumni', {
           p_angkatan: parseInt(angkatan),
           p_catatan: null,
+          p_nama: nama.trim(),
         })
       }
       setRegistered(true)
