@@ -97,12 +97,16 @@ const fmtTgl = tanggalPeristiwa
 
 // Tanggal pesanan ditutup sendiri oleh tugas harian kalau pembeli tidak
 // pernah mengonfirmasi. Perkiraan, karena tugasnya berjalan sekali sehari.
+//
+// Waktunya ditambah sebagai selisih murni, bukan lewat setDate(): setDate
+// menghitung dalam kalender peramban, sedangkan yang dihitung server adalah
+// `dikirim_at + 6 hari` sebagai interval, lalu dinilai dalam WIB. Hasilnya
+// diformat tanggalPeristiwa yang juga WIB, jadi keduanya sekalender.
 function batasOtomatis(dikirimAt: string | null): string | null {
   if (!dikirimAt) return null
-  const d = new Date(dikirimAt)
-  if (isNaN(d.getTime())) return null
-  d.setDate(d.getDate() + HARI_SELESAI_OTOMATIS)
-  return fmtTgl(d.toISOString())
+  const mulai = new Date(dikirimAt).getTime()
+  if (isNaN(mulai)) return null
+  return fmtTgl(new Date(mulai + HARI_SELESAI_OTOMATIS * 86_400_000))
 }
 
 export default function PesananPage() {
