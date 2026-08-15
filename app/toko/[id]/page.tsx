@@ -11,7 +11,7 @@ import { useToast } from '../../context/ToastContext'
 import Skeleton, { GridSkeletonProduk } from '../../components/Skeleton'
 import BadgeAngkatan from '../../components/BadgeAngkatan'
 import BadgeOfficial from '../../components/BadgeOfficial'
-import Image from 'next/image'
+import LogoInilima from '../../components/LogoInilima'
 import { useTampilSkeleton } from '../../hooks/useSkeleton'
 import BadgePreorder, { WARNA_PO_TUA } from '../../components/BadgePreorder'
 import { janjiKirim } from '../../../lib/preorder'
@@ -233,14 +233,10 @@ export default function TokoPage() {
             borderRadius: '14px', padding: '22px 20px', marginBottom: '12px',
             display: 'flex', alignItems: 'center', gap: '18px', flexWrap: 'wrap',
           }}>
-            <Image
-              src="/LOGO-512.png"
-              alt="INILIMA"
-              width={92}
-              height={92}
-              priority
-              style={{ objectFit: 'contain', flexShrink: 0 }}
-            />
+            {/* Logo IniLima, BUKAN logo Superfive: yang diwakili spanduk ini
+                komunitas pemilik tokonya, bukan platform tempat tokonya
+                berdiri. Tanpa bingkai — lencananya sudah bercincin sendiri. */}
+            <LogoInilima lebar={92} prioritas />
             <div style={{ flex: 1, minWidth: '180px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '6px' }}>
                 <span style={{

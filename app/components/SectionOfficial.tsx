@@ -1,11 +1,11 @@
 'use client'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
 import { supabase } from '../../lib/supabase'
 import { useTampilSkeleton } from '../hooks/useSkeleton'
 import FotoProduk from './FotoProduk'
 import BadgeOfficial from './BadgeOfficial'
+import LogoInilima from './LogoInilima'
 import { SkeletonKartuProduk } from './Skeleton'
 
 const EMAS = '#EF9F27'
@@ -363,38 +363,6 @@ export default function SectionOfficial() {
         )}
       </div>
     </section>
-  )
-}
-
-/**
- * Logo IniLima — lencana bundar putih bercincin abu, 512×512 RGBA.
- *
- * Yang transparan hanya putih di luar lingkaran; putih di DALAM lencana
- * sengaja dipertahankan karena itu bagian desainnya. Jadi yang tayang adalah
- * cakram putih di atas biru tua, terbaca seperti stempel resmi — itu memang
- * yang dimaksud.
- *
- * JANGAN menambahkan bingkai, lingkaran, atau bayangan apa pun di sini:
- * logonya sudah punya cincinnya sendiri, dan tambahan apa pun akan jadi
- * cincin kedua.
- *
- * `object-fit: contain` menjaga rasionya — tidak pernah melar maupun
- * terpotong berapa pun lebar kolomnya.
- */
-function LogoInilima({ lebar }: { lebar: number | string }) {
-  return (
-    <Image
-      src="/logo-inilima.png"
-      alt="Logo IniLima — Alumni SMPN 5 Bandung"
-      width={200}
-      height={200}
-      unoptimized
-      style={{
-        width: typeof lebar === 'number' ? `${lebar}px` : lebar,
-        height: 'auto', maxWidth: '100%',
-        objectFit: 'contain', flexShrink: 0,
-      }}
-    />
   )
 }
 
