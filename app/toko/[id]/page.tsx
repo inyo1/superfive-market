@@ -23,6 +23,7 @@ type Toko = {
   nama_toko: string
   kategori: string
   deskripsi?: string
+  foto_toko?: string | null
   is_official?: boolean
   users: {
     nama: string | null
@@ -267,13 +268,27 @@ export default function TokoPage() {
           border: resmi ? `0.5px solid rgba(239,159,39,0.45)` : undefined,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '14px' }}>
+            {/* Urutannya: foto toko sendiri kalau ada, lalu logo IniLima
+                untuk toko resmi, lalu emoji kategori. Bintang sebelumnya
+                cuma penampung kosong — toko resmi punya lencananya sendiri,
+                jadi itu yang dipakai. */}
             <div style={{
-              width: '60px', height: '60px', borderRadius: '50%',
+              width: '60px', height: '60px', borderRadius: '50%', overflow: 'hidden',
               background: resmi ? 'rgba(239,159,39,0.18)' : 'rgba(255,255,255,0.15)',
               border: resmi ? `1px solid ${EMAS}` : undefined,
               display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', flexShrink: 0,
             }}>
-              {resmi ? '★' : emojiKategori(toko.kategori, '🏪')}
+              {toko.foto_toko ? (
+                <img
+                  src={toko.foto_toko}
+                  alt={`Foto ${toko.nama_toko}`}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              ) : resmi ? (
+                <LogoInilima lebar={60} />
+              ) : (
+                emojiKategori(toko.kategori, '🏪')
+              )}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               {editMode ? (
