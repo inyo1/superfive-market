@@ -49,21 +49,83 @@ function useCountUp(target: number, duration = 900) {
   return count
 }
 
-// Satu angka di baris statistik. Bentuknya sengaja tipis — bukan kartu tebal
-// dengan latar dan garis — karena barisnya berdiri di atas latar terang tepat
-// di bawah hero, dan tugasnya cuma menyebut angka.
-function Statistik({ label, value, icon }: { label: string; value: number; icon: string }) {
+// Ikon statistik digambar inline sebagai SVG garis, bukan emoji. Emoji
+// dirender lain-lain di tiap sistem operasi dan warnanya tidak bisa diatur —
+// "🏪" misalnya muncul sebagai minimarket lengkap dengan tulisan 24H, yang
+// sama sekali bukan toko alumni. Ini juga sebabnya tidak ada pustaka ikon
+// ditambahkan: tiga bentuk sederhana tidak sepadan dengan satu dependensi.
+
+const IKON = {
+  strokeWidth: 1.5,
+  strokeLinecap: 'round' as const,
+  strokeLinejoin: 'round' as const,
+  fill: 'none',
+  stroke: 'currentColor',
+  width: 24,
+  height: 24,
+  viewBox: '0 0 24 24',
+  'aria-hidden': true,
+}
+
+/** Paket sederhana — kotak dengan lipatan tutup dan sambungan tengah */
+function IkonProduk() {
+  return (
+    <svg {...IKON}>
+      <path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5v-9Z" />
+      <path d="m3 7.5 9 4.5 9-4.5" />
+      <path d="M12 12v9" />
+    </svg>
+  )
+}
+
+/** Etalase toko — atap tenda dan pintu, tanpa tulisan apa pun */
+function IkonToko() {
+  return (
+    <svg {...IKON}>
+      <path d="M4 10v9a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-9" />
+      <path d="M3 10 4.7 5.3a1 1 0 0 1 .95-.65h12.7a1 1 0 0 1 .95.65L21 10Z" />
+      <path d="M9.5 20v-5.5h5V20" />
+    </svg>
+  )
+}
+
+/** Topi wisuda */
+function IkonAlumni() {
+  return (
+    <svg {...IKON}>
+      <path d="M12 3.5 2.5 8.2 12 13l9.5-4.8L12 3.5Z" />
+      <path d="M6.5 10.6V15c0 1.7 2.5 3 5.5 3s5.5-1.3 5.5-3v-4.4" />
+      <path d="M21.5 8.2v5" />
+    </svg>
+  )
+}
+
+// Satu blok angka. Angkanya yang jadi bintang — ikonnya lebih kecil dan lebih
+// pudar, karena ia penunjuk, bukan hiasan utama.
+function Statistik({ label, value, ikon }: { label: string; value: number; ikon: React.ReactNode }) {
   const count = useCountUp(value)
   return (
-    <div style={{ flex: 1, textAlign: 'center', minWidth: 0 }}>
-      <div style={{ fontSize: '15px', lineHeight: 1, marginBottom: '5px' }}>{icon}</div>
-      <div style={{ fontSize: '20px', fontWeight: '800', color: '#0C447C', lineHeight: 1 }}>
+    <div style={{
+      flex: 1, minWidth: 0, textAlign: 'center',
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+    }}>
+      <div style={{ color: '#8fb3d4', marginBottom: '10px', lineHeight: 0 }}>
+        {ikon}
+      </div>
+      <div style={{
+        fontSize: '30px', fontWeight: '800', color: '#0C447C',
+        lineHeight: 1, letterSpacing: '-0.5px',
+        // Angka berubah saat animasi hitung naik; tabular-nums menjaga lebarnya
+        // tetap sehingga ketiganya tidak bergeser-geser
+        fontVariantNumeric: 'tabular-nums',
+      }}>
         {count}
       </div>
       <div style={{
-        fontSize: '10px', color: '#5a7da0', marginTop: '3px',
-        textTransform: 'uppercase', letterSpacing: '0.8px',
+        fontSize: '10px', color: '#5a7da0', marginTop: '8px',
+        textTransform: 'uppercase', letterSpacing: '1.2px', fontWeight: '600',
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        maxWidth: '100%',
       }}>
         {label}
       </div>
@@ -221,22 +283,26 @@ export default function Home() {
       </div>
 
       {/* ── Statistik ──
-          Section tipis sendiri, tepat di bawah hero. Latarnya putih supaya
-          jelas terpisah dari hero yang biru tua.
+          Section sendiri tepat di bawah hero, berlatar putih supaya jelas
+          terpisah dari hero yang biru tua.
 
-          Tiga kolom sejajar di lebar berapa pun — `flex` tanpa `flexWrap`,
-          jadi tidak pernah menumpuk ke bawah di HP. Angkanya kecil-kecil,
-          jadi tiga kolom masih lega bahkan di layar tersempit. */}
-      <div style={{ background: '#fff', borderBottom: '0.5px solid #e8f0f8' }}>
-        <div style={{
-          maxWidth: '700px', margin: '0 auto', padding: '14px 16px',
-          display: 'flex', alignItems: 'center', gap: '8px',
-        }}>
-          <Statistik label="Produk" value={stats.produk} icon="📦" />
-          <span aria-hidden style={{ width: '1px', alignSelf: 'stretch', background: '#e8f0f8', flexShrink: 0 }} />
-          <Statistik label="Toko"   value={stats.toko}   icon="🏪" />
-          <span aria-hidden style={{ width: '1px', alignSelf: 'stretch', background: '#e8f0f8', flexShrink: 0 }} />
-          <Statistik label="Alumni" value={stats.alumni} icon="🎓" />
+          Ketiganya duduk di satu wadah biru muda bersudut membulat, TANPA
+          garis pemisah vertikal. Garis itu yang dulu membuat barisnya kaku —
+          jaraklah yang memisahkan di sini, bukan garis.
+
+          Tiga kolom sejajar di lebar berapa pun: `flex` tanpa `flexWrap`,
+          jadi tidak pernah menumpuk ke bawah di HP. */}
+      <div style={{ background: '#fff' }}>
+        <div style={{ maxWidth: '700px', margin: '0 auto', padding: '18px 16px 22px' }}>
+          <div style={{
+            background: '#E6F1FB', borderRadius: '16px',
+            padding: '22px 12px',
+            display: 'flex', alignItems: 'flex-start', gap: '8px',
+          }}>
+            <Statistik label="Produk" value={stats.produk} ikon={<IkonProduk />} />
+            <Statistik label="Toko"   value={stats.toko}   ikon={<IkonToko />} />
+            <Statistik label="Alumni" value={stats.alumni} ikon={<IkonAlumni />} />
+          </div>
         </div>
       </div>
 
