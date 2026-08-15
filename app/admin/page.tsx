@@ -124,9 +124,8 @@ export default function AdminPage() {
   // karena jaga_field_sensitif melewatkan siapa pun yang is_admin() — artinya
   // tidak ada satu pun aturan yang menahannya. Akibatnya sudah terjadi: satu
   // admin turun jadi member dan Superfive nyaris kehabisan admin.
-  async function toggleRole(u: UserRow) {
-    if (busyId) return
-    const peranBaru = u.role === 'admin' ? 'member' : 'admin'
+  async function ubahPeran(u: UserRow, peranBaru: Peran) {
+    if (busyId || peranBaru === u.role) return
     setBusyId(u.id)
     try {
       const { error } = await supabase.rpc('ubah_peran', {
@@ -138,7 +137,7 @@ export default function AdminPage() {
       if (error) throw new Error(error.message)
 
       setUsers(prev => prev.map(x => x.id === u.id ? { ...x, role: peranBaru } : x))
-      showPesan(`${u.email} → ${peranBaru}`, true)
+      showPesan(`${u.email} → ${labelPeran(peranBaru, u.angkatan)}`, true)
     } catch (e) {
       showPesan(e instanceof Error ? e.message : 'Gagal mengubah peran', false)
     } finally {
@@ -531,26 +530,49 @@ export default function AdminPage() {
                         </span>
                       )
                     })()}
-                    {/* Menurunkan diri sendiri ditolak database, jadi tombolnya
-                        tidak perlu ada — yang pasti gagal cuma jadi jebakan */}
-                    {u.id === adminId && u.role === 'admin' ? (
-                      <span style={{ fontSize: '10px', color: '#9ab4cc' }}>akun kamu</span>
-                    ) : (
-                      <button
-                        onClick={() => toggleRole(u)}
-                        disabled={busyId === u.id}
-                        style={{
-                          fontSize: '11px', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer',
-                          border: '0.5px solid',
-                          borderColor: u.role === 'admin' ? '#f09595' : '#a5d6a7',
-                          background: u.role === 'admin' ? '#fce4e4' : '#e8f5e9',
-                          color: u.role === 'admin' ? '#c62828' : '#2e7d32',
-                          opacity: busyId === u.id ? 0.5 : 1,
-                        }}
-                      >
-                        {u.role === 'admin' ? '↓ Jadikan Member' : '↑ Jadikan Admin'}
-                      </button>
-                    )}
+                    {/* Kontrol peran hanya muncul kalau memang bisa berhasil.
+                        Yang ditolak database — akun sendiri, superadmin, dan
+                        admin umum di tangan yang bukan superadmin — tidak
+                        ditawarkan sama sekali. */}
+                    {(() => {
+                      if (u.id === adminId) {
+                        return <span style={{ fontSize: '10px', color: '#9ab4cc' }}>akun kamu</span>
+                      }
+                      // Superadmin adalah titik pulih terakhir Superfive;
+                      // perannya tidak bisa disentuh dari aplikasi
+                      if (u.role === 'superadmin') return null
+                      if (u.role === 'admin_umum' && !isSuperadmin(peranSaya)) return null
+
+                      const opsi: Peran[] = ['member']
+                      // Admin angkatan wajib punya angkatan — kalau kosong,
+                      // pilihannya pasti ditolak, jadi jangan ditampilkan
+                      if (u.angkatan) opsi.push('admin_angkatan')
+                      if (isSuperadmin(peranSaya)) opsi.push('admin_umum')
+
+                      return (
+                        <select
+                          value={u.role}
+                          onChange={e => ubahPeran(u, e.target.value as Peran)}
+                          disabled={busyId === u.id}
+                          aria-label={`Peran ${u.email}`}
+                          style={{
+                            fontSize: '11px', padding: '4px 8px', borderRadius: '6px',
+                            border: '0.5px solid #c5d9ef', background: '#fff', color: '#0C447C',
+                            cursor: busyId === u.id ? 'not-allowed' : 'pointer',
+                            opacity: busyId === u.id ? 0.5 : 1, maxWidth: '160px',
+                          }}
+                        >
+                          {opsi.map(p => (
+                            <option key={p} value={p}>{labelPeran(p, u.angkatan)}</option>
+                          ))}
+                          {/* Peran sekarang harus selalu ada di daftar, kalau
+                              tidak select-nya tampil kosong */}
+                          {!opsi.includes(u.role as Peran) && (
+                            <option value={u.role}>{labelPeran(u.role, u.angkatan)}</option>
+                          )}
+                        </select>
+                      )
+                    })()}
 
                     {/* Dua aksi berbeda, sengaja tidak digabung: yang satu bisa
                         dibatalkan, yang satu selamanya. Keduanya tidak
