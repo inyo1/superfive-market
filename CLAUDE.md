@@ -1021,13 +1021,38 @@ SMPN 5 Bandung".
 const { error } = await supabase.rpc('ajukan_alumni', {
   p_angkatan: 2015,
   p_catatan:  catatan || null,   // opsional
+  p_nama:     nama.trim(),       // opsional; NULL = nama lama dipertahankan
 })
 // data: { ok: true, status: 'menunggu' }
 ```
 
-Menolak kalau sudah `alumni`, sudah `menunggu`, akunnya nonaktif, atau
-angkatannya tidak masuk akal (< 1950 atau melebihi tahun berjalan). Kolom
-`angkatan` diisi RPC ini, jadi UI tidak perlu menulisnya terpisah.
+Menolak kalau sudah `alumni`, sudah `menunggu`, akunnya nonaktif, angkatannya
+tidak masuk akal (< 1950 atau melebihi tahun berjalan), atau `p_nama` dikirim
+tapi isinya spasi belaka ("Nama tidak boleh kosong"). Kolom `angkatan` dan
+`nama` diisi RPC ini, jadi UI **tidak boleh** menulisnya terpisah.
+
+**Bentuk namanya sengaja tidak divalidasi di server**, dan jangan ditambahkan.
+Banyak orang Indonesia bernama satu kata; aturan "harus dua kata" akan menolak
+nama yang justru benar. Yang menilai kelayakannya admin, dibantu peringatan
+lembut di [/verifikasi](app/verifikasi/page.tsx) — peringatan yang **tidak
+memblokir** apa pun.
+
+#### Kenapa `p_nama` ikut masuk ke sini
+
+Versi lama halaman verifikasi meng-UPDATE `users.nama` lebih dulu, baru
+memanggil RPC-nya. Dua permintaan REST, dan **dua permintaan REST tidak punya
+transaksi bersama** — kalau yang kedua ditolak (angkatan salah, sudah pernah
+mengajukan), namanya sudah terlanjur berubah tanpa pengajuan yang
+menyertainya.
+
+Versi dua parameternya sudah dibuang dari database, jadi tidak ada jalan
+kembali ke pola lama.
+
+Satu hal yang ikut hilang saat digabung dan perlu diganti dari sisi lain:
+menyimpan nama duluan dulunya menjamin nama yang sudah dibetulkan tidak
+lenyap saat RPC gagal. Sekarang jaminannya datang dari klien — **jalur gagal
+tidak boleh me-reset state formulir**, supaya yang sudah diketik tetap ada
+dan tinggal dikirim ulang.
 
 ### `ajukan_jadi_penjual` — pengguna sendiri
 
@@ -1215,6 +1240,35 @@ if (!user) {
   return
 }
 ```
+
+## ATURAN: Satu Tindakan Pengguna = Satu Permintaan
+
+**Kalau satu tindakan pengguna menulis ke lebih dari satu tempat, jangan
+dipecah jadi beberapa permintaan dari klien — gabungkan ke satu RPC.**
+
+Tiap permintaan REST berjalan di transaksinya sendiri. Dua permintaan berurutan
+**tidak punya transaksi bersama**, jadi yang pertama bisa berhasil sementara
+yang kedua gagal, dan tidak ada apa pun yang menggulung balik yang pertama.
+Yang tertinggal adalah keadaan setengah jadi yang tidak pernah dimaksudkan
+siapa pun — dan biasanya baru ketahuan lama kemudian, karena tidak ada error
+di mana-mana.
+
+Sudah terjadi dua kali di project ini, keduanya dengan pola yang sama:
+
+| Dulu | Sekarang |
+|---|---|
+| insert `pesanan`, lalu insert `pesanan_items` dari klien | `create_pesanan` — gagal di tengah = rollback total |
+| UPDATE `users.nama`, lalu `ajukan_alumni` | `ajukan_alumni(p_angkatan, p_catatan, p_nama)` |
+
+Kalau menambahkan RPC gabungan seperti ini, ingat dua hal yang menyertainya:
+
+- **Pasang penanda `superfive.lewat_rpc`** kalau ia menulis kolom terjaga,
+  lihat [aturannya](#aturannya-tanpa-pengecualian)
+- **Pikirkan apa yang hilang saat digabung.** Memecah dua permintaan kadang
+  punya alasan yang benar — pada kasus nama, UPDATE duluan menjamin nama yang
+  sudah dibetulkan tidak lenyap kalau langkah kedua ditolak. Jaminan itu tidak
+  boleh ikut hilang; ia hanya pindah tempat, ke klien yang tidak me-reset
+  state formulirnya di jalur gagal
 
 ## ATURAN: Jangan `git add -A`
 
