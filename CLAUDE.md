@@ -408,20 +408,23 @@ Teknologi · Fashion · Kuliner · Properti · Jasa · UMKM
 
 Enam nilai ini dikunci database di **dua kolom sekaligus**: `produk.kategori`
 dan `toko.kategori`, keduanya NOT NULL dengan CHECK yang membatasi ke daftar
-di atas. Daftar yang sama juga tertulis di klien, di **empat berkas**:
+di atas. Di klien, daftarnya ada di **satu tempat**: konstanta `KATEGORI` di
+[lib/kategori.ts](lib/kategori.ts).
 
-| Berkas | Bentuk |
-|---|---|
-| [app/produk/tambah/page.tsx](app/produk/tambah/page.tsx) | pemilih di form tambah |
-| [app/dashboard/page.tsx](app/dashboard/page.tsx) | `kategoris`, pemilih di form edit |
-| [app/toko/saya/page.tsx](app/toko/saya/page.tsx) | pemilih di form edit kedua |
-| [app/produk/page.tsx](app/produk/page.tsx) | `kategoris`, penyaring etalase (ditambah `'semua'`) |
+**Menambah atau mengganti kategori harus mengubah keduanya bersamaan.** Kalau
+hanya konstantanya, penjual bisa memilih nilai yang ditolak CHECK dan yang
+muncul bunyi constraint Postgres, bukan kalimat. Kalau hanya CHECK-nya,
+kategori barunya tidak akan pernah bisa dipilih siapa pun.
 
-**Menambah atau mengganti kategori harus mengubah database dan keempat berkas
-itu bersamaan.** Kalau hanya klien yang diubah, penjual bisa memilih nilai
-yang ditolak CHECK dan yang muncul bunyi constraint Postgres, bukan kalimat.
-Kalau hanya database yang diubah, kategori barunya tidak akan pernah bisa
-dipilih siapa pun.
+Tipe `Kategori` diturunkan dari konstanta itu (`as const` + `typeof [number]`),
+jadi salah ketik di kode ditolak `tsc` — tidak perlu menunggu ditolak Postgres.
+Jangan menulis ulang daftarnya sebagai literal di mana pun; impor
+konstantanya.
+
+Satu yang sengaja **tidak** ikut: `'semua'` di penyaring etalase
+[/produk](app/produk/page.tsx). Itu keadaan penyaring, bukan kategori, dan
+kalau ikut masuk konstanta ia akan terbawa saat orang membandingkan daftarnya
+dengan CHECK.
 
 Pasangan yang sama sifatnya dengan `trg_kurangi_stok` dan
 `trg_kembalikan_stok` — dua tempat yang harus selalu sepakat, dan yang
@@ -433,10 +436,9 @@ Dua hal turunannya, keduanya sudah terpasang:
   `-- Pilih Kategori --`, sama seperti pemilih status barang di
   [EditorPreorder](app/components/EditorPreorder.tsx). Tidak boleh ada produk
   berkategori Teknologi hanya karena itu kebetulan huruf paling awal
-- **Ketiga form menolak kategori kosong sebelum menyimpan**, supaya yang
-  terlihat penjual kalimat, bukan bunyi CHECK. Ada **tiga** form produk, dan
-  ini gampang terlewat: form tambah, form edit di dashboard, dan form edit
-  kedua di `/toko/saya`
+- **Ketiga form produk menolak kategori kosong sebelum menyimpan**, supaya
+  yang terlihat penjual kalimat, bukan bunyi CHECK. Ketiganya didaftar di
+  [Tiga form produk](#tiga-form-produk-yang-harus-selalu-diperiksa-bersamaan)
 
 `urutan` hanya bermakna untuk toko resmi — itu yang menentukan susunan carousel
 merchandise di beranda. `is_unggulan` ada di skema tapi belum dipakai UI mana pun.
@@ -1958,6 +1960,30 @@ npm run lint
 Kalau butuh memastikan sesuatu di sisi data, pakai Supabase MCP untuk `SELECT`
 — jangan menghidupkan server untuk itu.
 
+## Tiga form produk yang harus selalu diperiksa bersamaan
+
+**Produk yang sama bisa diedit dari tiga tempat berbeda**, dan logikanya
+disalin, bukan dibagi:
+
+| Halaman | Peran |
+|---|---|
+| [/produk/tambah](app/produk/tambah/page.tsx) | membuat produk, sekalian membuat toko kalau penjual belum punya |
+| [/dashboard](app/dashboard/page.tsx) | modal edit, lengkap dengan varian dan isian PO |
+| [/toko/saya](app/toko/saya/page.tsx) | modal edit kedua, lebih ringkas — tanpa varian dan tanpa PO |
+
+**Siapa pun yang mengubah aturan produk wajib memeriksa ketiganya.** Ini bukan
+kehati-hatian berlebihan: saat kategori dibuat wajib, dua yang pertama
+diperbaiki dan `/toko/saya` terlewat — cacatnya baru ketahuan setelah database
+mengunci kolomnya, dan yang akan dilihat penjual adalah bunyi CHECK constraint.
+
+Yang sudah harus sama di ketiganya hari ini: kategori wajib dan tanpa nilai
+awal. Yang **belum** sama, dan memang begitu adanya: `/toko/saya` tidak
+menyunting varian maupun PO, jadi penjual yang mengedit dari sana tidak bisa
+mengubah keduanya — hanya dari dashboard.
+
+Menyatukan ketiganya jadi satu komponen form adalah pekerjaan tersendiri;
+lihat [Utang Teknis](#utang-teknis-yang-diketahui).
+
 ## Utang Teknis yang Diketahui
 
 - **Sisa lint.** `npm run lint` masih melaporkan sekitar 40 error dan 25
@@ -1965,6 +1991,22 @@ Kalau butuh memastikan sesuatu di sisi data, pakai Supabase MCP untuk `SELECT`
   beberapa `set-state-in-effect` (Navbar, chat, SearchOverlay, useSkeleton),
   dan `Cannot create components during render` di Navbar. Jangan dikerjakan
   sepotong — kerjakan sekaligus dalam satu pekerjaan tersendiri.
+- **Tiga form produk yang logikanya disalin.** `/produk/tambah`, modal edit di
+  `/dashboard`, dan modal edit kedua di `/toko/saya` sama-sama menyunting
+  produk, dengan aturan yang ditulis ulang di masing-masing. Sudah memakan
+  korban sekali: cacat kategori muncul di ketiganya dan yang di `/toko/saya`
+  terlewat saat diperbaiki. **Jangan dikerjakan sepotong** — menyatukannya
+  menyentuh tiga halaman sekaligus, dan tidak ada yang rusak hari ini.
+  Sampai itu terjadi, aturannya ada di
+  [Tiga form produk](#tiga-form-produk-yang-harus-selalu-diperiksa-bersamaan):
+  siapa pun yang mengubah aturan produk memeriksa ketiganya.
+- **Peta emoji kategori disalin di delapan berkas** — `FotoProduk`,
+  `SearchOverlay`, `checkout`, `keranjang`, `toko/saya`, `toko/[id]`,
+  `produk/[id]`, `admin`, ditambah bentuk lain di `page.tsx`. Isinya enam
+  kunci yang sama dengan `KATEGORI`, tapi tidak ikut ditarik ke
+  [lib/kategori.ts](lib/kategori.ts) saat daftarnya disatukan. Akibatnya
+  menambah kategori ketujuh tetap menyentuh sembilan berkas, meski daftarnya
+  sendiri sudah satu tempat. Pekerjaan kecil, tapi berdiri sendiri.
 - Tabel `ulasan` dan `chat` sudah tidak terpakai tapi belum dihapus.
 - **Antrean refund belum punya panel admin.** Barisnya tercipta sendiri saat
   pesanan lunas dibatalkan, pembeli dan penjual bisa melihat statusnya, tapi
