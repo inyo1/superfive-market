@@ -8,6 +8,7 @@ import Navbar from '../../components/Navbar'
 import Skeleton, { SkeletonPanel } from '../../components/Skeleton'
 import { useTampilSkeleton } from '../../hooks/useSkeleton'
 import { adminPenuh } from '../../../lib/peran'
+import { tanggalPeristiwa } from '../../../lib/format'
 
 // Panel pengajuan penjual — sengaja terpisah dari /admin/verifikasi.
 // Dua urusan berbeda: yang satu memutuskan siapa alumni, yang ini memutuskan
@@ -53,10 +54,7 @@ const LABEL_ALUMNI: Record<string, { teks: string; warna: string; latar: string 
   umum:     { teks: 'Belum mengaku alumni', warna: '#5a7da0', latar: '#f0f5fb' },
 }
 
-function fmtTgl(s: string | null) {
-  if (!s) return '-'
-  return new Date(s).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
-}
+const fmtTgl = tanggalPeristiwa
 
 function Avatar({ nama, url, size = 48 }: { nama: string | null; url: string | null; size?: number }) {
   const initial = nama

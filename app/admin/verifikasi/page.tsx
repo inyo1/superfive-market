@@ -9,6 +9,7 @@ import Navbar from '../../components/Navbar'
 import Skeleton, { SkeletonPanel } from '../../components/Skeleton'
 import { useTampilSkeleton } from '../../hooks/useSkeleton'
 import { bolehVerifikasiAlumni, adminPenuh, type Peran } from '../../../lib/peran'
+import { tanggalPeristiwa } from '../../../lib/format'
 
 type Pendaftar = {
   id: string
@@ -41,9 +42,7 @@ const LABEL_TAB: Record<Tab, string> = {
   ditolak: 'Ditolak',
 }
 
-function fmtTgl(s: string) {
-  return new Date(s).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
-}
+const fmtTgl = tanggalPeristiwa
 
 function Avatar({ nama, url, size = 48 }: { nama: string | null; url: string | null; size?: number }) {
   const initials = nama

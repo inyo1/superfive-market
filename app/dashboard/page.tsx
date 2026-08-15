@@ -13,7 +13,7 @@ import InputHarga from '../components/InputHarga'
 import DialogKonfirmasi from '../components/DialogKonfirmasi'
 import Tombol from '../components/Tombol'
 import { useTampilSkeleton } from '../hooks/useSkeleton'
-import { keAngka } from '../../lib/format'
+import { keAngka, tanggalPeristiwa } from '../../lib/format'
 import EditorVarian, { muatVarian, simpanVarian, totalStok, type BarisVarian } from '../components/EditorVarian'
 import BadgePreorder, { WARNA_PO_TUA } from '../components/BadgePreorder'
 import EditorPreorder from '../components/EditorPreorder'
@@ -59,7 +59,7 @@ type Pesanan = {
 const kategoris = ['Teknologi', 'Fashion', 'Kuliner', 'Properti', 'Jasa', 'UMKM']
 
 function fmt(n: number) { return 'Rp ' + (n || 0).toLocaleString('id-ID') }
-function fmtTgl(s: string) { return new Date(s).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) }
+const fmtTgl = tanggalPeristiwa
 
 export default function DashboardPage() {
   const router = useRouter()

@@ -8,6 +8,7 @@ import Navbar from '../components/Navbar'
 import FotoProduk from '../components/FotoProduk'
 import DialogKonfirmasi from '../components/DialogKonfirmasi'
 import { adminPenuh, isSuperadmin, labelPeran, gayaPeran, type Peran } from '../../lib/peran'
+import { tanggalPeristiwa } from '../../lib/format'
 
 type Konfirmasi = { jenis: 'produk' | 'toko'; id: string; nama: string }
 
@@ -43,7 +44,7 @@ type TokoRow = {
 }
 
 function fmt(n: number) { return 'Rp ' + (n || 0).toLocaleString('id-ID') }
-function fmtTgl(s: string) { return new Date(s).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) }
+const fmtTgl = tanggalPeristiwa
 
 export default function AdminPage() {
   const router = useRouter()

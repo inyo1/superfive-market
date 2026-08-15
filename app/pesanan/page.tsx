@@ -12,6 +12,7 @@ import BadgeAngkatan from '../components/BadgeAngkatan'
 import { useTampilSkeleton } from '../hooks/useSkeleton'
 import BadgePreorder, { WARNA_PO_TUA } from '../components/BadgePreorder'
 import { janjiKirim } from '../../lib/preorder'
+import { tanggalPeristiwa } from '../../lib/format'
 
 type PesananItem = {
   id: string
@@ -92,9 +93,7 @@ const LABEL_TAB: Record<Tab, string> = {
 }
 
 function fmt(n: number) { return 'Rp ' + (n || 0).toLocaleString('id-ID') }
-function fmtTgl(s: string) {
-  return new Date(s).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
-}
+const fmtTgl = tanggalPeristiwa
 
 // Tanggal pesanan ditutup sendiri oleh tugas harian kalau pembeli tidak
 // pernah mengonfirmasi. Perkiraan, karena tugasnya berjalan sekali sehari.

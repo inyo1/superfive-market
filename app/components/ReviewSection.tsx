@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase'
 import Skeleton from './Skeleton'
 import BadgeAngkatan from './BadgeAngkatan'
 import { useTampilSkeleton } from '../hooks/useSkeleton'
+import { tanggalPeristiwa } from '../../lib/format'
 
 type Review = {
   id: string
@@ -48,9 +49,8 @@ function StarDisplay({ value, size = 14 }: { value: number; size?: number }) {
   )
 }
 
-function fmtTgl(s: string) {
-  return new Date(s).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
-}
+// Bulan dieja penuh di sini — ulasan dibaca sambil lalu, bukan dibandingkan
+const fmtTgl = (s: string) => tanggalPeristiwa(s, true)
 
 export default function ReviewSection({ produkId }: { produkId: string }) {
   const [reviews, setReviews] = useState<Review[]>([])
