@@ -414,7 +414,8 @@ export default function AdminPage() {
               { label: 'Total User', value: users.length },
               { label: 'Total Produk', value: produk.length },
               { label: 'Total Toko', value: toko.length },
-              { label: 'Admin', value: users.filter(u => u.role === 'admin').length },
+              // Pengurus, bukan hanya "admin": admin angkatan ikut dihitung
+              { label: 'Pengurus', value: users.filter(u => u.role !== 'member').length },
             ].map(s => (
               <div key={s.label} style={{
                 flex: 1, background: 'rgba(255,255,255,0.12)', borderRadius: '10px',
@@ -518,14 +519,18 @@ export default function AdminPage() {
 
                   {/* Role badge + toggle */}
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', flexShrink: 0 }}>
-                    <span style={{
-                      fontSize: '10px', fontWeight: '700', padding: '2px 8px', borderRadius: '20px',
-                      background: u.role === 'admin' ? '#fff3e0' : '#f0f5fb',
-                      color: u.role === 'admin' ? '#e65100' : '#5a7da0',
-                      border: `0.5px solid ${u.role === 'admin' ? '#ffcc80' : '#c5d9ef'}`,
-                    }}>
-                      {u.role === 'admin' ? '⭐ Admin' : 'Member'}
-                    </span>
+                    {(() => {
+                      const g = gayaPeran(u.role)
+                      return (
+                        <span style={{
+                          fontSize: '10px', fontWeight: '700', padding: '2px 8px', borderRadius: '20px',
+                          background: g.latar, color: g.teks, border: `0.5px solid ${g.garis}`,
+                          whiteSpace: 'nowrap',
+                        }}>
+                          {g.ikon && `${g.ikon} `}{labelPeran(u.role, u.angkatan)}
+                        </span>
+                      )
+                    })()}
                     {/* Menurunkan diri sendiri ditolak database, jadi tombolnya
                         tidak perlu ada — yang pasti gagal cuma jadi jebakan */}
                     {u.id === adminId && u.role === 'admin' ? (
