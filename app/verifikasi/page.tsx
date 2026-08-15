@@ -24,9 +24,12 @@ const TAHUN_INI = new Date().getFullYear()
 
 export default function VerifikasiPage() {
   const router = useRouter()
+  const [userId, setUserId] = useState<string | null>(null)
+  const [email, setEmail] = useState('')
   const [status, setStatus] = useState<string | null>(null)
   const [alasanTolak, setAlasanTolak] = useState<string | null>(null)
   const [catatanAdmin, setCatatanAdmin] = useState<string | null>(null)
+  const [nama, setNama] = useState('')
   const [angkatan, setAngkatan] = useState('')
   const [catatan, setCatatan] = useState('')
   const [loading, setLoading] = useState(true)
@@ -42,14 +45,18 @@ export default function VerifikasiPage() {
         return
       }
 
+      setUserId(user.id)
+      setEmail(user.email ?? '')
+
       const { data } = await supabase
         .from('users')
-        .select('status_alumni, angkatan, catatan_pendaftar, alasan_tolak, catatan_admin')
+        .select('nama, status_alumni, angkatan, catatan_pendaftar, alasan_tolak, catatan_admin')
         .eq('id', user.id)
         .single()
 
       if (data) {
         setStatus(data.status_alumni ?? 'umum')
+        setNama(data.nama ?? '')
         setAngkatan(data.angkatan ? String(data.angkatan) : '')
         setCatatan(data.catatan_pendaftar ?? '')
         setAlasanTolak(data.alasan_tolak ?? null)
@@ -61,10 +68,24 @@ export default function VerifikasiPage() {
   }, [])
 
   async function kirim() {
+    // Wajib terisi, tapi TIDAK divalidasi jumlah katanya. Banyak orang
+    // Indonesia bernama satu kata, dan aturan "harus dua kata" akan menolak
+    // nama yang justru benar.
+    if (!nama.trim()) { setPesan({ text: 'Isi dulu nama lengkapmu.', ok: false }); return }
     if (!angkatan) { setPesan({ text: 'Pilih dulu angkatanmu.', ok: false }); return }
+    if (!userId) return
 
     setMengirim(true)
     try {
+      // Nama disimpan lebih dulu, baru pengajuannya dikirim. `nama` kolom
+      // biasa — tidak dijaga jaga_field_sensitif — jadi memang lewat UPDATE
+      // langsung, bukan lewat RPC.
+      const { error: errNama } = await supabase
+        .from('users')
+        .update({ nama: nama.trim() })
+        .eq('id', userId)
+      if (errNama) throw new Error('Gagal menyimpan nama: ' + errNama.message)
+
       // Semua aturannya ada di dalam RPC — termasuk angkatan yang masuk akal
       // dan larangan mengajukan dua kali. UI tidak mengulang validasinya,
       // cukup menampilkan error.message apa adanya.
@@ -188,16 +209,32 @@ export default function VerifikasiPage() {
             dua hal: siapa yang masuk <strong style={{ color: '#1a1a1a' }}>direktori alumni</strong>,
             dan siapa yang boleh <strong style={{ color: '#1a1a1a' }}>berjualan</strong>.
             <br /><br />
-            Admin memeriksa <strong style={{ color: '#1a1a1a' }}>nama dan angkatan</strong> di
-            profilmu. Pastikan namamu sesuai dengan nama saat sekolah dulu.
+            Admin memeriksa <strong style={{ color: '#1a1a1a' }}>nama dan angkatan</strong>-mu
+            terhadap daftar alumni. Keduanya diisi langsung di bawah ini.
           </div>
-          <Link href="/profil" style={{ display: 'inline-block', marginTop: '10px', fontSize: '12px', color: '#0C447C', textDecoration: 'none' }}>
-            Periksa nama di profil →
-          </Link>
         </div>
 
         {/* Form pengajuan */}
         <div style={{ background: '#fff', borderRadius: '12px', padding: '16px', border: '0.5px solid #c5d9ef', marginBottom: '12px' }}>
+          {/* Nama diedit di tempat, bukan dilempar ke /profil. Yang dilempar
+              ke halaman lain kebanyakan tidak pernah kembali ke sini. */}
+          <div style={{ marginBottom: '14px' }}>
+            <label htmlFor="nama" style={{ fontSize: '13px', fontWeight: '600', color: '#0C447C', display: 'block', marginBottom: '4px' }}>
+              Nama Lengkap *
+            </label>
+            <div style={{ fontSize: '11px', color: '#5a7da0', marginBottom: '8px' }}>
+              Pakai nama seperti yang tertulis di data sekolah dulu.
+            </div>
+            <input
+              id="nama"
+              value={nama}
+              onChange={e => setNama(e.target.value)}
+              disabled={menunggu}
+              placeholder="Nama lengkapmu"
+              style={{ width: '100%', padding: '11px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', background: menunggu ? '#f8fbff' : '#fff', boxSizing: 'border-box', minHeight: '44px' }}
+            />
+          </div>
+
           <div style={{ marginBottom: '14px' }}>
             <label htmlFor="angkatan" style={{ fontSize: '13px', fontWeight: '600', color: '#0C447C', display: 'block', marginBottom: '4px' }}>
               Angkatan (Tahun Lulus) *
