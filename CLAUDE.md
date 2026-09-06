@@ -9,6 +9,58 @@ Bahasa di seluruh project — nama kolom, variabel, teks UI, pesan error — pak
 Bahasa Indonesia. Ikuti itu, jangan campur dengan istilah Inggris kecuali sudah
 jadi konvensi teknis (`id`, `created_at`, `status`, `payment_status`).
 
+## ⚠ MODE KATALOG — transaksi dibekukan (sejak 7 September 2026)
+
+**Superfive tidak lagi memproses pesanan.** Tidak ada payment gateway, tidak
+ada keranjang, tidak ada checkout. Pembeli menekan **Hubungi Penjual** di
+halaman produk dan percakapannya pindah ke WhatsApp penjual.
+
+Sakelarnya `MODE_TRANSAKSI` di [lib/config.ts](lib/config.ts).
+
+| Yang berubah | Jadi |
+|---|---|
+| tombol keranjang & beli | `<TombolHubungi />` → RPC `buka_kontak_toko` → wa.me |
+| angka stok di layar pembeli | `produk.is_tersedia` → lencana Tersedia / Stok Habis |
+| ikon keranjang di navbar & bottom nav | dihapus |
+| `/keranjang`, `/checkout`, `/pesanan` | dialihkan ke `/` |
+
+**Kode transaksi DIBEKUKAN, bukan dihapus.** Halaman-halamannya masih ada di
+tempatnya dengan early return `if (transaksiBeku) return <RedirectBeku />`,
+dan komponen aslinya (`KeranjangAsli`, `CheckoutAsli`, `PesananAsli`) utuh di
+bawahnya. Begitu juga `CartContext`, kolom `produk.stok`, tabel
+`produk_varian`, seluruh mesin status pesanan, refund, dan tugas harian —
+semuanya sudah teruji, dan membongkarnya berarti menulis ulang dari nol kalau
+mode transaksi dinyalakan lagi.
+
+Empat hal yang paling mudah salah di sini:
+
+- **Pagar sebenarnya ada di database, bukan di konstanta klien.** Yang
+  benar-benar menutup checkout adalah EXECUTE `create_pesanan` yang sudah
+  dicabut. `MODE_TRANSAKSI` cuma menyembunyikan pintunya di UI, dan siapa pun
+  bisa mengubah konstanta klien lewat DevTools
+- **Nomor WA TIDAK PERNAH diambil dengan query ke `toko_kontak`.** Tabel itu
+  tertutup RLS untuk semua orang kecuali pemilik toko dan admin. Satu-satunya
+  jalan keluarnya RPC `buka_kontak_toko`, yang sekalian mencatat prospeknya —
+  query langsung dari halaman publik akan mengembalikan nol baris, dan yang
+  terlihat bukan error melainkan "Penjual belum mengisi kontak" untuk penjual
+  yang justru sudah mengisinya
+- **Tab Pesanan di dashboard penjual SENGAJA tetap ada.** Pesanan yang
+  terlanjur masuk sebelum peralihan tetap punya kewajiban kirim, dan tenggat
+  serta pembatalan otomatis di database masih jalan. Menutup tabnya berarti
+  penjual tidak bisa menandai kirim, lalu pesanannya dibatalkan cron dan
+  dananya dikembalikan. Prinsipnya sama dengan penjual `dibekukan` di
+  [Dua sumbu verifikasi](#dua-sumbu-verifikasi): lapaknya turun,
+  kewajibannya tidak
+- **Jangan menampilkan angka stok di permukaan pembeli mana pun.** Sejak tidak
+  ada pesanan yang memotongnya dan tidak ada pembatalan yang
+  mengembalikannya, `produk.stok` pasti melenceng dari kenyataan. Yang bisa
+  dijawab penjual dengan jujur hanya "masih ada" atau "habis" — itu yang
+  ditanyakan `is_tersedia`, dan yang ditampilkan
+  [BadgeTersedia](app/components/BadgeTersedia.tsx)
+
+Produk pre-order **tidak memakai `is_tersedia`** — yang menjawab buka-tidaknya
+tetap periode PO. Lencana PO dan panel PO tidak berubah sama sekali.
+
 ## Stack
 
 | Bagian | Yang dipakai |
