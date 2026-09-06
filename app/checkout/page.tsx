@@ -1,4 +1,6 @@
 'use client'
+import { transaksiBeku } from '../../lib/config'
+import RedirectBeku from '../components/RedirectBeku'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -44,7 +46,14 @@ function buildAlamat(data: Record<string, string | null>) {
   return parts.join('\n')
 }
 
+// Dibekukan di mode katalog. Isi halamannya sengaja dibiarkan utuh di
+// bawah ini — lihat MODE_TRANSAKSI di lib/config.ts.
 export default function CheckoutPage() {
+  if (transaksiBeku) return <RedirectBeku />
+  return <CheckoutAsli />
+}
+
+function CheckoutAsli() {
   const { items, totalHarga, kosongkan } = useCart()
   const router = useRouter()
 

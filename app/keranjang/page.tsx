@@ -1,4 +1,6 @@
 'use client'
+import { transaksiBeku } from '../../lib/config'
+import RedirectBeku from '../components/RedirectBeku'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -20,7 +22,14 @@ function fmt(n: number) {
   return 'Rp ' + n.toLocaleString('id-ID')
 }
 
+// Dibekukan di mode katalog. Isi halamannya sengaja dibiarkan utuh di
+// bawah ini — lihat MODE_TRANSAKSI di lib/config.ts.
 export default function KeranjangPage() {
+  if (transaksiBeku) return <RedirectBeku />
+  return <KeranjangAsli />
+}
+
+function KeranjangAsli() {
   const router = useRouter()
   const { items, totalItem, totalHarga, loading, tambah, kurang, hapus, kosongkan } = useCart()
   const toast = useToast()

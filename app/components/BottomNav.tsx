@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 import { adminPenuh } from '../../lib/peran'
-import { useCart } from '../context/CartContext'
 import { useChatContext } from '../context/ChatContext'
 
 const BIRU = '#0C447C'
@@ -28,16 +27,6 @@ function IkonProduk({ aktif }: { aktif: boolean }) {
       <path d="M3 7l9-4 9 4-9 4-9-4z" />
       <path d="M3 7v10l9 4 9-4V7" />
       <path d="M12 11v10" />
-    </svg>
-  )
-}
-
-function IkonKeranjang({ aktif }: { aktif: boolean }) {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={aktif ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 4h2l2.4 11.2a2 2 0 002 1.6h7.5a2 2 0 002-1.6L21 8H6" />
-      <circle cx="10" cy="20" r="1.4" />
-      <circle cx="18" cy="20" r="1.4" />
     </svg>
   )
 }
@@ -78,7 +67,6 @@ function Lencana({ jumlah }: { jumlah: number }) {
 export default function BottomNav() {
   const pathname = usePathname()
   const router = useRouter()
-  const { totalItem } = useCart()
   const { unreadCount } = useChatContext()
 
   const [sheetTerbuka, setSheetTerbuka] = useState(false)
@@ -122,7 +110,6 @@ export default function BottomNav() {
   const item = [
     { href: '/', label: 'Beranda', Ikon: IkonBeranda, lencana: 0 },
     { href: '/produk', label: 'Produk', Ikon: IkonProduk, lencana: 0 },
-    { href: '/keranjang', label: 'Keranjang', Ikon: IkonKeranjang, lencana: totalItem },
     { href: '/chat', label: 'Chat', Ikon: IkonChat, lencana: unreadCount },
   ]
 
@@ -131,7 +118,6 @@ export default function BottomNav() {
   const menuAkun = user
     ? [
         { href: '/profil', label: 'Profil Saya', ikon: '👤' },
-        { href: '/pesanan', label: 'Pesanan Saya', ikon: '🧾' },
         { href: '/toko/saya', label: 'Toko Saya', ikon: '🏪' },
         { href: '/dashboard', label: 'Dashboard Seller', ikon: '📊' },
         { href: '/jual', label: 'Mulai Berjualan', ikon: '💼' },
@@ -143,7 +129,7 @@ export default function BottomNav() {
         { href: '/about', label: 'Tentang Kami', ikon: 'ℹ️' },
       ]
 
-  const akunAktif = sheetTerbuka || ['/profil', '/pesanan', '/toko', '/dashboard', '/alumni', '/about', '/admin']
+  const akunAktif = sheetTerbuka || ['/profil', '/toko', '/dashboard', '/alumni', '/about', '/admin']
     .some(p => pathname.startsWith(p))
 
   return (

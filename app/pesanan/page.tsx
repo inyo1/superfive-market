@@ -1,4 +1,6 @@
 'use client'
+import { transaksiBeku } from '../../lib/config'
+import RedirectBeku from '../components/RedirectBeku'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -108,7 +110,14 @@ function batasOtomatis(dikirimAt: string | null): string | null {
   return tanggalPeristiwa(new Date(mulai + HARI_SELESAI_OTOMATIS * 86_400_000))
 }
 
+// Dibekukan di mode katalog. Isi halamannya sengaja dibiarkan utuh di
+// bawah ini — lihat MODE_TRANSAKSI di lib/config.ts.
 export default function PesananPage() {
+  if (transaksiBeku) return <RedirectBeku />
+  return <PesananAsli />
+}
+
+function PesananAsli() {
   const router = useRouter()
   const [pesanan, setPesanan] = useState<Pesanan[]>([])
   const [tab, setTab] = useState<Tab>('semua')

@@ -4,7 +4,6 @@ import Image from 'next/image'
 import { useState, useEffect, useRef } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
-import { useCart } from '../context/CartContext'
 import { useChatContext } from '../context/ChatContext'
 import SearchOverlay from './SearchOverlay'
 import { adminPenuh, bolehVerifikasiAlumni } from '../../lib/peran'
@@ -25,16 +24,6 @@ function IkonCari() {
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
       <circle cx="10.5" cy="10.5" r="6.5" />
       <path d="M15.5 15.5L21 21" />
-    </svg>
-  )
-}
-
-function IkonKeranjang() {
-  return (
-    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M3 4h2l2.4 11.2a2 2 0 002 1.6h7.5a2 2 0 002-1.6L21 8H6" />
-      <circle cx="10" cy="20" r="1.4" />
-      <circle cx="18" cy="20" r="1.4" />
     </svg>
   )
 }
@@ -60,7 +49,6 @@ export default function Navbar() {
   const navRef = useRef<HTMLElement>(null)
   const pathname = usePathname()
   const router = useRouter()
-  const { totalItem } = useCart()
   const { unreadCount } = useChatContext()
 
   async function fetchProfile(userId: string) {
@@ -134,7 +122,6 @@ export default function Navbar() {
   const menuNavigasi = user
     ? [
         ...links,
-        { href: '/pesanan', label: 'Pesanan Saya' },
         { href: '/dashboard', label: 'Dashboard' },
         { href: '/toko/saya', label: 'Toko Saya' },
       ]
@@ -187,32 +174,6 @@ export default function Navbar() {
     </Link>
   )
 
-  const CartBadge = () => (
-    <Link
-      href="/keranjang"
-      style={{
-        position: 'relative', color: '#fff', textDecoration: 'none',
-        lineHeight: 1, minWidth: '40px', minHeight: '40px',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}
-      aria-label="Keranjang"
-    >
-      <IkonKeranjang />
-      {totalItem > 0 && (
-        <span style={{
-          position: 'absolute', top: '-2px', right: '-6px',
-          background: '#e53935', color: '#fff',
-          fontSize: '10px', fontWeight: '700',
-          borderRadius: '50%', width: '16px', height: '16px',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          lineHeight: 1,
-        }}>
-          {totalItem > 99 ? '99+' : totalItem}
-        </span>
-      )}
-    </Link>
-  )
-
   return (
     <>
       <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
@@ -254,7 +215,7 @@ export default function Navbar() {
               <IkonCari /> <span>Cari</span>
             </button>
 
-            <CartBadge />
+            {/* Ikon keranjang dihapus di mode katalog — lihat lib/config.ts */}
             {user && <ChatBadge />}
 
             {user ? (
