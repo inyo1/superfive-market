@@ -7,6 +7,7 @@ import { supabase } from '../../lib/supabase'
 import Navbar from '../components/Navbar'
 import FotoProduk from '../components/FotoProduk'
 import DialogKonfirmasi from '../components/DialogKonfirmasi'
+import StatistikProspek from '../components/StatistikProspek'
 import { adminPenuh, isSuperadmin, labelPeran, gayaPeran, type Peran } from '../../lib/peran'
 import { tanggalPeristiwa } from '../../lib/format'
 import { emojiKategori } from '../../lib/kategori'
@@ -463,6 +464,10 @@ export default function AdminPage() {
       </div>
 
       <div style={{ maxWidth: '900px', margin: '0 auto', padding: '16px' }}>
+
+        {/* Statistik mode katalog — sejak checkout dibekukan, prospek yang
+            jadi ukuran keramaian Superfive, bukan jumlah pesanan */}
+        <StatistikProspek />
 
         {/* Toast */}
         {pesan && (
