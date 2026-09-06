@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '../../../lib/supabase'
 import Navbar from '../../components/Navbar'
-import { useCart } from '../../context/CartContext'
+import TombolHubungi from '../../components/TombolHubungi'
+import BadgeTersedia from '../../components/BadgeTersedia'
 import FotoProduk from '../../components/FotoProduk'
 import BadgeVerifikasi from '../../components/BadgeVerifikasi'
 import { useToast } from '../../context/ToastContext'
@@ -40,7 +41,7 @@ type Produk = {
   kategori: string
   terjual: number
   rating: number
-  stok: number
+  is_tersedia: boolean
   is_preorder: boolean
   po_janji_kirim: string | null
   foto_url?: string | null
@@ -56,7 +57,6 @@ function fmt(n: number) {
 export default function TokoPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
-  const { tambah } = useCart()
   const toast = useToast()
 
   const [toko, setToko] = useState<Toko | null>(null)
@@ -73,8 +73,6 @@ export default function TokoPage() {
   const [saving, setSaving] = useState(false)
   const [pesanEdit, setPesanEdit] = useState('')
 
-  // Keranjang notif
-  const [notifId, setNotifId] = useState<string | null>(null)
   const [startingChat, setStartingChat] = useState(false)
 
   useEffect(() => {
@@ -115,7 +113,7 @@ export default function TokoPage() {
 
       const { data: produkData } = await supabase
         .from('produk')
-        .select('id, nama, harga, kategori, terjual, rating, stok, foto_url, is_preorder, po_janji_kirim')
+        .select('id, nama, harga, kategori, terjual, rating, is_tersedia, foto_url, is_preorder, po_janji_kirim')
         .eq('toko_id', id)
         .order('created_at', { ascending: false })
 
@@ -142,12 +140,6 @@ export default function TokoPage() {
     }
     setSaving(false)
     setTimeout(() => setPesanEdit(''), 3000)
-  }
-
-  function handleTambahKeranjang(p: Produk) {
-    tambah({ id: p.id, nama: p.nama, harga: p.harga, kategori: p.kategori })
-    setNotifId(p.id)
-    setTimeout(() => setNotifId(null), 2000)
   }
 
   async function handleChatSeller() {
@@ -433,11 +425,15 @@ export default function TokoPage() {
                     <div style={{ fontSize: '13px', fontWeight: '600', color: '#0C447C', marginBottom: '4px' }}>{fmt(p.harga)}</div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#5a7da0' }}>
                       <span>⭐ {p.rating || '5.0'}</span>
-                      {/* Stok produk PO selalu 0 karena trg_kurangi_stok
-                          sengaja melewatinya — kalau ditampilkan akan terbaca
-                          habis padahal PO-nya sedang buka */}
                       <span>{p.is_preorder ? 'Pre-Order' : `${p.terjual || 0} terjual`}</span>
                     </div>
+                    {/* Produk PO tidak memakai lencana ketersediaan — yang
+                        menjawab buka-tidaknya adalah periode PO */}
+                    {!p.is_preorder && (
+                      <div style={{ marginTop: '5px' }}>
+                        <BadgeTersedia tersedia={p.is_tersedia} kecil />
+                      </div>
+                    )}
                     {p.is_preorder && p.po_janji_kirim && (
                       <div style={{ fontSize: '10px', color: WARNA_PO_TUA, marginTop: '4px', lineHeight: 1.5 }}>
                         🚚 {janjiKirim(p.po_janji_kirim)}
@@ -445,16 +441,15 @@ export default function TokoPage() {
                     )}
                   </div>
                 </Link>
-                <button
-                  onClick={() => handleTambahKeranjang(p)}
-                  style={{
-                    width: '100%', border: 'none', padding: '8px', fontSize: '12px', cursor: 'pointer',
-                    background: notifId === p.id ? '#2e7d32' : '#0C447C',
-                    color: '#fff', transition: 'background 0.2s',
-                  }}
-                >
-                  {notifId === p.id ? '✓ Ditambahkan' : '+ Keranjang'}
-                </button>
+                <div style={{ padding: '0 8px 8px' }}>
+                  <TombolHubungi
+                    produkId={p.id}
+                    tokoId={id}
+                    namaProduk={p.nama}
+                    tersedia={p.is_preorder ? true : p.is_tersedia !== false}
+                    kecil
+                  />
+                </div>
               </div>
             ))}
           </div>

@@ -10,6 +10,7 @@ import EmptyState from '../components/EmptyState'
 import BadgeAngkatan from '../components/BadgeAngkatan'
 import BadgeOfficial from '../components/BadgeOfficial'
 import BadgePreorder, { WARNA_PO_TUA } from '../components/BadgePreorder'
+import BadgeTersedia from '../components/BadgeTersedia'
 import { janjiKirim } from '../../lib/preorder'
 import { useTampilSkeleton } from '../hooks/useSkeleton'
 import { KATEGORI } from '../../lib/kategori'
@@ -22,6 +23,7 @@ type Produk = {
   kategori: string
   terjual: number
   rating: number
+  is_tersedia: boolean
   is_preorder: boolean
   po_janji_kirim: string | null
   foto_url?: string | null
@@ -180,6 +182,13 @@ export default function ProdukPage() {
                         tidak bermakna — diganti keterangan pre-order */}
                     <span>{p.is_preorder ? 'Pre-Order' : `${p.terjual || 0} terjual`}</span>
                   </div>
+                  {/* Produk PO tidak memakai lencana ketersediaan — periode
+                      PO yang menjawab buka-tidaknya */}
+                  {!p.is_preorder && (
+                    <div style={{ marginBottom: '6px' }}>
+                      <BadgeTersedia tersedia={p.is_tersedia} kecil />
+                    </div>
+                  )}
                   {p.is_preorder && p.po_janji_kirim && (
                     <div style={{ fontSize: '10px', color: WARNA_PO_TUA, marginBottom: '6px', lineHeight: 1.5 }}>
                       🚚 {janjiKirim(p.po_janji_kirim)}

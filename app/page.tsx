@@ -9,6 +9,7 @@ import FotoProduk from './components/FotoProduk'
 import SkeletonCard from './components/SkeletonCard'
 import SectionOfficial from './components/SectionOfficial'
 import BadgePreorder, { WARNA_PO, WARNA_PO_TUA } from './components/BadgePreorder'
+import BadgeTersedia from './components/BadgeTersedia'
 import { EMAS } from './components/BadgeOfficial'
 import { janjiKirim } from '../lib/preorder'
 import { KATEGORI, EMOJI_KATEGORI } from '../lib/kategori'
@@ -20,6 +21,7 @@ type Produk = {
   kategori: string
   foto_url?: string | null
   terjual: number
+  is_tersedia: boolean
   is_preorder: boolean
   po_janji_kirim: string | null
   rating: number
@@ -136,7 +138,7 @@ export default function Home() {
         supabase.from('alumni_publik')
           .select('*', { count: 'exact', head: true }),
         supabase.from('produk')
-          .select('id, nama, harga, kategori, foto_url, terjual, rating, is_preorder, po_janji_kirim, toko!inner(nama_toko, is_official)')
+          .select('id, nama, harga, kategori, foto_url, terjual, rating, is_tersedia, is_preorder, po_janji_kirim, toko!inner(nama_toko, is_official)')
           .eq('toko.is_official', false)
           .order('created_at', { ascending: false })
           .limit(6),
@@ -386,6 +388,11 @@ export default function Home() {
                             terbaca habis padahal PO-nya sedang buka */}
                         <span>{p.is_preorder ? 'Pre-Order' : `${p.terjual || 0} terjual`}</span>
                       </div>
+                      {!p.is_preorder && (
+                        <div style={{ marginBottom: '6px' }}>
+                          <BadgeTersedia tersedia={p.is_tersedia} kecil />
+                        </div>
+                      )}
                       {p.is_preorder && p.po_janji_kirim && (
                         <div style={{ fontSize: '10px', color: WARNA_PO_TUA, marginBottom: '6px', lineHeight: 1.5 }}>
                           🚚 {janjiKirim(p.po_janji_kirim)}
