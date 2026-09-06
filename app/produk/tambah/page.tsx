@@ -247,19 +247,18 @@ export default function TambahProduk() {
               menentukan apakah kolom stok muncul */}
           <EditorPreorder nilai={formPo} onChange={setFormPo} />
 
-          {/* Kolom stok hanya untuk ready stock — barang pre-order belum ada
-              wujudnya, yang membatasi pemesanan adalah periode dan kuota */}
           <div style={{ display: 'flex', gap: '10px', marginBottom: '12px' }}>
             <div style={{ flex: 1 }}>
               <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '4px' }}>Harga *</label>
               <InputHarga nilai={harga} onChange={setHarga} placeholder="100.000" />
             </div>
-            {formPo.status === 'ready' && (
-              <div style={{ flex: 1 }}>
-                <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '4px' }}>Stok</label>
-                <input value={stok} onChange={e => setStok(e.target.value.replace(/\D/g, ''))} inputMode="numeric" pattern="[0-9]*" placeholder="10" style={{ width: '100%', padding: '11px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', minHeight: '44px' }} />
-              </div>
-            )}
+            {/* Kolom stok DISEMBUNYIKAN, bukan dihapus — lihat lib/config.ts.
+                Produk baru masuk sebagai tersedia; penjual menandainya habis
+                belakangan lewat Edit di dashboard. */}
+            <div style={{ flex: 1, display: 'none' }} aria-hidden>
+              <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '4px' }}>Stok</label>
+              <input value={stok} onChange={e => setStok(e.target.value.replace(/\D/g, ''))} inputMode="numeric" pattern="[0-9]*" placeholder="10" style={{ width: '100%', padding: '11px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', minHeight: '44px' }} />
+            </div>
           </div>
 
           {/* Kategori */}

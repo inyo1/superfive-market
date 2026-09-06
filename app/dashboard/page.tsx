@@ -20,10 +20,13 @@ import BadgePreorder, { WARNA_PO_TUA } from '../components/BadgePreorder'
 import EditorPreorder from '../components/EditorPreorder'
 import RekapPO, { type ProgresPO } from '../components/RekapPO'
 import TenggatKirim from '../components/TenggatKirim'
+import FormKontakToko from '../components/FormKontakToko'
+import DaftarProspek from '../components/DaftarProspek'
+import BadgeTersedia from '../components/BadgeTersedia'
 import { FORM_PO_KOSONG, formPODari, validasiFormPO, formPOKeKolom, formPOAktif, janjiKirim, type FormPO, type DataPO } from '../../lib/preorder'
 
 type Toko = { id: string; nama_toko: string; kategori: string; is_official: boolean }
-type Produk = DataPO & { id: string; nama: string; harga: number; kategori: Kategori; stok: number; terjual: number; rating: number; deskripsi: string; urutan: number | null; foto_url?: string | null }
+type Produk = DataPO & { id: string; nama: string; harga: number; kategori: Kategori; stok: number; is_tersedia: boolean; terjual: number; rating: number; deskripsi: string; urutan: number | null; foto_url?: string | null }
 
 type PesananItem = {
   id: string
@@ -62,7 +65,7 @@ function fmt(n: number) { return 'Rp ' + (n || 0).toLocaleString('id-ID') }
 
 export default function DashboardPage() {
   const router = useRouter()
-  const [tab, setTab] = useState<'ringkasan' | 'produk' | 'pesanan'>('ringkasan')
+  const [tab, setTab] = useState<'ringkasan' | 'produk' | 'kontak' | 'prospek' | 'pesanan'>('ringkasan')
   const [toko, setToko] = useState<Toko | null>(null)
   const [produk, setProduk] = useState<Produk[]>([])
   const [pesanan, setPesanan] = useState<Pesanan[]>([])
@@ -127,7 +130,7 @@ export default function DashboardPage() {
       // Toko resmi diurutkan sama seperti di beranda, supaya pengelola melihat
       // susunan yang sama dengan yang dilihat pengunjung
       let kueriProduk = supabase.from('produk')
-        .select('id, nama, harga, kategori, stok, terjual, rating, deskripsi, urutan, foto_url, is_preorder, po_mulai, po_selesai, po_janji_kirim, po_target, po_maks, po_catatan')
+        .select('id, nama, harga, kategori, stok, is_tersedia, terjual, rating, deskripsi, urutan, foto_url, is_preorder, po_mulai, po_selesai, po_janji_kirim, po_target, po_maks, po_catatan')
         .eq('toko_id', tokoData.id)
 
       if (tokoData.is_official) kueriProduk = kueriProduk.order('urutan', { ascending: true })
@@ -164,7 +167,7 @@ export default function DashboardPage() {
 
   async function bukaEdit(p: Produk) {
     setEditId(p.id)
-    setEditData({ nama: p.nama, harga: p.harga, kategori: p.kategori, stok: p.stok, deskripsi: p.deskripsi, urutan: p.urutan, foto_url: p.foto_url })
+    setEditData({ nama: p.nama, harga: p.harga, kategori: p.kategori, stok: p.stok, is_tersedia: p.is_tersedia !== false, deskripsi: p.deskripsi, urutan: p.urutan, foto_url: p.foto_url })
     setEditFoto(null)
     setEditPreview(null)
     setFormPo(formPODari(p))
@@ -216,6 +219,8 @@ export default function DashboardPage() {
     const { error } = await supabase.from('produk').update({
       nama: editData.nama, harga: keAngka(editData.harga),
       kategori: editData.kategori, stok: stokBaru,
+      // Produk PO tidak memakai ketersediaan — periode PO yang menjawabnya
+      is_tersedia: formPOAktif(formPo) ? true : editData.is_tersedia !== false,
       deskripsi: editData.deskripsi, urutan: urutanBaru, foto_url,
       ...kolomPo,
     }).eq('id', editId)
@@ -437,9 +442,48 @@ export default function DashboardPage() {
                 menentukan apakah kolom stok muncul */}
             <EditorPreorder nilai={formPo} onChange={setFormPo} />
 
-            {/* Kolom stok hanya untuk ready stock — barang pre-order belum ada
-                wujudnya, yang membatasi pemesanan adalah periode dan kuota */}
-            <div style={{ marginBottom: '10px', display: formPo.status === 'ready' ? 'block' : 'none' }}>
+            {/* Ketersediaan menggantikan angka stok di mode katalog. Yang
+                dijawab penjual sekarang cuma "masih ada" atau "habis" —
+                jumlahnya tidak lagi dijaga siapa pun sejak tidak ada pesanan
+                yang memotongnya. */}
+            <div style={{ marginBottom: '14px', display: formPo.status === 'ready' ? 'block' : 'none' }}>
+              <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '6px' }}>
+                Ketersediaan
+              </label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {([[true, 'Tersedia', '#2e7d32'], [false, 'Habis', '#c62828']] as const).map(([nilai, label, warna]) => {
+                  const dipilih = (editData.is_tersedia !== false) === nilai
+                  return (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => setEditData(prev => ({ ...prev, is_tersedia: nilai }))}
+                      aria-pressed={dipilih}
+                      style={{
+                        flex: 1, minHeight: '44px', padding: '10px',
+                        borderRadius: '8px', fontSize: '13px', cursor: 'pointer',
+                        border: `1.5px solid ${dipilih ? warna : '#c5d9ef'}`,
+                        background: dipilih ? warna : '#fff',
+                        color: dipilih ? '#fff' : '#5a7da0',
+                        fontWeight: dipilih ? '600' : '400',
+                      }}
+                    >
+                      {label}
+                    </button>
+                  )
+                })}
+              </div>
+              <div style={{ fontSize: '11px', color: '#9ab4cc', marginTop: '5px', lineHeight: 1.5 }}>
+                Kalau dipilih Habis, tombol Hubungi Penjual mati di halaman produk ini.
+              </div>
+            </div>
+
+            {/* Kolom stok dan editor varian DISEMBUNYIKAN, bukan dihapus —
+                kolom `produk.stok` dan tabel `produk_varian` masih ada beserta
+                datanya, dan akan dipakai lagi kalau MODE_TRANSAKSI kembali ke
+                'pesanan'. Lihat lib/config.ts. */}
+            <div style={{ display: 'none' }} aria-hidden>
+            <div style={{ marginBottom: '10px' }}>
               <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '4px' }}>Stok</label>
               <input
                 value={produkPunyaVarian ? totalStok(varian) : (editData.stok ?? '')}
@@ -467,6 +511,7 @@ export default function DashboardPage() {
             </div>
 
             <EditorVarian baris={varian} onChange={setVarian} />
+            </div>
 
             {/* Urutan hanya relevan untuk toko resmi, karena produknya yang
                 tampil di section merchandise beranda */}
@@ -548,9 +593,14 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Tabs */}
+        {/* Tabs.
+            Tab Pesanan SENGAJA dipertahankan meski checkout dibekukan. Pesanan
+            yang sudah terlanjur masuk sebelum peralihan tetap punya kewajiban
+            kirim, dan tenggat serta pembatalan otomatis di database masih
+            jalan — menutup tabnya berarti penjual tidak bisa menandai kirim,
+            lalu pesanannya dibatalkan cron dan dananya dikembalikan. */}
         <div style={{ display: 'flex', background: '#fff', borderRadius: '10px', padding: '4px', border: '0.5px solid #c5d9ef', marginBottom: '16px' }}>
-          {([['ringkasan', '📊', 'Ringkasan'], ['produk', '📦', 'Produk'], ['pesanan', '🧾', 'Pesanan']] as const).map(([key, emoji, text]) => (
+          {([['ringkasan', '📊', 'Ringkasan'], ['produk', '📦', 'Produk'], ['kontak', '💬', 'Kontak'], ['prospek', '📇', 'Prospek'], ['pesanan', '🧾', 'Pesanan']] as const).map(([key, emoji, text]) => (
             <button key={key} onClick={() => setTab(key)}
               className="tab-label"
               style={{ flex: 1, padding: '8px 4px', border: 'none', borderRadius: '7px', fontSize: '12px', fontWeight: tab === key ? '600' : '400', cursor: 'pointer', background: tab === key ? '#0C447C' : 'transparent', color: tab === key ? '#fff' : '#5a7da0' }}>
@@ -565,7 +615,7 @@ export default function DashboardPage() {
             {/* Stats cards */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
               {[
-                { label: 'Total Produk', value: produk.length, icon: '📦', sub: `${produk.filter(p => p.stok > 0).length} aktif` },
+                { label: 'Total Produk', value: produk.length, icon: '📦', sub: `${produk.filter(p => p.is_preorder || p.is_tersedia !== false).length} tersedia` },
                 { label: 'Total Terjual', value: totalTerjual, icon: '🛒', sub: 'unit' },
                 { label: 'Pesanan Aktif', value: pesananAktif, icon: '🔔', sub: 'perlu diproses' },
                 { label: 'Pendapatan', value: fmt(totalPendapatan), icon: '💰', sub: 'dari pesanan selesai' },
@@ -579,14 +629,22 @@ export default function DashboardPage() {
               ))}
             </div>
 
-            {/* Produk stok rendah */}
-            {produk.filter(p => p.stok <= 3).length > 0 && (
+            {/* Produk yang ditandai habis. Dulu daftar ini dihitung dari
+                `stok <= 3`; di mode katalog angkanya sudah tidak dijaga
+                siapa pun, jadi yang ditampilkan adalah pilihan penjual
+                sendiri lewat `is_tersedia`. */}
+            {produk.filter(p => !p.is_preorder && p.is_tersedia === false).length > 0 && (
               <div style={{ background: '#fff8e1', border: '0.5px solid #ffe082', borderRadius: '10px', padding: '14px', marginBottom: '14px' }}>
-                <div style={{ fontSize: '13px', fontWeight: '600', color: '#f57f17', marginBottom: '8px' }}>⚠️ Stok Hampir Habis</div>
-                {produk.filter(p => p.stok <= 3).map(p => (
+                <div style={{ fontSize: '13px', fontWeight: '600', color: '#f57f17', marginBottom: '8px' }}>
+                  ⚠️ Ditandai Habis
+                </div>
+                <div style={{ fontSize: '11px', color: '#a1887f', marginBottom: '8px', lineHeight: 1.5 }}>
+                  Tombol Hubungi Penjual mati untuk produk ini. Ubah ke Tersedia lewat Edit kalau barangnya sudah ada lagi.
+                </div>
+                {produk.filter(p => !p.is_preorder && p.is_tersedia === false).map(p => (
                   <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#795548', marginBottom: '4px' }}>
                     <span>{p.nama}</span>
-                    <span style={{ fontWeight: '600' }}>Sisa {p.stok}</span>
+                    <span style={{ fontWeight: '600' }}>Habis</span>
                   </div>
                 ))}
               </div>
@@ -640,10 +698,11 @@ export default function DashboardPage() {
                     <div style={{ fontSize: '13px', fontWeight: '500', color: '#1a1a1a', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nama}</div>
                     <div style={{ fontSize: '13px', fontWeight: '600', color: '#0C447C' }}>{fmt(p.harga)}</div>
                     <div style={{ display: 'flex', gap: '10px', fontSize: '11px', color: '#5a7da0', marginTop: '2px', flexWrap: 'wrap' }}>
-                      {/* Stok tidak bermakna untuk produk PO — diganti lencana */}
+                      {/* Ketersediaan tidak bermakna untuk produk PO — periode
+                          PO yang menjawabnya, jadi diganti lencana */}
                       {p.is_preorder
                         ? <BadgePreorder aktif kecil />
-                        : <span>Stok: <strong style={{ color: p.stok <= 3 ? '#e65100' : '#1a1a1a' }}>{p.stok}</strong></span>}
+                        : <BadgeTersedia tersedia={p.is_tersedia} kecil />}
                       <span>Terjual: {p.terjual || 0}</span>
                       {toko?.is_official && (
                         <span style={{ color: '#8a5a05', fontWeight: '600' }}>Urutan: {p.urutan ?? 0}</span>
@@ -667,6 +726,12 @@ export default function DashboardPage() {
             </div>
           </div>
         )}
+
+        {/* ── TAB: KONTAK ── */}
+        {tab === 'kontak' && toko && <FormKontakToko tokoId={toko.id} />}
+
+        {/* ── TAB: PROSPEK ── */}
+        {tab === 'prospek' && toko && <DaftarProspek tokoId={toko.id} />}
 
         {/* ── TAB: PESANAN ── */}
         {tab === 'pesanan' && (

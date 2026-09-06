@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '../../../lib/supabase'
 import { uploadFotoProduk } from '../../../lib/uploadFoto'
 import Navbar from '../../components/Navbar'
+import BadgeTersedia from '../../components/BadgeTersedia'
 import FotoProduk from '../../components/FotoProduk'
 import Skeleton, { GridSkeletonProduk } from '../../components/Skeleton'
 import { useTampilSkeleton } from '../../hooks/useSkeleton'
@@ -13,7 +14,7 @@ import { KATEGORI, emojiKategori, type Kategori } from '../../../lib/kategori'
 type Toko = { id: string; nama_toko: string; kategori: string }
 type Produk = {
   id: string; nama: string; harga: number; kategori: Kategori
-  stok: number; terjual: number; rating: number; deskripsi: string
+  stok: number; is_tersedia: boolean; terjual: number; rating: number; deskripsi: string
   foto_url?: string | null
 }
 
@@ -60,7 +61,7 @@ export default function TokoSayaPage() {
 
       const { data: produkData } = await supabase
         .from('produk')
-        .select('id, nama, harga, kategori, stok, terjual, rating, deskripsi, foto_url')
+        .select('id, nama, harga, kategori, stok, is_tersedia, terjual, rating, deskripsi, foto_url')
         .eq('toko_id', tokoData.id)
         .order('created_at', { ascending: false })
       setProduk((produkData ?? []) as Produk[])
@@ -76,7 +77,7 @@ export default function TokoSayaPage() {
 
   function bukaEdit(p: Produk) {
     setEditId(p.id)
-    setEditData({ nama: p.nama, harga: p.harga, kategori: p.kategori, stok: p.stok, deskripsi: p.deskripsi, foto_url: p.foto_url })
+    setEditData({ nama: p.nama, harga: p.harga, kategori: p.kategori, stok: p.stok, is_tersedia: p.is_tersedia !== false, deskripsi: p.deskripsi, foto_url: p.foto_url })
     setEditFoto(null)
     setEditPreview(null)
   }
@@ -103,6 +104,7 @@ export default function TokoSayaPage() {
     const { error } = await supabase.from('produk').update({
       nama: editData.nama, harga: Number(editData.harga),
       kategori: editData.kategori, stok: Number(editData.stok),
+      is_tersedia: editData.is_tersedia !== false,
       deskripsi: editData.deskripsi, foto_url,
     }).eq('id', editId)
 
@@ -180,12 +182,15 @@ export default function TokoSayaPage() {
               </button>
             </div>
 
+            {/* Kolom stok disembunyikan, bukan dihapus — lihat lib/config.ts.
+                Tetap dirender supaya nilainya ikut tersimpan apa adanya saat
+                penjual menyunting produk dari sini. */}
             {[
-              { label: 'Nama Produk', key: 'nama', type: 'text' },
-              { label: 'Harga (Rp)', key: 'harga', type: 'number' },
-              { label: 'Stok', key: 'stok', type: 'number' },
+              { label: 'Nama Produk', key: 'nama', type: 'text', sembunyi: false },
+              { label: 'Harga (Rp)', key: 'harga', type: 'number', sembunyi: false },
+              { label: 'Stok', key: 'stok', type: 'number', sembunyi: true },
             ].map(f => (
-              <div key={f.key} style={{ marginBottom: '10px' }}>
+              <div key={f.key} style={{ marginBottom: '10px', display: f.sembunyi ? 'none' : 'block' }} aria-hidden={f.sembunyi || undefined}>
                 <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '4px' }}>{f.label}</label>
                 <input
                   value={(editData as any)[f.key] ?? ''}
@@ -195,6 +200,36 @@ export default function TokoSayaPage() {
                 />
               </div>
             ))}
+
+            {/* Ketersediaan menggantikan angka stok. Halaman ini memang tidak
+                menyunting varian maupun PO — itu hanya ada di dashboard —
+                tapi ketersediaan wajib ada di ketiga form produk. */}
+            <div style={{ marginBottom: '10px' }}>
+              <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '6px' }}>Ketersediaan</label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {([[true, 'Tersedia', '#2e7d32'], [false, 'Habis', '#c62828']] as const).map(([nilai, label, warna]) => {
+                  const dipilih = (editData.is_tersedia !== false) === nilai
+                  return (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => setEditData(prev => ({ ...prev, is_tersedia: nilai }))}
+                      aria-pressed={dipilih}
+                      style={{
+                        flex: 1, minHeight: '44px', padding: '10px',
+                        borderRadius: '8px', fontSize: '13px', cursor: 'pointer',
+                        border: `1.5px solid ${dipilih ? warna : '#c5d9ef'}`,
+                        background: dipilih ? warna : '#fff',
+                        color: dipilih ? '#fff' : '#5a7da0',
+                        fontWeight: dipilih ? '600' : '400',
+                      }}
+                    >
+                      {label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
 
             <div style={{ marginBottom: '10px' }}>
               <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '4px' }}>Kategori</label>
@@ -329,8 +364,8 @@ export default function TokoSayaPage() {
                   <div style={{ fontSize: '14px', fontWeight: '700', color: '#0C447C', marginBottom: '4px' }}>
                     {fmt(p.harga)}
                   </div>
-                  <div style={{ display: 'flex', gap: '10px', fontSize: '11px', color: '#5a7da0', marginBottom: '8px' }}>
-                    <span>📦 Stok: {p.stok ?? 0}</span>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '11px', color: '#5a7da0', marginBottom: '8px', flexWrap: 'wrap' }}>
+                    <BadgeTersedia tersedia={p.is_tersedia} kecil />
                     <span>🛒 {p.terjual || 0} terjual</span>
                     <span>⭐ {p.rating || '5.0'}</span>
                   </div>
