@@ -100,3 +100,35 @@ export function urlWhatsApp(nomor: string, pesan: string): string {
 export function urlInstagram(username: string): string {
   return `https://instagram.com/${normalisasiIG(username)}`
 }
+
+/**
+ * URL "link lain" penjual, disaring sebelum boleh dibuka.
+ *
+ * Kolom `toko_kontak.link_lain` TIDAK punya CHECK constraint, dan form
+ * penjual tidak memvalidasinya — beda dengan `no_wa` dan `ig_username`
+ * yang dikunci regex di database. Isinya teks bebas apa pun.
+ *
+ * Itu baru berbahaya justru karena cara TombolHubungi membuka tautannya:
+ * tab dibuat lebih dulu dengan `window.open('', '_blank')` supaya tidak
+ * diblokir pop-up blocker, dan tab about:blank MEWARISI ORIGIN pembukanya.
+ * Menyetel `location.href` ke `javascript:` di tab seperti itu menjalankan
+ * skripnya sebagai halaman Superfive — cukup bagi penjual untuk mengambil
+ * token sesi pembeli dari localStorage. Jadi hanya http dan https yang
+ * diloloskan; selain itu null, dan pemanggil menolak membukanya.
+ *
+ * Penjual yang menulis "linktr.ee/tokokamu" tanpa skema tetap dilayani.
+ * Itu salah ketik yang lumrah, bukan tautan berbahaya.
+ */
+export function urlLinkLain(mentah: string | null | undefined): string | null {
+  const teks = (mentah ?? '').trim()
+  if (!teks) return null
+
+  const berskema = /^[a-z][a-z0-9+.-]*:/i.test(teks) ? teks : 'https://' + teks
+
+  try {
+    const url = new URL(berskema)
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : null
+  } catch {
+    return null
+  }
+}

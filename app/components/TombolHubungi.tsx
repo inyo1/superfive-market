@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 import { useToast } from '../context/ToastContext'
-import { pesanDefault, urlWhatsApp, urlInstagram } from '../../lib/kontak'
+import { pesanDefault, urlWhatsApp, urlInstagram, urlLinkLain } from '../../lib/kontak'
 
 type Props = {
   produkId: string
@@ -112,11 +112,12 @@ export default function TombolHubungi({
 
     setMemuat(true)
     try {
-      // p_kanal dicatat APA ADANYA oleh buka_kontak_toko — fungsinya tidak
-      // memeriksa kontak mana yang sebenarnya terisi. Jadi kalau penjual
-      // ternyata cuma punya Instagram, panggilan ini harus disusul panggilan
-      // kedua berkanal 'ig' di bawah; tanpa itu seluruh prospek Instagram
-      // akan terhitung sebagai WhatsApp di tab Prospek dan di panel admin.
+      // p_kanal cuma preferensi. buka_kontak_toko menentukan sendiri kanal
+      // efektifnya dari kontak yang benar-benar terisi — kalau WhatsApp
+      // kosong, prospeknya dicatat sebagai 'ig' atau 'link' sesuai yang ada,
+      // dan kalau semuanya kosong tidak ada prospek yang dicatat sama sekali.
+      // Jadi CUKUP SATU PANGGILAN: memanggil ulang untuk kanal lain hanya
+      // akan menggandakan barisnya di tab Prospek dan di panel admin.
       const { data, error } = await supabase.rpc('buka_kontak_toko', {
         p_toko_id: tokoId,
         p_produk_id: produkId,
@@ -132,27 +133,27 @@ export default function TombolHubungi({
       // RETURNS TABLE — PostgREST mengirimnya sebagai array satu elemen
       const kontak: Kontak | null = Array.isArray(data) ? (data[0] ?? null) : (data ?? null)
 
-      if (!kontak || (!kontak.no_wa && !kontak.ig_username)) {
+      if (!kontak || (!kontak.no_wa && !kontak.ig_username && !kontak.link_lain)) {
         tab?.close()
         peringatan('Penjual belum mengisi kontak.')
         return
       }
 
-      let tujuan: string
-      if (kontak.no_wa) {
-        tujuan = urlWhatsApp(kontak.no_wa, kontak.pesan_awal?.trim() || await pesanUntukSaya())
-      } else {
-        // Penjual hanya mengisi Instagram. Prospeknya dicatat ulang dengan
-        // kanal yang benar — lihat catatan di panggilan pertama.
-        const { error: galatIg } = await supabase.rpc('buka_kontak_toko', {
-          p_toko_id: tokoId,
-          p_produk_id: produkId,
-          p_kanal: 'ig',
-        })
-        // Kanal cuma catatan untuk penjual. Gagal mencatatnya tidak boleh
-        // menghalangi pembeli menghubungi penjual, jadi tidak dilempar.
-        if (galatIg) console.warn('Gagal mencatat prospek Instagram:', galatIg.message)
-        tujuan = urlInstagram(kontak.ig_username as string)
+      // Urutannya sama dengan urutan kanal efektif yang dipakai RPC, supaya
+      // tujuan yang dibuka selalu cocok dengan kanal yang tercatat.
+      const tujuan = kontak.no_wa
+        ? urlWhatsApp(kontak.no_wa, kontak.pesan_awal?.trim() || await pesanUntukSaya())
+        : kontak.ig_username
+          ? urlInstagram(kontak.ig_username)
+          : urlLinkLain(kontak.link_lain)
+
+      // Hanya bisa terjadi kalau link_lain satu-satunya kontak yang terisi
+      // tapi isinya bukan http/https — lihat urlLinkLain soal kenapa yang
+      // selain itu tidak boleh dibuka.
+      if (!tujuan) {
+        tab?.close()
+        peringatan('Link kontak penjual tidak bisa dibuka.')
+        return
       }
 
       if (tab) tab.location.href = tujuan
