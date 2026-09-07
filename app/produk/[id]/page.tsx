@@ -15,6 +15,7 @@ import { useTampilSkeleton } from '../../hooks/useSkeleton'
 import { useHitungMundur } from '../../hooks/useHitungMundur'
 import { statusPO, alasanTidakBisa, tanggalPanjang, formatSisa, janjiKirim, type DataPO } from '../../../lib/preorder'
 import { emojiKategori } from '../../../lib/kategori'
+import { transaksiBeku } from '../../../lib/config'
 
 type Produk = DataPO & {
   id: string
@@ -392,7 +393,12 @@ export default function DetailProduk() {
 
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               {varian.map(v => {
-                const habis = v.stok <= 0
+                // Di mode katalog stok varian sudah beku: tidak ada pesanan yang
+                // memotongnya, dan editor varian disembunyikan dari penjual —
+                // jadi varian yang kebetulan bernilai 0 sebelum peralihan akan
+                // dicoret selamanya tanpa ada yang bisa membetulkannya.
+                // Ketersediaan dijawab produk.is_tersedia di tingkat produk.
+                const habis = transaksiBeku ? false : v.stok <= 0
                 const dipilih = v.id === varianId
                 return (
                   <button
@@ -417,8 +423,11 @@ export default function DetailProduk() {
               })}
             </div>
 
-            {/* Peringatan stak menipis hanya saat benar-benar mepet */}
-            {varianTerpilih && varianTerpilih.stok > 0 && varianTerpilih.stok < 5 && (
+            {/* Peringatan stok menipis. DIBEKUKAN di mode katalog: ini satu-satunya
+                angka stok yang masih bocor ke layar pembeli, dan sejak tidak ada
+                pesanan yang memotongnya angkanya pasti melenceng — "Sisa 2 lagi"
+                untuk barang yang sebenarnya menumpuk. Lihat BadgeTersedia. */}
+            {!transaksiBeku && varianTerpilih && varianTerpilih.stok > 0 && varianTerpilih.stok < 5 && (
               <div style={{ fontSize: '12px', color: '#e65100', fontWeight: '600', marginTop: '10px' }}>
                 Sisa {varianTerpilih.stok} lagi
               </div>

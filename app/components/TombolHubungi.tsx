@@ -112,8 +112,11 @@ export default function TombolHubungi({
 
     setMemuat(true)
     try {
-      // p_kanal adalah preferensi, bukan keputusan akhir: kalau penjual hanya
-      // punya Instagram, RPC-nya yang mencatat kanal efektif.
+      // p_kanal dicatat APA ADANYA oleh buka_kontak_toko — fungsinya tidak
+      // memeriksa kontak mana yang sebenarnya terisi. Jadi kalau penjual
+      // ternyata cuma punya Instagram, panggilan ini harus disusul panggilan
+      // kedua berkanal 'ig' di bawah; tanpa itu seluruh prospek Instagram
+      // akan terhitung sebagai WhatsApp di tab Prospek dan di panel admin.
       const { data, error } = await supabase.rpc('buka_kontak_toko', {
         p_toko_id: tokoId,
         p_produk_id: produkId,
@@ -135,9 +138,22 @@ export default function TombolHubungi({
         return
       }
 
-      const tujuan = kontak.no_wa
-        ? urlWhatsApp(kontak.no_wa, kontak.pesan_awal?.trim() || await pesanUntukSaya())
-        : urlInstagram(kontak.ig_username as string)
+      let tujuan: string
+      if (kontak.no_wa) {
+        tujuan = urlWhatsApp(kontak.no_wa, kontak.pesan_awal?.trim() || await pesanUntukSaya())
+      } else {
+        // Penjual hanya mengisi Instagram. Prospeknya dicatat ulang dengan
+        // kanal yang benar — lihat catatan di panggilan pertama.
+        const { error: galatIg } = await supabase.rpc('buka_kontak_toko', {
+          p_toko_id: tokoId,
+          p_produk_id: produkId,
+          p_kanal: 'ig',
+        })
+        // Kanal cuma catatan untuk penjual. Gagal mencatatnya tidak boleh
+        // menghalangi pembeli menghubungi penjual, jadi tidak dilempar.
+        if (galatIg) console.warn('Gagal mencatat prospek Instagram:', galatIg.message)
+        tujuan = urlInstagram(kontak.ig_username as string)
+      }
 
       if (tab) tab.location.href = tujuan
       else window.location.href = tujuan   // pop-up terlanjur diblokir
