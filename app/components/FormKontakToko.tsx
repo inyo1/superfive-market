@@ -2,7 +2,9 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToast } from '../context/ToastContext'
-import { normalisasiWA, normalisasiIG, tampilkanWA } from '../../lib/kontak'
+import {
+  normalisasiWA, normalisasiIG, normalisasiLink, tampilkanWA, PESAN_LINK_TIDAK_VALID,
+} from '../../lib/kontak'
 
 type Kontak = {
   no_wa: string | null
@@ -41,6 +43,7 @@ export default function FormKontakToko({ tokoId }: { tokoId: string }) {
   const [memuat, setMemuat] = useState(true)
   const [menyimpan, setMenyimpan] = useState(false)
   const [galatWa, setGalatWa] = useState<string | null>(null)
+  const [galatLink, setGalatLink] = useState<string | null>(null)
 
   useEffect(() => {
     let hidup = true
@@ -75,6 +78,7 @@ export default function FormKontakToko({ tokoId }: { tokoId: string }) {
   function ubah<K extends keyof Kontak>(kunci: K, v: string) {
     setNilai(prev => ({ ...prev, [kunci]: v }))
     if (kunci === 'no_wa') setGalatWa(null)
+    if (kunci === 'link_lain') setGalatLink(null)
   }
 
   async function simpan() {
@@ -98,6 +102,12 @@ export default function FormKontakToko({ tokoId }: { tokoId: string }) {
       return
     }
 
+    // Aturannya sama persis dengan CHECK toko_kontak_link_format. Ditolak di
+    // sini supaya penjual membaca kalimat, bukan bunyi constraint Postgres.
+    const hasilLink = normalisasiLink(nilai.link_lain)
+    if (!hasilLink.ok) { setGalatLink(hasilLink.pesan); return }
+    const linkBersih = hasilLink.link
+
     setMenyimpan(true)
     try {
       // toko_id adalah kunci primernya, jadi upsert cukup — satu toko satu
@@ -108,15 +118,27 @@ export default function FormKontakToko({ tokoId }: { tokoId: string }) {
           toko_id: tokoId,
           no_wa: waBersih,
           ig_username: ig || null,
-          link_lain: (nilai.link_lain ?? '').trim() || null,
+          link_lain: linkBersih,
           pesan_awal: (nilai.pesan_awal ?? '').trim() || null,
         }, { onConflict: 'toko_id' })
 
-      if (error) { toast.error('Gagal menyimpan kontak: ' + error.message); return }
+      if (error) {
+        // Jaring pengaman kalau validasi klien meleset dari constraint-nya
+        // (mis. spasi Unicode yang dianggap berbeda oleh JS dan Postgres).
+        // Pesannya ditaruh di sebelah kolom link, bukan toast generik.
+        if (error.message?.includes('toko_kontak_link_format')) {
+          setGalatLink(PESAN_LINK_TIDAK_VALID)
+          return
+        }
+        toast.error('Gagal menyimpan kontak: ' + error.message)
+        return
+      }
 
-      // Nomor yang sudah dinormalkan dikembalikan ke kolomnya, supaya penjual
+      // Nilai yang sudah dinormalkan dikembalikan ke kolomnya, supaya penjual
       // melihat bentuk yang benar-benar tersimpan — bukan yang tadi diketik
-      setNilai(prev => ({ ...prev, no_wa: waBersih ?? '', ig_username: ig }))
+      setNilai(prev => ({
+        ...prev, no_wa: waBersih ?? '', ig_username: ig, link_lain: linkBersih ?? '',
+      }))
       toast.sukses('Kontak toko tersimpan.')
     } finally {
       setMenyimpan(false)
@@ -180,8 +202,15 @@ export default function FormKontakToko({ tokoId }: { tokoId: string }) {
           onChange={e => ubah('link_lain', e.target.value)}
           placeholder="https://linktr.ee/tokokamu"
           inputMode="url"
-          style={gayaInput}
+          style={{ ...gayaInput, borderColor: galatLink ? '#f09595' : '#c5d9ef' }}
         />
+        {galatLink ? (
+          <div style={{ ...gayaBantuan, color: '#c62828' }}>{galatLink}</div>
+        ) : (
+          <div style={gayaBantuan}>
+            Boleh ditulis tanpa https:// — nanti ditambahkan otomatis.
+          </div>
+        )}
       </div>
 
       <div style={{ marginBottom: '16px' }}>

@@ -92,6 +92,48 @@ export function pesanDefault({ namaPembeli, angkatan, namaProduk }: IsiPesan): s
   )
 }
 
+/**
+ * Awalan skema URL (`https:`, `mailto:`, `javascript:`, ...). Dipakai
+ * normalisasiLink dan urlLinkLain supaya keduanya sepakat soal mana yang
+ * "sudah punya skema" dan mana yang perlu diberi https://.
+ *
+ * Sengaja hanya melihat awal teks, bukan "mengandung titik dua di mana pun":
+ * "wa.me/62812?text=halo:)" tidak punya skema, dan tetap harus diberi
+ * https:// alih-alih ditolak.
+ */
+const SKEMA = /^[a-z][a-z0-9+.-]*:/i
+
+export const PESAN_LINK_TIDAK_VALID =
+  'Link harus diawali http:// atau https:// dan tidak boleh mengandung spasi.'
+
+export type HasilLink =
+  | { ok: true; link: string | null }
+  | { ok: false; pesan: string }
+
+/**
+ * Menormalkan `link_lain` ke bentuk yang diterima CHECK
+ * `toko_kontak_link_format`: null, atau `^https?://\S+$` (tanpa peka huruf
+ * besar-kecil) dengan panjang paling banyak 500 karakter.
+ *
+ * "instagram.com/toko" jadi "https://instagram.com/toko". Itu bentuk yang
+ * paling mungkin diketik penjual, dan menolaknya cuma memindahkan pekerjaan
+ * mesin ke penjual, sama seperti alasan di normalisasiWA.
+ *
+ * Panjangnya dihitung per code point, bukan per unit UTF-16, supaya cocok
+ * dengan `length()` di Postgres.
+ */
+export function normalisasiLink(masukan: string | null | undefined): HasilLink {
+  const teks = (masukan ?? '').trim()
+  if (!teks) return { ok: true, link: null }
+
+  const link = SKEMA.test(teks) ? teks : 'https://' + teks
+
+  if (!/^https?:\/\/\S+$/i.test(link) || Array.from(link).length > 500) {
+    return { ok: false, pesan: PESAN_LINK_TIDAK_VALID }
+  }
+  return { ok: true, link }
+}
+
 /** URL wa.me lengkap. Teksnya dienkode utuh, termasuk spasi dan tanda baca. */
 export function urlWhatsApp(nomor: string, pesan: string): string {
   return `https://wa.me/${nomor}?text=${encodeURIComponent(pesan)}`
@@ -104,11 +146,15 @@ export function urlInstagram(username: string): string {
 /**
  * URL "link lain" penjual, disaring sebelum boleh dibuka.
  *
- * Kolom `toko_kontak.link_lain` TIDAK punya CHECK constraint, dan form
- * penjual tidak memvalidasinya — beda dengan `no_wa` dan `ig_username`
- * yang dikunci regex di database. Isinya teks bebas apa pun.
+ * Sejak 11 September 2026 `toko_kontak.link_lain` dijaga CHECK
+ * `toko_kontak_link_format` (http/https, tanpa spasi, maks 500), dan form
+ * penjual menormalkannya lewat normalisasiLink. JANGAN buang saringan di
+ * bawah karena itu. Constraint bisa diubah atau dicabut di sesi migrasi
+ * lain tanpa ada yang menyentuh berkas ini, `^https?://\S+` masih
+ * meloloskan teks yang tidak bisa diurai `new URL()`, dan yang dijaga di
+ * sini terlalu mahal untuk digantungkan pada satu lapis saja.
  *
- * Itu baru berbahaya justru karena cara TombolHubungi membuka tautannya:
+ * Kenapa taruhannya mahal, karena cara TombolHubungi membuka tautannya:
  * tab dibuat lebih dulu dengan `window.open('', '_blank')` supaya tidak
  * diblokir pop-up blocker, dan tab about:blank MEWARISI ORIGIN pembukanya.
  * Menyetel `location.href` ke `javascript:` di tab seperti itu menjalankan
@@ -116,14 +162,14 @@ export function urlInstagram(username: string): string {
  * token sesi pembeli dari localStorage. Jadi hanya http dan https yang
  * diloloskan; selain itu null, dan pemanggil menolak membukanya.
  *
- * Penjual yang menulis "linktr.ee/tokokamu" tanpa skema tetap dilayani.
- * Itu salah ketik yang lumrah, bukan tautan berbahaya.
+ * Tautan tanpa skema ("linktr.ee/tokokamu") tetap dilayani, untuk baris
+ * yang tersimpan sebelum form menormalkannya.
  */
 export function urlLinkLain(mentah: string | null | undefined): string | null {
   const teks = (mentah ?? '').trim()
   if (!teks) return null
 
-  const berskema = /^[a-z][a-z0-9+.-]*:/i.test(teks) ? teks : 'https://' + teks
+  const berskema = SKEMA.test(teks) ? teks : 'https://' + teks
 
   try {
     const url = new URL(berskema)
