@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToast } from '../context/ToastContext'
 import { pesanDefault, urlWhatsApp, urlInstagram, urlLinkLain } from '../../lib/kontak'
@@ -27,6 +27,41 @@ type Kontak = {
   pesan_awal: string | null
 }
 
+// Toko yang sudah terbukti belum punya kontak, dibagi ke semua tombol di
+// halaman. Di /toko/[id] tiap kartu produk punya tombolnya sendiri, dan
+// setelah satu klik membuktikan kontaknya kosong, tidak ada gunanya tombol
+// lain untuk toko yang sama tetap menawarkan "Hubungi Penjual".
+//
+// Sengaja hanya di memori: begitu penjual mengisi kontaknya, muat ulang
+// halaman sudah cukup untuk mencobanya lagi. Tidak bisa diketahui sebelum
+// klik — toko_kontak tertutup RLS, dan memanggil buka_kontak_toko hanya
+// untuk memeriksa akan mencatat prospek palsu untuk toko yang punya kontak.
+const tokoTanpaKontak = new Set<string>()
+const pendengar = new Set<() => void>()
+
+function langganan(fn: () => void) {
+  pendengar.add(fn)
+  return () => { pendengar.delete(fn) }
+}
+
+function tandaiTanpaKontak(tokoId: string) {
+  tokoTanpaKontak.add(tokoId)
+  pendengar.forEach(fn => fn())
+}
+
+/** Buka tujuan kontak di tab baru; kalau pop-up diblokir, di tab ini. */
+function bukaTujuan(url: string) {
+  // Tanpa 'noopener' di argumen supaya nilai baliknya bisa dipakai untuk
+  // mendeteksi pemblokiran; opener diputus manual sesudahnya supaya situs
+  // tujuan tidak bisa mengendalikan tab Superfive.
+  const tab = window.open(url, '_blank')
+  if (tab) {
+    try { tab.opener = null } catch { /* sudah lintas origin — abaikan */ }
+  } else {
+    window.location.href = url
+  }
+}
+
 const WA_HIJAU = '#25D366'
 const WA_HIJAU_TUA = '#128C7E'
 
@@ -47,14 +82,19 @@ function IkonWA({ size = 17 }: { size?: number }) {
  * memang begitu maunya: satu-satunya jalan keluarnya adalah RPC
  * `buka_kontak_toko`, yang sekalian mencatat prospeknya. Query langsung akan
  * mengembalikan nol baris — bukan error yang jelas, melainkan tombol yang
- * diam-diam bilang "penjual belum mengisi kontak" untuk penjual yang justru
- * sudah mengisinya.
+ * diam-diam bilang "Kontak belum tersedia" untuk penjual yang justru sudah
+ * mengisinya.
  */
 export default function TombolHubungi({
   produkId, tokoId, namaProduk, tersedia = true, kecil = false, matiKarena = null,
 }: Props) {
   const { error: toastError, peringatan } = useToast()
   const [memuat, setMemuat] = useState(false)
+  const tanpaKontak = useSyncExternalStore(
+    langganan,
+    () => tokoTanpaKontak.has(tokoId),
+    () => false,
+  )
 
   // TIDAK ADA GATE LOGIN. Sejak peluncuran reuni buka_kontak_toko() boleh
   // dipanggil anon, dan prospeknya tetap tercatat dengan peminat_id NULL.
@@ -93,12 +133,16 @@ export default function TombolHubungi({
   async function hubungi() {
     if (memuat || mati) return
 
-    // Tab dibuka SEKARANG, selagi masih di dalam gerakan klik pengguna. Kalau
-    // window.open dipanggil setelah await, peramban menganggapnya pop-up yang
-    // tidak diminta dan memblokirnya diam-diam — tidak ada error, tidak ada
-    // tab, dan tombolnya terlihat seperti rusak.
-    const tab = window.open('', '_blank', 'noopener,noreferrer')
-
+    // RPC DULU, TAB BELAKANGAN. Versi sebelumnya membuka tab kosong lebih
+    // dulu supaya tidak dianggap pop-up, dengan 'noopener' — padahal
+    // window.open dengan noopener SELALU mengembalikan null. Tab kosongnya
+    // tidak pernah bisa ditutup, dan untuk toko tanpa kontak (saat
+    // peluncuran: semuanya) setiap klik meninggalkan tab kosong yatim.
+    //
+    // Sekarang tab hanya dibuka kalau memang ada tujuan. Kalau peramban
+    // memblokirnya karena sudah lewat dari gerakan klik (Safari iOS paling
+    // ketat), bukaTujuan jatuh ke halaman yang sama — di HP itu tetap
+    // membuka aplikasi WhatsApp.
     setMemuat(true)
     try {
       // p_kanal cuma preferensi. buka_kontak_toko menentukan sendiri kanal
@@ -114,17 +158,20 @@ export default function TombolHubungi({
       })
 
       if (error) {
-        tab?.close()
         toastError('Gagal membuka kontak penjual: ' + error.message)
         return
       }
 
-      // RETURNS TABLE — PostgREST mengirimnya sebagai array satu elemen
+      // RETURNS TABLE — PostgREST mengirimnya sebagai array satu elemen.
+      // Toko tanpa baris toko_kontak tetap mengembalikan satu baris (LEFT
+      // JOIN) dengan semua kontak NULL, dan tidak ada prospek yang dicatat.
       const kontak: Kontak | null = Array.isArray(data) ? (data[0] ?? null) : (data ?? null)
 
+      // Bukan error dan bukan peringatan — keadaan wajar, terutama di awal
+      // peluncuran. Tombolnya berubah jadi status tenang, dan semua tombol
+      // lain untuk toko yang sama di halaman ini ikut berubah.
       if (!kontak || (!kontak.no_wa && !kontak.ig_username && !kontak.link_lain)) {
-        tab?.close()
-        peringatan('Penjual belum mengisi kontak.')
+        tandaiTanpaKontak(tokoId)
         return
       }
 
@@ -140,15 +187,12 @@ export default function TombolHubungi({
       // tapi isinya bukan http/https — lihat urlLinkLain soal kenapa yang
       // selain itu tidak boleh dibuka.
       if (!tujuan) {
-        tab?.close()
         peringatan('Link kontak penjual tidak bisa dibuka.')
         return
       }
 
-      if (tab) tab.location.href = tujuan
-      else window.location.href = tujuan   // pop-up terlanjur diblokir
+      bukaTujuan(tujuan)
     } catch (e: unknown) {
-      tab?.close()
       const pesan = e instanceof Error ? e.message : 'Coba lagi.'
       toastError('Gagal membuka kontak penjual: ' + pesan)
     } finally {
@@ -165,6 +209,22 @@ export default function TombolHubungi({
     border: 'none', fontWeight: '600', textDecoration: 'none',
     boxSizing: 'border-box', lineHeight: 1.2,
     ...gaya,
+  }
+
+  if (tanpaKontak && tersedia && !matiKarena) {
+    return (
+      <button
+        disabled
+        style={{
+          ...dasar,
+          background: '#f0f5fb', color: '#7a97b3',
+          border: '0.5px dashed #c5d9ef', fontWeight: '500',
+          cursor: 'default',
+        }}
+      >
+        Kontak belum tersedia
+      </button>
+    )
   }
 
   return (

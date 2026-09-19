@@ -160,12 +160,11 @@ export function urlInstagram(username: string): string {
  * sini terlalu mahal untuk digantungkan pada satu lapis saja.
  *
  * Kenapa taruhannya mahal, karena cara TombolHubungi membuka tautannya:
- * tab dibuat lebih dulu dengan `window.open('', '_blank')` supaya tidak
- * diblokir pop-up blocker, dan tab about:blank MEWARISI ORIGIN pembukanya.
- * Menyetel `location.href` ke `javascript:` di tab seperti itu menjalankan
- * skripnya sebagai halaman Superfive — cukup bagi penjual untuk mengambil
- * token sesi pembeli dari localStorage. Jadi hanya http dan https yang
- * diloloskan; selain itu null, dan pemanggil menolak membukanya.
+ * kalau pop-up diblokir, tujuannya dibuka dengan `window.location.href` di
+ * HALAMAN SUPERFIVE SENDIRI. Menyetel `location.href` ke `javascript:` di
+ * sana menjalankan skripnya sebagai halaman Superfive — cukup bagi penjual
+ * untuk mengambil token sesi pembeli dari localStorage. Jadi hanya http dan
+ * https yang diloloskan; selain itu null, dan pemanggil menolak membukanya.
  *
  * Tautan tanpa skema ("linktr.ee/tokokamu") tetap dilayani, untuk baris
  * yang tersimpan sebelum form menormalkannya.
