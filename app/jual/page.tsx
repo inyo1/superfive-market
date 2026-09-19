@@ -15,13 +15,18 @@ import { useTampilSkeleton } from '../hooks/useSkeleton'
 // Semua aturan siapa-boleh-apa ada di dalam ajukan_jadi_penjual(). Halaman ini
 // tidak mengulang validasinya — pesan error dari RPC ditampilkan apa adanya.
 
-// Ditulis apa adanya, tidak diperhalus. Penjual yang membaca ini sedang
-// menyetujui sesuatu yang akibatnya nyata: pesanannya bisa dibatalkan sistem.
+// Ditulis apa adanya, tidak diperhalus — penjual yang membaca ini sedang
+// menyetujui sesuatu.
+//
+// Aturan MODE KATALOG. Superfive tidak memproses pembayaran maupun
+// pengiriman — pembeli menghubungi penjual langsung — jadi yang bisa diikat
+// hanya tiga hal: kontaknya hidup, calon pembeli dibalas, dan transaksinya
+// tanggung jawab penjual sendiri. Kalau mode transaksi dinyalakan lagi
+// (lib/config.ts), aturan soal resi dan batas kirim perlu kembali ke sini.
 const ATURAN = [
-  'Barang ready wajib dikirim maksimal 3 hari setelah pembayaran diterima.',
-  'Barang pre-order wajib dikirim sesuai tanggal janji kirim yang kamu tetapkan.',
-  'Pesanan yang lewat batas DIBATALKAN SISTEM dan dana pembeli dikembalikan.',
-  'Nomor resi wajib diisi saat menandai pesanan dikirim.',
+  'Wajib mencantumkan kontak yang aktif (WhatsApp, Instagram, atau link lain) di tokomu, supaya calon pembeli bisa menghubungimu.',
+  'Wajib membalas calon pembeli yang menghubungimu dengan wajar — termasuk memberi tahu kalau barangnya sudah habis.',
+  'Superfive tidak memproses pembayaran maupun pengiriman. Seluruh transaksi terjadi langsung antara kamu dan pembeli, dan menjadi tanggung jawabmu sendiri.',
 ]
 
 const KOTAK = { background: '#fff', borderRadius: '12px', padding: '16px', border: '0.5px solid #c5d9ef', marginBottom: '12px' } as const
@@ -147,7 +152,7 @@ export default function JualPage() {
           Kamu sudah jadi penjual
         </div>
         <p style={{ fontSize: '13px', color: '#5a7da0', lineHeight: '1.7', margin: '0 0 18px' }}>
-          Tokomu sudah tayang. Kelola produk dan pesanan dari dashboard.
+          Tokomu sudah tayang. Kelola produk dan kontak toko dari dashboard.
         </p>
         <div style={{ display: 'flex', gap: '10px' }}>
           <Link href="/dashboard" style={{ flex: 1, background: '#0C447C', color: '#fff', padding: '11px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none' }}>
@@ -291,7 +296,7 @@ export default function JualPage() {
             style={{ accentColor: '#0C447C', width: '17px', height: '17px', flexShrink: 0, marginTop: '1px' }}
           />
           <span style={{ fontSize: '12px', color: setuju ? '#0C447C' : '#1a1a1a', lineHeight: '1.6', fontWeight: setuju ? '600' : '400' }}>
-            Saya sudah membaca dan menyetujui keempat aturan di atas.
+            Saya sudah membaca dan menyetujui ketiga aturan di atas.
           </span>
         </label>
       </div>
