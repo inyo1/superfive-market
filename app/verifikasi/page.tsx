@@ -176,7 +176,36 @@ export default function VerifikasiPage() {
     </main>
   )
 
-  const ditolak = status === 'ditolak'
+  // Dicabut pengurus dari /admin/verifikasi (Alumni Terbaru). Formulirnya
+  // SENGAJA tidak ditampilkan: ajukan_alumni() hanya menolak status
+  // 'alumni', jadi formulir di sini akan langsung memberi status alumni lagi
+  // — pencabutannya jadi tidak berarti apa-apa. Pagar yang sebenarnya harus
+  // di RPC-nya; ini hanya menutup pintu yang terlihat.
+  if (status === 'ditolak') return (
+    <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
+      <Navbar />
+      <div style={{ maxWidth: '520px', margin: '32px auto', padding: '0 16px' }}>
+        <div style={{ background: '#fff', borderRadius: '12px', padding: '28px 20px', border: '0.5px solid #f09595', textAlign: 'center' }}>
+          <div style={{ fontSize: '44px', marginBottom: '12px' }}>🎓</div>
+          <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#1a1a1a', margin: '0 0 8px' }}>
+            Status alumnimu dicabut pengurus
+          </h2>
+          {alasanTolak && (
+            <div style={{ background: '#fce4e4', borderRadius: '8px', padding: '10px 12px', fontSize: '12px', color: '#c62828', margin: '0 0 12px', whiteSpace: 'pre-line', textAlign: 'left' }}>
+              {alasanTolak}
+            </div>
+          )}
+          <p style={{ fontSize: '13px', color: '#5a7da0', margin: '0 0 18px', lineHeight: 1.7 }}>
+            Kamu tetap bisa belanja seperti biasa. Kalau menurutmu ini keliru,
+            hubungi pengurus Superfive untuk meluruskannya.
+          </p>
+          <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', background: '#0C447C', color: '#fff', padding: '0 20px', minHeight: '44px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', textDecoration: 'none' }}>
+            Kembali ke Beranda
+          </Link>
+        </div>
+      </div>
+    </main>
+  )
 
   return (
     <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
@@ -189,17 +218,6 @@ export default function VerifikasiPage() {
         <div style={{ fontSize: '12px', color: '#5a7da0', marginBottom: '16px' }}>
           Supaya kamu masuk direktori alumni dan bisa berjualan
         </div>
-
-        {/* Keputusan admin dari masa antrean — masih relevan dibaca sebelum
-            mengirim ulang, karena biasanya menyebut apa yang keliru */}
-        {ditolak && alasanTolak && (
-          <div style={{ background: '#fce4e4', border: '0.5px solid #f09595', borderRadius: '12px', padding: '14px 16px', marginBottom: '12px' }}>
-            <div style={{ fontSize: '13px', fontWeight: '600', color: '#c62828', marginBottom: '4px' }}>
-              Catatan dari pengajuan sebelumnya
-            </div>
-            <div style={{ fontSize: '12px', color: '#c62828' }}>{alasanTolak}</div>
-          </div>
-        )}
 
         {/* Penjelasan */}
         <div style={{ background: '#fff', borderRadius: '12px', padding: '16px', border: '0.5px solid #c5d9ef', marginBottom: '12px' }}>

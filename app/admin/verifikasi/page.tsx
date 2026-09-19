@@ -11,37 +11,39 @@ import { useTampilSkeleton } from '../../hooks/useSkeleton'
 import { bolehVerifikasiAlumni, adminPenuh, type Peran } from '../../../lib/peran'
 import { tanggalPeristiwa } from '../../../lib/format'
 
-type Pendaftar = {
+// ALUMNI TERBARU — pemeriksaan SESUDAH daftar.
+//
+// Sejak peluncuran reuni tidak ada lagi antrean persetujuan: ajukan_alumni()
+// langsung memberi status 'alumni'. Satu-satunya penegakan yang tersisa
+// adalah pengurus membaca siapa yang baru bergabung dan mencabut yang
+// janggal. Halaman ini alat utamanya — rutenya tetap /admin/verifikasi
+// supaya tautan lama tidak patah.
+//
+// Sumber datanya tetap antrean_alumni('alumni'), untuk SEMUA peran. Tabel
+// `users` tidak disentuh dari sini: penyaringan angkatan untuk admin
+// angkatan, pengecualian akun nonaktif, dan kolom bukti yang disembunyikan
+// dari admin angkatan semuanya di dalam fungsi itu.
+//
+// Pengecualian satu: URUTANNYA diurutkan ulang di sini. antrean_alumni
+// mengurutkan "paling lama menunggu di atas" untuk antrean yang sudah tidak
+// ada; yang dibutuhkan halaman ini justru yang paling baru jadi alumni.
+//
+// Label "Superfive 92" dibaca dari alumni_publik (terbaca oleh yang login),
+// bukan dirangkai dari tahun.
+
+type Alumni = {
   id: string
   nama: string | null
   email: string | null
   angkatan: number | null
   avatar_url: string | null
-  status_alumni: string
   is_institusi: boolean | null
-  catatan_admin: string | null
-  diminta_data_at: string | null
   // NULL untuk admin angkatan — disaring di dalam antrean_alumni, bukan di
   // sini. Jangan menambah pemeriksaan peran di klien untuk kolom ini.
   bukti_alumni_url: string | null
-  catatan_pendaftar: string | null
-  alasan_tolak: string | null
   created_at: string
   diverifikasi_at: string | null
 }
-
-// Nilai status_alumni, bukan status_verifikasi lama. 'umum' sengaja tidak
-// punya tab: mereka pembeli biasa yang tidak pernah mengaku alumni, jadi tidak
-// ada yang perlu diputuskan admin.
-const TABS = ['menunggu', 'alumni', 'ditolak'] as const
-type Tab = (typeof TABS)[number]
-
-const LABEL_TAB: Record<Tab, string> = {
-  menunggu: 'Menunggu',
-  alumni: 'Terverifikasi',
-  ditolak: 'Ditolak',
-}
-
 
 function Avatar({ nama, url, size = 48 }: { nama: string | null; url: string | null; size?: number }) {
   const initials = nama
@@ -65,27 +67,27 @@ function Avatar({ nama, url, size = 48 }: { nama: string | null; url: string | n
   )
 }
 
-export default function VerifikasiAdminPage() {
+function waktu(t: string | null) {
+  return t ? new Date(t).getTime() : 0
+}
+
+export default function AlumniTerbaruPage() {
   const router = useRouter()
   const [ready, setReady] = useState(false)
   const tampilSkeleton = useTampilSkeleton(!ready)
-  const [tab, setTab] = useState<Tab>('menunggu')
-  const [antrean, setAntrean] = useState<Record<Tab, Pendaftar[]>>({
-    menunggu: [], alumni: [], ditolak: [],
-  })
+  const [daftar, setDaftar] = useState<Alumni[]>([])
+  const [labelById, setLabelById] = useState<Record<string, string>>({})
+  const [cari, setCari] = useState('')
   const [pesan, setPesan] = useState<{ text: string; ok: boolean } | null>(null)
   const [prosesId, setProsesId] = useState<string | null>(null)
   const [adminId, setAdminId] = useState<string | null>(null)
   const [peranSaya, setPeranSaya] = useState<Peran | null>(null)
   const [angkatanSaya, setAngkatanSaya] = useState<number | null>(null)
 
-  // Satu form untuk dua aksi yang sama-sama wajib beralasan: menolak, dan
-  // meminta data dilengkapi. Hanya satu yang boleh terbuka sekaligus.
   const [formId, setFormId] = useState<string | null>(null)
-  const [formJenis, setFormJenis] = useState<'tolak' | 'minta'>('tolak')
   const [alasan, setAlasan] = useState('')
 
-  // Lightbox bukti
+  // Lightbox bukti — hanya untuk data lama, unggahnya sedang dimatikan
   const [buktiUrl, setBuktiUrl] = useState<string | null>(null)
   const [memuatBukti, setMemuatBukti] = useState<string | null>(null)
 
@@ -94,30 +96,25 @@ export default function VerifikasiAdminPage() {
     setTimeout(() => setPesan(null), 4000)
   }
 
-  // Satu-satunya sumber antrean, untuk SEMUA peran — bukan hanya admin
-  // angkatan. Tabel `users` tidak disentuh dari sini sama sekali: penyaringan
-  // angkatan, pengecualian akun nonaktif, dan urutannya semua di dalam
-  // antrean_alumni. Satu jalur yang bisa meleset, bukan dua.
-  //
-  // Ketiga status diambil sekaligus supaya angka di tab tetap ada. Urutan
-  // tiap daftar datang dari fungsinya (paling lama menunggu di atas) —
-  // JANGAN diurutkan ulang di sini.
   async function muat() {
-    const hasil = await Promise.all(
-      TABS.map(t => supabase.rpc('antrean_alumni', { p_status: t })),
-    )
-
-    const gagal = hasil.find(r => r.error)
-    if (gagal?.error) {
-      tampilkanPesan('Gagal memuat antrean: ' + gagal.error.message, false)
+    const { data, error } = await supabase.rpc('antrean_alumni', { p_status: 'alumni' })
+    if (error) {
+      tampilkanPesan('Gagal memuat daftar alumni: ' + error.message, false)
       return
     }
 
-    setAntrean({
-      menunggu: (hasil[0].data ?? []) as Pendaftar[],
-      alumni:   (hasil[1].data ?? []) as Pendaftar[],
-      ditolak:  (hasil[2].data ?? []) as Pendaftar[],
-    })
+    // Terbaru jadi alumni di atas. diverifikasi_at diisi ajukan_alumni saat
+    // orangnya mendaftar sendiri, dan oleh verifikasi_alumni untuk data lama.
+    const baris = ((data ?? []) as Alumni[]).sort((a, b) =>
+      waktu(b.diverifikasi_at ?? b.created_at) - waktu(a.diverifikasi_at ?? a.created_at))
+    setDaftar(baris)
+
+    const ids = baris.map(a => a.id)
+    if (ids.length > 0) {
+      const { data: publik } = await supabase
+        .from('alumni_publik').select('id, label_angkatan').in('id', ids)
+      setLabelById(Object.fromEntries((publik ?? []).map(p => [p.id, p.label_angkatan])))
+    }
   }
 
   useEffect(() => {
@@ -129,7 +126,7 @@ export default function VerifikasiAdminPage() {
         .from('users').select('role, angkatan').eq('id', user.id).single()
 
       // Admin angkatan ikut boleh masuk — batas angkatannya ditegakkan
-      // verifikasi_alumni, dan daftarnya disaring di bawah
+      // antrean_alumni dan verifikasi_alumni di server
       if (!bolehVerifikasiAlumni(profile?.role)) { router.replace('/'); return }
       setAdminId(user.id)
       setPeranSaya((profile?.role ?? null) as Peran | null)
@@ -141,54 +138,28 @@ export default function VerifikasiAdminPage() {
     init()
   }, [])
 
-  async function putuskan(id: string, setujui: boolean, alasanTolak?: string) {
+  // Mencabut = verifikasi_alumni(id, false, alasan). Statusnya jadi
+  // 'ditolak' dan alasannya tampil ke yang bersangkutan di /verifikasi.
+  // Semua batasnya di RPC: bukan akun sendiri, bukan sesama pengurus, admin
+  // angkatan hanya untuk angkatannya. error.message ditampilkan apa adanya.
+  async function cabut(id: string) {
+    const teks = alasan.trim()
+    if (!teks) { tampilkanPesan('Alasan pencabutan wajib diisi', false); return }
+
     setProsesId(id)
     try {
       const { data, error } = await supabase.rpc('verifikasi_alumni', {
         p_user_id: id,
-        p_setujui: setujui,
-        p_alasan: alasanTolak ?? null,
-      })
-
-      if (error) throw new Error(error.message)
-
-      // Barisnya berpindah antar tab, jadi antreannya dibaca ulang — lebih
-      // murah daripada memindahkan sendiri dan salah menebak urutannya
-      const hasil = data as { nama: string | null; status: string } | null
-      await muat()
-
-      tampilkanPesan(
-        `${hasil?.nama ?? 'Pendaftar'} ${setujui ? 'diverifikasi' : 'ditolak'}.`,
-        true,
-      )
-      setFormId(null)
-      setAlasan('')
-    } catch (e) {
-      tampilkanPesan('Gagal: ' + (e instanceof Error ? e.message : 'coba lagi'), false)
-    } finally {
-      setProsesId(null)
-    }
-  }
-
-  // Menarik keputusan yang sudah dibuat dan mengembalikan pendaftar ke antrean
-  // 'menunggu' dengan catatan apa yang perlu dilengkapi. Jalan tengah supaya
-  // keraguan administratif kecil tidak lagi memaksa admin menolak orang.
-  async function mintaDataUlang(id: string, catatan: string) {
-    setProsesId(id)
-    try {
-      const { data, error } = await supabase.rpc('minta_data_ulang', {
-        p_user_id: id,
-        p_catatan: catatan,
+        p_setujui: false,
+        p_alasan: teks,
       })
       if (error) throw new Error(error.message)
 
       const hasil = data as { nama: string | null } | null
       await muat()
-
-      tampilkanPesan(`Permintaan data terkirim ke ${hasil?.nama ?? 'pendaftar'}.`, true)
+      tampilkanPesan(`Status alumni ${hasil?.nama ?? 'pengguna ini'} dicabut.`, true)
       setFormId(null)
       setAlasan('')
-      setTab('menunggu')
     } catch (e) {
       tampilkanPesan('Gagal: ' + (e instanceof Error ? e.message : 'coba lagi'), false)
     } finally {
@@ -196,38 +167,22 @@ export default function VerifikasiAdminPage() {
     }
   }
 
-  function kirimForm(id: string) {
-    const teks = alasan.trim()
-    if (!teks) {
-      tampilkanPesan(
-        formJenis === 'tolak' ? 'Alasan penolakan wajib diisi' : 'Tulis dulu data apa yang perlu dilengkapi',
-        false,
-      )
-      return
-    }
-    if (formJenis === 'tolak') putuskan(id, false, teks)
-    else mintaDataUlang(id, teks)
-  }
-
-  function bukaForm(id: string, jenis: 'tolak' | 'minta') {
-    setFormId(id)
-    setFormJenis(jenis)
-    setAlasan('')
-  }
-
-  async function bukaBukti(p: Pendaftar) {
-    setMemuatBukti(p.id)
-    const url = await urlBukti(p.bukti_alumni_url)
+  async function bukaBukti(a: Alumni) {
+    setMemuatBukti(a.id)
+    const url = await urlBukti(a.bukti_alumni_url)
     setMemuatBukti(null)
     if (!url) { tampilkanPesan('Bukti tidak bisa dibuka. File mungkin sudah dihapus.', false); return }
     setBuktiUrl(url)
   }
 
-  // Tidak ada penyaringan angkatan di sini lagi: antrean_alumni sudah
-  // menyaringnya di server, dan menyalinnya ke klien hanya akan terbaca
-  // seolah lapisan inilah yang menjaga.
-  const terlihat = antrean[tab]
-  function jumlah(t: Tab) { return antrean[t].length }
+  const q = cari.trim().toLowerCase()
+  const terlihat = q
+    ? daftar.filter(a =>
+        (a.nama ?? '').toLowerCase().includes(q) ||
+        (a.email ?? '').toLowerCase().includes(q) ||
+        (labelById[a.id] ?? '').toLowerCase().includes(q) ||
+        String(a.angkatan ?? '').includes(q))
+    : daftar
 
   if (tampilSkeleton) return (
     <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
@@ -235,9 +190,7 @@ export default function VerifikasiAdminPage() {
       <div style={{ maxWidth: '660px', margin: '0 auto', padding: '16px' }}>
         <Skeleton tinggi={18} lebar="45%" style={{ marginBottom: '6px' }} />
         <Skeleton tinggi={11} lebar="70%" style={{ marginBottom: '18px' }} />
-        <div style={{ display: 'flex', gap: '6px', marginBottom: '14px' }}>
-          {[0, 1, 2].map(i => <Skeleton key={i} tinggi={34} radius={8} style={{ flex: 1 }} />)}
-        </div>
+        <Skeleton tinggi={40} radius={8} style={{ marginBottom: '14px' }} />
         <SkeletonPanel baris={2} />
         <SkeletonPanel baris={2} />
       </div>
@@ -248,7 +201,6 @@ export default function VerifikasiAdminPage() {
     <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
       <Navbar />
 
-      {/* Lightbox bukti */}
       {buktiUrl && (
         <div
           onClick={() => setBuktiUrl(null)}
@@ -267,21 +219,23 @@ export default function VerifikasiAdminPage() {
 
       <div style={{ maxWidth: '660px', margin: '0 auto', padding: '16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-          <h1 style={{ fontSize: '18px', fontWeight: '700', color: '#1a1a1a', margin: 0 }}>Verifikasi Alumni</h1>
-          <Link href="/admin" style={{ fontSize: '12px', color: '#0C447C', textDecoration: 'none' }}>← Panel Admin</Link>
+          <h1 style={{ fontSize: '18px', fontWeight: '700', color: '#1a1a1a', margin: 0 }}>Alumni Terbaru</h1>
+          {adminPenuh(peranSaya) && (
+            <Link href="/admin" style={{ fontSize: '12px', color: '#0C447C', textDecoration: 'none' }}>← Panel Admin</Link>
+          )}
         </div>
-        <div style={{ fontSize: '12px', color: '#5a7da0', marginBottom: '16px' }}>
-          Unggah bukti sedang dimatikan — periksa nama, angkatan, dan catatan pendaftar
-          sebelum menyetujui. Yang tampil di sini hanya yang mengaku alumni; pembeli
-          biasa tidak diperiksa. Untuk izin berjualan, lihat <Link href="/admin/penjual" style={{ color: '#0C447C' }}>Pengajuan Penjual</Link>.
+        <div style={{ fontSize: '12px', color: '#5a7da0', marginBottom: '16px', lineHeight: 1.7 }}>
+          Pendaftaran alumni langsung aktif tanpa persetujuan. Periksa yang baru
+          bergabung — kalau nama atau angkatannya janggal, cabut status alumninya.
+          Untuk izin berjualan, lihat <Link href="/admin/penjual" style={{ color: '#0C447C' }}>Pengajuan Penjual</Link>.
         </div>
 
         {/* Batas kuasanya disebut terang-terangan, supaya admin angkatan tidak
             mengira daftarnya sedang bermasalah saat isinya sedikit */}
         {!adminPenuh(peranSaya) && (
           <div style={{ background: '#E6F1FB', border: '0.5px solid #b3d1ee', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', color: '#0C447C', marginBottom: '12px', lineHeight: '1.7' }}>
-            Kamu <strong>admin angkatan {angkatanSaya ?? '—'}</strong>. Yang bisa kamu
-            verifikasi hanya pendaftar angkatan yang sama.
+            Kamu <strong>admin angkatan {angkatanSaya ?? '—'}</strong>. Yang tampil dan
+            bisa kamu cabut hanya alumni angkatan yang sama.
           </div>
         )}
 
@@ -291,54 +245,44 @@ export default function VerifikasiAdminPage() {
           </div>
         )}
 
-        {/* Tabs */}
-        <div style={{ display: 'flex', gap: '6px', marginBottom: '14px' }}>
-          {TABS.map(t => {
-            const aktif = tab === t
-            return (
-              <button
-                key={t}
-                onClick={() => { setTab(t); setFormId(null); setAlasan('') }}
-                style={{
-                  flex: 1, padding: '9px 6px', borderRadius: '8px',
-                  border: aktif ? 'none' : '0.5px solid #c5d9ef',
-                  background: aktif ? '#0C447C' : '#fff',
-                  color: aktif ? '#fff' : '#5a7da0',
-                  fontSize: '12px', fontWeight: aktif ? '600' : '400', cursor: 'pointer',
-                }}
-              >
-                {LABEL_TAB[t]} ({jumlah(t)})
-              </button>
-            )
-          })}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+          <input
+            value={cari}
+            onChange={e => setCari(e.target.value)}
+            placeholder="Cari nama, email, atau angkatan…"
+            aria-label="Cari alumni"
+            style={{ flex: 1, padding: '10px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#fff', minHeight: '44px', boxSizing: 'border-box' }}
+          />
+          <div style={{ fontSize: '12px', color: '#5a7da0', whiteSpace: 'nowrap' }}>
+            {daftar.length} alumni
+          </div>
         </div>
 
         {terlihat.length === 0 ? (
           <div style={{ background: '#fff', borderRadius: '12px', padding: '48px 20px', border: '0.5px solid #c5d9ef', textAlign: 'center' }}>
-            <div style={{ fontSize: '40px', marginBottom: '10px' }}>
-              {tab === 'menunggu' ? '✅' : '📭'}
-            </div>
+            <div style={{ fontSize: '40px', marginBottom: '10px' }}>📭</div>
             <div style={{ fontSize: '13px', color: '#5a7da0' }}>
-              {tab === 'menunggu' ? 'Tidak ada yang menunggu verifikasi' : `Belum ada pendaftar ${LABEL_TAB[tab].toLowerCase()}`}
+              {q ? 'Tidak ada alumni yang cocok dengan pencarianmu' : 'Belum ada alumni terdaftar'}
             </div>
           </div>
-        ) : terlihat.map(p => {
-          const sedangProses = prosesId === p.id
+        ) : terlihat.map(a => {
+          const sedangProses = prosesId === a.id
+          const label = labelById[a.id] ?? null
           return (
-            <div key={p.id} style={{ background: '#fff', borderRadius: '12px', border: '0.5px solid #c5d9ef', marginBottom: '10px', overflow: 'hidden' }}>
+            <div key={a.id} style={{ background: '#fff', borderRadius: '12px', border: '0.5px solid #c5d9ef', marginBottom: '10px', overflow: 'hidden' }}>
 
-              {/* Identitas */}
               <div style={{ padding: '14px', display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                <Avatar nama={p.nama} url={p.avatar_url} size={48} />
+                <Avatar nama={a.nama} url={a.avatar_url} size={48} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a1a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {p.nama || 'Tanpa nama'}
+                    {a.nama || 'Tanpa nama'}
+                    {/* Label NULL (akun institusi, atau angkatan kosong di
+                        data lama) = nama saja, tanpa pemisah */}
+                    {label && (
+                      <span style={{ fontWeight: '600', color: '#0C447C' }}> · {label}</span>
+                    )}
                   </div>
-                  {/* Akun institusi mewakili lembaga atau toko resmi, bukan
-                      perorangan — kriteria alumni tidak berlaku untuknya, dan
-                      angkatannya memang tidak ada artinya. Karena itu lencana
-                      menggantikan baris angkatan, bukan menemaninya. */}
-                  {p.is_institusi ? (
+                  {a.is_institusi && (
                     <div style={{ marginTop: '2px' }}>
                       <span style={{
                         display: 'inline-block',
@@ -351,164 +295,84 @@ export default function VerifikasiAdminPage() {
                         🏛️ Akun Institusi
                       </span>
                     </div>
-                  ) : (
-                    <div style={{ fontSize: '12px', color: '#5a7da0' }}>
-                      {p.angkatan ? `Angkatan ${p.angkatan}` : 'Angkatan belum diisi'}
-                    </div>
                   )}
-                  <div style={{ fontSize: '11px', color: '#5a7da0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {p.email ?? '-'}
+                  <div style={{ fontSize: '11px', color: '#5a7da0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '2px' }}>
+                    {a.email ?? '-'}
                   </div>
                   <div style={{ fontSize: '11px', color: '#9ab4cc', marginTop: '2px' }}>
-                    Daftar {tanggalPeristiwa(p.created_at)}
-                    {p.diverifikasi_at && ` · diputuskan ${tanggalPeristiwa(p.diverifikasi_at)}`}
+                    Daftar {tanggalPeristiwa(a.created_at)}
+                    {a.diverifikasi_at && ` · jadi alumni ${tanggalPeristiwa(a.diverifikasi_at)}`}
                   </div>
                 </div>
               </div>
 
-              {/* Catatan pendaftar */}
-              {p.catatan_pendaftar && (
-                <div style={{ margin: '0 14px 12px', background: '#f0f5fb', borderRadius: '8px', padding: '10px 12px' }}>
-                  <div style={{ fontSize: '10px', color: '#5a7da0', marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    Catatan pendaftar
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#1a1a1a', whiteSpace: 'pre-line' }}>
-                    {p.catatan_pendaftar}
-                  </div>
-                </div>
-              )}
-
-              {/* Bukti alumni — hanya untuk data lama, karena unggahnya sedang
-                  dimatikan. Tidak ada peringatan "belum mengunggah": itu akan
-                  menyala untuk hampir semua orang dan cepat diabaikan.
-
-                  Tombolnya muncul semata-mata karena kolomnya terisi. Untuk
-                  admin angkatan antrean_alumni mengembalikan NULL, jadi
-                  tombolnya hilang sendiri — JANGAN menambahkan pemeriksaan
-                  peran di sini. Dua pemeriksaan atas hal yang sama suatu saat
-                  akan berbeda pendapat, dan yang di klien pasti yang salah. */}
-              {p.bukti_alumni_url && (
+              {/* Tombolnya muncul semata-mata karena kolomnya terisi. Untuk
+                  admin angkatan antrean_alumni mengembalikan NULL — JANGAN
+                  menambahkan pemeriksaan peran di sini. */}
+              {a.bukti_alumni_url && (
                 <div style={{ margin: '0 14px 12px' }}>
                   <button
-                    onClick={() => bukaBukti(p)}
-                    disabled={memuatBukti === p.id}
+                    onClick={() => bukaBukti(a)}
+                    disabled={memuatBukti === a.id}
                     style={{ width: '100%', background: '#E6F1FB', color: '#0C447C', border: '0.5px solid #c5d9ef', padding: '9px', borderRadius: '8px', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}
                   >
-                    {memuatBukti === p.id ? 'Membuka...' : '🖼️ Lihat Bukti Alumni'}
+                    {memuatBukti === a.id ? 'Membuka...' : '🖼️ Lihat Bukti Alumni'}
                   </button>
                 </div>
               )}
 
-              {/* Data yang sedang diminta admin — pendaftar melihat catatan
-                  yang sama di halaman /verifikasi miliknya */}
-              {p.catatan_admin && (
-                <div style={{ margin: '0 14px 12px', background: '#E6F1FB', borderRadius: '8px', padding: '10px 12px' }}>
-                  <div style={{ fontSize: '10px', color: '#0C447C', marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    Diminta melengkapi{p.diminta_data_at ? ` · ${tanggalPeristiwa(p.diminta_data_at)}` : ''}
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#0C447C', whiteSpace: 'pre-line' }}>{p.catatan_admin}</div>
-                </div>
-              )}
-
-              {/* Alasan penolakan sebelumnya */}
-              {p.status_alumni === 'ditolak' && p.alasan_tolak && (
-                <div style={{ margin: '0 14px 12px', background: '#fce4e4', borderRadius: '8px', padding: '10px 12px' }}>
-                  <div style={{ fontSize: '10px', color: '#c62828', marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    Alasan ditolak
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#c62828' }}>{p.alasan_tolak}</div>
-                </div>
-              )}
-
-              {/* Aksi */}
               <div style={{ padding: '0 14px 14px' }}>
-                {formId === p.id ? (
-                  <div style={{ background: '#f0f5fb', borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <div style={{ fontSize: '12px', fontWeight: '600', color: formJenis === 'tolak' ? '#c62828' : '#0C447C' }}>
-                      {formJenis === 'tolak' ? 'Alasan penolakan' : 'Data apa yang perlu dilengkapi?'}
-                    </div>
+                {formId === a.id ? (
+                  <div style={{ background: '#fdf3f3', borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <label htmlFor={`alasan-${a.id}`} style={{ fontSize: '12px', fontWeight: '600', color: '#c62828' }}>
+                      Alasan pencabutan
+                    </label>
                     <textarea
+                      id={`alasan-${a.id}`}
                       value={alasan}
                       onChange={e => setAlasan(e.target.value)}
                       rows={3}
-                      placeholder={formJenis === 'tolak'
-                        ? 'Misal: nama tidak cocok dengan data alumni'
-                        : 'Misal: tulis nama wali kelas dan kelas terakhirmu supaya bisa kami cocokkan'}
-                      style={{ width: '100%', padding: '8px 10px', border: '0.5px solid #c5d9ef', borderRadius: '6px', fontSize: '12px', outline: 'none', resize: 'none', boxSizing: 'border-box', fontFamily: 'sans-serif', background: '#fff' }}
+                      placeholder="Misal: tidak dikenali teman seangkatan Superfive 92"
+                      style={{ width: '100%', padding: '8px 10px', border: '0.5px solid #f09595', borderRadius: '6px', fontSize: '12px', outline: 'none', resize: 'none', boxSizing: 'border-box', fontFamily: 'sans-serif', background: '#fff' }}
                     />
-                    <div style={{ fontSize: '11px', color: '#5a7da0' }}>
-                      {formJenis === 'tolak'
-                        ? 'Alasan ini ditampilkan ke pendaftar supaya bisa mengirim ulang.'
-                        : 'Catatan ini ditampilkan ke pendaftar, dan statusnya kembali ke Menunggu.'}
+                    <div style={{ fontSize: '11px', color: '#8d4040', lineHeight: 1.6 }}>
+                      Alasan ini ditampilkan ke yang bersangkutan. Ia keluar dari
+                      direktori alumni dan tidak bisa berjualan.
                     </div>
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <button
                         onClick={() => { setFormId(null); setAlasan('') }}
-                        style={{ flex: 1, background: '#fff', color: '#5a7da0', border: '0.5px solid #c5d9ef', padding: '9px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}
+                        style={{ flex: 1, background: '#fff', color: '#5a7da0', border: '0.5px solid #c5d9ef', padding: '9px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', minHeight: '40px' }}
                       >
                         Batal
                       </button>
                       <button
-                        onClick={() => kirimForm(p.id)}
+                        onClick={() => cabut(a.id)}
                         disabled={sedangProses}
                         style={{
                           flex: 2, color: '#fff', border: 'none', padding: '9px', borderRadius: '6px',
-                          fontSize: '12px', fontWeight: '600',
-                          background: sedangProses
-                            ? (formJenis === 'tolak' ? '#e39c9c' : '#7fa8c9')
-                            : (formJenis === 'tolak' ? '#c62828' : '#0C447C'),
+                          fontSize: '12px', fontWeight: '600', minHeight: '40px',
+                          background: sedangProses ? '#e39c9c' : '#c62828',
                           cursor: sedangProses ? 'not-allowed' : 'pointer',
                         }}
                       >
-                        {sedangProses
-                          ? 'Menyimpan...'
-                          : formJenis === 'tolak' ? 'Kirim Penolakan' : 'Kirim Permintaan'}
+                        {sedangProses ? 'Mencabut...' : 'Cabut Status Alumni'}
                       </button>
                     </div>
                   </div>
-                ) : p.id === adminId ? (
-                  /* RPC-nya menolak semua aksi ke akun sendiri, jadi tombolnya
-                     tidak usah ditawarkan sama sekali */
+                ) : a.id === adminId ? (
+                  /* RPC-nya menolak aksi ke akun sendiri */
                   <div style={{ fontSize: '12px', color: '#9ab4cc', textAlign: 'center', padding: '6px' }}>
                     Ini akunmu sendiri.
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                    {p.status_alumni !== 'alumni' && (
-                      <button
-                        onClick={() => putuskan(p.id, true)}
-                        disabled={sedangProses}
-                        style={{ flex: 2, minWidth: '130px', background: sedangProses ? '#a5d6a7' : '#2e7d32', color: '#fff', border: 'none', padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: sedangProses ? 'not-allowed' : 'pointer' }}
-                      >
-                        {sedangProses ? 'Menyimpan...' : '✓ Verifikasi'}
-                      </button>
-                    )}
-                    {p.status_alumni !== 'ditolak' && (
-                      <button
-                        onClick={() => bukaForm(p.id, 'tolak')}
-                        disabled={sedangProses}
-                        style={{ flex: 1, minWidth: '80px', background: '#fce4e4', color: '#c62828', border: 'none', padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: sedangProses ? 'not-allowed' : 'pointer' }}
-                      >
-                        Tolak
-                      </button>
-                    )}
-                    {/* Hanya untuk yang keputusannya sudah dibuat. Yang masih
-                        'menunggu' ditolak RPC-nya ("memang sedang menunggu
-                        diperiksa"), dan yang 'umum' tidak pernah sampai ke
-                        halaman ini — keduanya tidak perlu ditawari tombol
-                        yang sudah pasti gagal. */}
-                    {/* minta_data_ulang menuntut is_admin(), yang tidak memuat
-                        admin angkatan — tombolnya pasti gagal untuk mereka */}
-                    {adminPenuh(peranSaya) && (p.status_alumni === 'alumni' || p.status_alumni === 'ditolak') && (
-                      <button
-                        onClick={() => bukaForm(p.id, 'minta')}
-                        disabled={sedangProses}
-                        style={{ flex: 1, minWidth: '150px', background: '#E6F1FB', color: '#0C447C', border: '0.5px solid #c5d9ef', padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: sedangProses ? 'not-allowed' : 'pointer' }}
-                      >
-                        Minta Data Ulang
-                      </button>
-                    )}
-                  </div>
+                  <button
+                    onClick={() => { setFormId(a.id); setAlasan('') }}
+                    disabled={sedangProses}
+                    style={{ width: '100%', background: '#fce4e4', color: '#c62828', border: 'none', padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', minHeight: '44px' }}
+                  >
+                    Cabut status alumni
+                  </button>
                 )}
               </div>
             </div>

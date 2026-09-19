@@ -229,10 +229,10 @@ export default function ProfilPage() {
         {statusAlumni === 'ditolak' && (
           <div style={{ background: '#fff', borderRadius: '16px', padding: '16px 20px', border: '0.5px solid #f09595', marginBottom: '12px' }}>
             <div style={{ fontSize: '13px', fontWeight: '600', color: '#c62828', marginBottom: '4px' }}>
-              Pengajuan alumni belum diterima
+              Status alumnimu dicabut pengurus
             </div>
             <div style={{ fontSize: '12px', color: '#8d4040', lineHeight: '1.7', marginBottom: '12px' }}>
-              Kamu tetap bisa belanja seperti biasa. Kalau datanya sudah diperbaiki, kirim ulang.
+              Kamu tetap bisa belanja seperti biasa. Kalau menurutmu ini keliru, hubungi pengurus.
             </div>
             <Link href="/verifikasi" style={{
               display: 'inline-flex', alignItems: 'center', background: '#fff', color: '#0C447C',

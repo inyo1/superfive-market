@@ -424,7 +424,7 @@ export default function AdminPage() {
               siapa boleh berjualan bukan pertanyaan yang sama */}
           <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
             {[
-              { href: '/admin/verifikasi', label: '🎓 Verifikasi Alumni' },
+              { href: '/admin/verifikasi', label: '🎓 Alumni Terbaru' },
               { href: '/admin/penjual', label: '💼 Pengajuan Penjual' },
             ].map(m => (
               <Link

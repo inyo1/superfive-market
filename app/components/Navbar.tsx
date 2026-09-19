@@ -44,7 +44,6 @@ export default function Navbar() {
   const [isAdmin, setIsAdmin] = useState(false)
   // Admin angkatan hanya dapat pintu verifikasi alumni, bukan panel admin
   const [adminAngkatan, setAdminAngkatan] = useState(false)
-  const [menungguVerifikasi, setMenungguVerifikasi] = useState(0)
   const [menungguPenjual, setMenungguPenjual] = useState(0)
   const navRef = useRef<HTMLElement>(null)
   const pathname = usePathname()
@@ -66,16 +65,14 @@ export default function Navbar() {
     }
   }
 
-  // Dua antrean admin yang berbeda, masing-masing punya badge angka sendiri
+  // Hanya antrean penjual yang masih punya badge. Alumni tidak lagi mengantre
+  // — ajukan_alumni() langsung memberi status — jadi hitungan 'menunggu' di
+  // sana hanya sisa data lama yang akan menyala selamanya tanpa bisa
+  // diselesaikan dari panel mana pun.
   async function hitungMenunggu() {
-    const [alumni, penjual] = await Promise.all([
-      supabase.from('users').select('id', { count: 'exact', head: true })
-        .eq('status_alumni', 'menunggu'),
-      supabase.from('users').select('id', { count: 'exact', head: true })
-        .eq('status_penjual', 'menunggu'),
-    ])
-    setMenungguVerifikasi(alumni.count ?? 0)
-    setMenungguPenjual(penjual.count ?? 0)
+    const { count } = await supabase.from('users').select('id', { count: 'exact', head: true })
+      .eq('status_penjual', 'menunggu')
+    setMenungguPenjual(count ?? 0)
   }
 
   useEffect(() => {
@@ -86,7 +83,7 @@ export default function Navbar() {
     const { data: listener } = supabase.auth.onAuthStateChange((_e, session) => {
       setUser(session?.user ?? null)
       if (session?.user) fetchProfile(session.user.id)
-      else { setAvatarUrl(null); setUserName(''); setIsAdmin(false); setMenungguVerifikasi(0); setMenungguPenjual(0) }
+      else { setAvatarUrl(null); setUserName(''); setIsAdmin(false); setMenungguPenjual(0) }
     })
     return () => listener.subscription.unsubscribe()
   }, [])
@@ -322,16 +319,7 @@ export default function Navbar() {
                     borderBottom: `3px solid ${pathname.startsWith('/admin/verifikasi') ? EMAS : 'transparent'}`,
                   }}
                 >
-                  Verifikasi Alumni
-                  {menungguVerifikasi > 0 && (
-                    <span style={{
-                      background: '#e53935', color: '#fff', fontSize: '10px', fontWeight: '700',
-                      borderRadius: '10px', minWidth: '18px', height: '18px', padding: '0 5px',
-                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
-                    }}>
-                      {menungguVerifikasi > 99 ? '99+' : menungguVerifikasi}
-                    </span>
-                  )}
+                  Alumni Terbaru
                 </Link>
                 {isAdmin && (
                 <Link
