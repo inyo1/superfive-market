@@ -324,7 +324,7 @@ export default function TokoPage() {
                   {!isOwner && toko.users?.nama && toko.users.label_angkatan && !toko.users.is_institusi && (
                     <div style={{ marginTop: '8px' }}>
                       <TombolLapor
-                        penggunaId={toko.users.id}
+                        tokoId={toko.id}
                         nama={toko.users.nama}
                         labelAngkatan={toko.users.label_angkatan}
                       />

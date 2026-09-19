@@ -25,19 +25,20 @@ import { urlWhatsApp } from '../../lib/kontak'
 const NOMOR_LAPOR = (process.env.NEXT_PUBLIC_WA_LAPOR ?? '').replace(/\D/g, '')
 
 type Props = {
-  /** users.id orang yang angkatannya dilaporkan */
-  penggunaId: string
+  /** toko.id — tautan di pesan menunjuk halaman toko, tempat tombol ini
+   *  dipasang. Tidak ada rute profil pengguna tersendiri. */
+  tokoId: string
   nama: string
   /** `label_angkatan` dari view — bukan dirangkai sendiri */
   labelAngkatan: string
 }
 
-export default function TombolLapor({ penggunaId, nama, labelAngkatan }: Props) {
+export default function TombolLapor({ tokoId, nama, labelAngkatan }: Props) {
   if (!NOMOR_LAPOR) return null
 
   const pesan =
     `Lapor keabsahan angkatan: ${nama} (${labelAngkatan}) ` +
-    `— superfivemarket.com/u/${penggunaId}`
+    `— superfivemarket.com/toko/${tokoId}`
 
   return (
     <a
