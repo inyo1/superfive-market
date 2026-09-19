@@ -6,21 +6,25 @@ import { supabase } from '../../lib/supabase'
 import Navbar from '../components/Navbar'
 import Skeleton, { SkeletonPanel } from '../components/Skeleton'
 import Tombol from '../components/Tombol'
+import DialogKonfirmasi from '../components/DialogKonfirmasi'
+import PilihAngkatan, { ANGKATAN_PERTAMA, labelOpsiAngkatan } from '../components/PilihAngkatan'
 import { useTampilSkeleton } from '../hooks/useSkeleton'
 
 // Halaman ini SATU-SATUNYA urusan: mengaku alumni. Bukan pagar belanja.
 //
-// Sejak verifikasi dipecah dua sumbu, yang berstatus 'umum' adalah pembeli
-// biasa yang tidak diperiksa siapa pun — mereka sampai di sini hanya kalau
-// sendiri yang mau masuk direktori alumni atau mau berjualan.
+// SEJAK PELUNCURAN REUNI (Oktober 2026) TIDAK ADA LAGI ANTREAN ADMIN.
+// ajukan_alumni() langsung memberi status 'alumni' dan MENGUNCI angkatannya —
+// setelah itu jaga_field_sensitif menelan setiap perubahan angkatan dari
+// pengguna sendiri. Penjaganya bukan admin lagi melainkan koreksi sosial:
+// "Nama · Superfive 92" tampil di mana pun nama penjual muncul, dan teman
+// seangkatan yang melihat kejanggalan bisa melapor. Karena itu satu-satunya
+// rem di halaman ini adalah layar konfirmasi sebelum RPC dipanggil.
 //
 // UNGGAH BUKTI ALUMNI DIMATIKAN SEMENTARA — keputusan produk, bukan kode mati.
 // Kolom users.bukti_alumni_url, bucket privat `bukti-alumni`, dan helper
 // lib/buktiAlumni.ts sengaja DIPERTAHANKAN utuh supaya bisa dinyalakan lagi
 // tanpa migrasi. `uploadBuktiAlumni` tidak dipanggil dari mana pun — JANGAN
 // dihapus karena terlihat tak terpakai. `urlBukti` masih dipakai panel admin.
-
-const TAHUN_INI = new Date().getFullYear()
 
 /** Tanda-tanda nama yang hampir pasti bukan nama sebenarnya. Hasilnya HANYA
  *  dipakai untuk memunculkan peringatan — tidak pernah untuk memblokir, karena
@@ -39,21 +43,22 @@ export default function VerifikasiPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [status, setStatus] = useState<string | null>(null)
+  /** label_angkatan dari database — tidak pernah dirangkai di halaman ini */
+  const [labelAngkatan, setLabelAngkatan] = useState<string | null>(null)
   const [alasanTolak, setAlasanTolak] = useState<string | null>(null)
-  const [catatanAdmin, setCatatanAdmin] = useState<string | null>(null)
   const [nama, setNama] = useState('')
   const [angkatan, setAngkatan] = useState('')
-  const [catatan, setCatatan] = useState('')
   const [loading, setLoading] = useState(true)
   const tampilSkeleton = useTampilSkeleton(loading)
+  const [konfirmasi, setKonfirmasi] = useState(false)
   const [mengirim, setMengirim] = useState(false)
-  const [pesan, setPesan] = useState<{ text: string; ok: boolean } | null>(null)
+  const [pesan, setPesan] = useState<string | null>(null)
 
   useEffect(() => {
     async function muat() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
-        router.replace('/auth?redirect=/verifikasi&msg=Login+dulu+untuk+mengajukan+verifikasi')
+        router.replace('/auth?redirect=/verifikasi&msg=Login+dulu+untuk+mendaftar+sebagai+alumni')
         return
       }
 
@@ -61,65 +66,70 @@ export default function VerifikasiPage() {
 
       const { data } = await supabase
         .from('users')
-        .select('nama, status_alumni, angkatan, catatan_pendaftar, alasan_tolak, catatan_admin')
+        .select('nama, status_alumni, angkatan, alasan_tolak')
         .eq('id', user.id)
         .single()
 
       if (data) {
         setStatus(data.status_alumni ?? 'umum')
         setNama(data.nama ?? '')
-        setAngkatan(data.angkatan ? String(data.angkatan) : '')
-        setCatatan(data.catatan_pendaftar ?? '')
         setAlasanTolak(data.alasan_tolak ?? null)
-        setCatatanAdmin(data.catatan_admin ?? null)
+
+        // Angkatan yang dipilih saat pendaftaran disimpan di metadata auth
+        // kalau sesinya belum ada waktu itu — dipakai sebagai isian awal.
+        // Tetap harus melewati konfirmasi di bawah sebelum terkunci.
+        const dariMeta = Number(user.user_metadata?.angkatan)
+        const awal = data.angkatan
+          ?? (Number.isInteger(dariMeta) && dariMeta >= ANGKATAN_PERTAMA ? dariMeta : null)
+        setAngkatan(awal ? String(awal) : '')
+
+        if (data.status_alumni === 'alumni') {
+          const { data: publik } = await supabase
+            .from('alumni_publik').select('label_angkatan').eq('id', user.id).maybeSingle()
+          setLabelAngkatan(publik?.label_angkatan ?? null)
+        }
       }
       setLoading(false)
     }
     muat()
   }, [])
 
-  async function kirim() {
+  // Pemeriksaan isian saja. Tidak ada yang dikirim sebelum konfirmasi.
+  function mintaKirim() {
     // Wajib terisi, tapi TIDAK divalidasi jumlah katanya. Banyak orang
     // Indonesia bernama satu kata, dan aturan "harus dua kata" akan menolak
     // nama yang justru benar.
-    if (!nama.trim()) { setPesan({ text: 'Isi dulu nama lengkapmu.', ok: false }); return }
-    if (!angkatan) { setPesan({ text: 'Pilih dulu angkatanmu.', ok: false }); return }
+    if (!nama.trim()) { setPesan('Isi dulu nama lengkapmu.'); return }
+    if (!angkatan) { setPesan('Pilih dulu angkatanmu.'); return }
+    setPesan(null)
+    setKonfirmasi(true)
+  }
 
+  async function kirim() {
     setMengirim(true)
     try {
       // Nama ikut dikirim ke RPC, BUKAN di-UPDATE terpisah lebih dulu. Dua
-      // permintaan REST tidak punya transaksi bersama, jadi cara lama bisa
-      // meninggalkan nama yang sudah berubah tanpa pengajuan yang menyertainya.
+      // permintaan REST tidak punya transaksi bersama.
       //
-      // Semua aturannya ada di dalam RPC — angkatan yang masuk akal dan nama
-      // tidak kosong. Mengirim ulang saat masih mengantre BOLEH: barisnya
-      // ditimpa, bukan jadi antrean baru. UI tidak mengulang validasinya,
-      // cukup menampilkan error.message apa adanya.
+      // Semua aturannya ada di dalam RPC — rentang angkatan dan nama tidak
+      // kosong. UI tidak mengulang validasinya, cukup menampilkan
+      // error.message apa adanya.
       const { data, error } = await supabase.rpc('ajukan_alumni', {
         p_angkatan: parseInt(angkatan),
-        p_catatan: catatan.trim() || null,
+        p_catatan: null,
         p_nama: nama.trim(),
       })
       // Sengaja tidak ada reset state di jalur gagal: yang sudah diketik tetap
       // di formulir supaya orangnya tinggal membetulkan lalu kirim lagi.
       if (error) throw new Error(error.message)
 
-      // Dibaca dari nilai balik RPC, bukan disimpulkan dari state: `status`
-      // di klien bisa saja sudah tertinggal dari keadaan sebenarnya.
-      const diperbarui = Boolean((data as { diperbarui?: boolean } | null)?.diperbarui)
-
-      setStatus('menunggu')
-      setAlasanTolak(null)
-      setCatatanAdmin(null)
-      setPesan({
-        text: diperbarui
-          ? 'Pengajuanmu diperbarui. Data yang baru ini yang akan diperiksa admin.'
-          : 'Pengajuan terkirim. Admin akan memeriksa datamu, biasanya dalam 1–2 hari.',
-        ok: true,
-      })
+      // Label dibaca dari nilai balik RPC, bukan dirangkai di sini
+      setLabelAngkatan((data as { label?: string } | null)?.label ?? null)
+      setStatus('alumni')
     } catch (e) {
-      setPesan({ text: e instanceof Error ? e.message : 'Gagal mengirim. Coba lagi.', ok: false })
+      setPesan(e instanceof Error ? e.message : 'Gagal mengirim. Coba lagi.')
     } finally {
+      setKonfirmasi(false)
       setMengirim(false)
     }
   }
@@ -136,7 +146,7 @@ export default function VerifikasiPage() {
     </main>
   )
 
-  // Sudah diakui alumni — tidak ada yang perlu dikerjakan di sini
+  // Sudah alumni — angkatannya terkunci, tidak ada yang perlu dikerjakan di sini
   if (status === 'alumni') return (
     <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
       <Navbar />
@@ -144,10 +154,10 @@ export default function VerifikasiPage() {
         <div style={{ background: '#fff', borderRadius: '12px', padding: '32px 20px', border: '0.5px solid #c5d9ef', textAlign: 'center' }}>
           <div style={{ fontSize: '52px', marginBottom: '12px' }}>🎓</div>
           <h2 style={{ fontSize: '17px', fontWeight: '700', color: '#1a1a1a', margin: '0 0 8px' }}>
-            Kamu sudah terverifikasi
+            {labelAngkatan ? `Kamu terdaftar sebagai ${labelAngkatan}` : 'Kamu sudah terdaftar sebagai alumni'}
           </h2>
-          <p style={{ fontSize: '13px', color: '#5a7da0', margin: '0 0 20px' }}>
-            Akunmu sudah diakui sebagai alumni SMPN 5 Bandung dan masuk direktori alumni.
+          <p style={{ fontSize: '13px', color: '#5a7da0', margin: '0 0 20px', lineHeight: 1.7 }}>
+            Kamu sudah masuk direktori alumni SMPN 5 Bandung.
             Kalau mau berjualan, ajukan diri jadi penjual dulu.
           </p>
           <div style={{ display: 'flex', gap: '10px' }}>
@@ -158,12 +168,14 @@ export default function VerifikasiPage() {
               Mulai Berjualan
             </Link>
           </div>
+          <div style={{ fontSize: '11px', color: '#9ab4cc', marginTop: '16px', lineHeight: 1.6 }}>
+            Angkatan tidak bisa diubah sendiri. Kalau ternyata salah, hubungi admin.
+          </div>
         </div>
       </div>
     </main>
   )
 
-  const menunggu = status === 'menunggu'
   const ditolak = status === 'ditolak'
 
   return (
@@ -172,67 +184,36 @@ export default function VerifikasiPage() {
 
       <div style={{ maxWidth: '520px', margin: '0 auto', padding: '16px' }}>
         <h1 style={{ fontSize: '18px', fontWeight: '700', color: '#1a1a1a', margin: '0 0 4px' }}>
-          Verifikasi Alumni
+          Daftar sebagai Alumni
         </h1>
         <div style={{ fontSize: '12px', color: '#5a7da0', marginBottom: '16px' }}>
           Supaya kamu masuk direktori alumni dan bisa berjualan
         </div>
 
-        {/* Pengajuan sedang diperiksa */}
-        {menunggu && (
-          <div style={{ background: '#fff8e1', border: '0.5px solid #ffe082', borderRadius: '12px', padding: '14px 16px', marginBottom: '12px' }}>
-            <div style={{ fontSize: '13px', fontWeight: '600', color: '#f57f17', marginBottom: '4px' }}>
-              ⏳ Pengajuanmu sedang diperiksa admin
-            </div>
-            <div style={{ fontSize: '12px', color: '#8d6e26', lineHeight: '1.7' }}>
-              Biasanya 1–2 hari. Sambil menunggu, belanjamu tidak dibatasi sama sekali —
-              yang belum bisa hanya berjualan.
-              <br />
-              <strong>Datamu masih bisa diperbaiki selama admin belum memutuskan</strong> —
-              ubah di bawah, lalu perbarui pengajuanmu.
-            </div>
-          </div>
-        )}
-
-        {/* Admin minta data dilengkapi */}
-        {catatanAdmin && (
-          <div style={{ background: '#E6F1FB', border: '0.5px solid #b3d1ee', borderRadius: '12px', padding: '14px 16px', marginBottom: '12px' }}>
-            <div style={{ fontSize: '13px', fontWeight: '600', color: '#0C447C', marginBottom: '4px' }}>
-              📝 Catatan dari admin
-            </div>
-            <div style={{ fontSize: '12px', color: '#0C447C', whiteSpace: 'pre-line' }}>{catatanAdmin}</div>
-          </div>
-        )}
-
-        {/* Alasan penolakan */}
+        {/* Keputusan admin dari masa antrean — masih relevan dibaca sebelum
+            mengirim ulang, karena biasanya menyebut apa yang keliru */}
         {ditolak && alasanTolak && (
           <div style={{ background: '#fce4e4', border: '0.5px solid #f09595', borderRadius: '12px', padding: '14px 16px', marginBottom: '12px' }}>
             <div style={{ fontSize: '13px', fontWeight: '600', color: '#c62828', marginBottom: '4px' }}>
-              ❌ Pengajuan sebelumnya ditolak
+              Catatan dari pengajuan sebelumnya
             </div>
-            <div style={{ fontSize: '12px', color: '#c62828', marginBottom: '6px' }}>{alasanTolak}</div>
-            <div style={{ fontSize: '12px', color: '#8d4040' }}>
-              Perbaiki sesuai catatan di atas, lalu kirim ulang.
-            </div>
+            <div style={{ fontSize: '12px', color: '#c62828' }}>{alasanTolak}</div>
           </div>
         )}
 
         {/* Penjelasan */}
         <div style={{ background: '#fff', borderRadius: '12px', padding: '16px', border: '0.5px solid #c5d9ef', marginBottom: '12px' }}>
-          <div style={{ fontSize: '13px', fontWeight: '600', color: '#0C447C', marginBottom: '8px' }}>
-            Kenapa perlu verifikasi?
-          </div>
           <div style={{ fontSize: '12px', color: '#5a7da0', lineHeight: '1.7' }}>
-            Belanja di Superfive Market terbuka untuk siapa saja. Yang diperiksa hanya
-            dua hal: siapa yang masuk <strong style={{ color: '#1a1a1a' }}>direktori alumni</strong>,
-            dan siapa yang boleh <strong style={{ color: '#1a1a1a' }}>berjualan</strong>.
+            Belanja di Superfive Market terbuka untuk siapa saja. Terdaftar sebagai alumni
+            membuatmu masuk <strong style={{ color: '#1a1a1a' }}>direktori alumni</strong> dan
+            boleh <strong style={{ color: '#1a1a1a' }}>berjualan</strong>.
             <br /><br />
-            Admin memeriksa <strong style={{ color: '#1a1a1a' }}>nama dan angkatan</strong>-mu
-            terhadap daftar alumni. Keduanya diisi langsung di bawah ini.
+            Angkatanmu akan tampil di samping namamu di seluruh Superfive, dan
+            <strong style={{ color: '#1a1a1a' }}> tidak bisa kamu ubah sendiri</strong> setelah terdaftar.
           </div>
         </div>
 
-        {/* Form pengajuan */}
+        {/* Form */}
         <div style={{ background: '#fff', borderRadius: '12px', padding: '16px', border: '0.5px solid #c5d9ef', marginBottom: '12px' }}>
           {/* Nama diedit di tempat, bukan dilempar ke /profil. Yang dilempar
               ke halaman lain kebanyakan tidak pernah kembali ke sini. */}
@@ -241,11 +222,8 @@ export default function VerifikasiPage() {
               Nama Lengkap *
             </label>
             <div style={{ fontSize: '11px', color: '#5a7da0', marginBottom: '8px' }}>
-              Pakai nama seperti yang tertulis di data sekolah dulu.
+              Pakai nama yang dikenali teman seangkatanmu.
             </div>
-            {/* TIDAK dikunci saat menunggu. Orang justru paling sering sadar
-                namanya salah setelah mengirim, dan mengunci kolomnya di situ
-                menghapus satu-satunya kesempatan membetulkannya. */}
             <input
               id="nama"
               value={nama}
@@ -255,78 +233,61 @@ export default function VerifikasiPage() {
             />
 
             {/* Peringatan, bukan pagar: tombolnya tetap hidup. Kita tidak tahu
-                nama orang, jadi yang salah di sini cuma boleh diingatkan.
-                Ikut tampil saat menunggu — di situ justru paling penting,
-                karena nama yang salah sedang mengantre di meja admin. */}
+                nama orang, jadi yang salah di sini cuma boleh diingatkan. */}
             {namaTerlihatBelumLengkap(nama, email) && (
               <div style={{ marginTop: '8px', background: '#fff8e1', border: '0.5px solid #ffe082', borderRadius: '8px', padding: '9px 12px', fontSize: '11px', color: '#8d6e26', lineHeight: '1.7' }}>
-                Nama ini akan dicocokkan admin dengan daftar alumni. Pakai nama
-                lengkapmu saat sekolah dulu.
+                Nama ini akan tampil di samping angkatanmu. Pakai nama
+                lengkapmu saat sekolah dulu supaya teman seangkatan mengenalimu.
               </div>
             )}
           </div>
 
-          <div style={{ marginBottom: '14px' }}>
-            <label htmlFor="angkatan" style={{ fontSize: '13px', fontWeight: '600', color: '#0C447C', display: 'block', marginBottom: '4px' }}>
-              Angkatan (Tahun Lulus) *
-            </label>
-            <div style={{ fontSize: '11px', color: '#5a7da0', marginBottom: '8px' }}>
-              Ini yang dipakai admin untuk mencocokkan datamu dengan daftar alumni.
-            </div>
-            <select
-              id="angkatan"
-              value={angkatan}
-              onChange={e => setAngkatan(e.target.value)}
-              style={{ width: '100%', padding: '11px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', background: '#fff', boxSizing: 'border-box', minHeight: '44px' }}
-            >
-              <option value="">-- Pilih Angkatan --</option>
-              {Array.from({ length: TAHUN_INI - 1970 + 1 }, (_, i) => TAHUN_INI - i).map(y => (
-                <option key={y} value={y}>Angkatan {y}</option>
-              ))}
-            </select>
-          </div>
-
           <div>
-            <label htmlFor="catatan" style={{ fontSize: '13px', fontWeight: '600', color: '#0C447C', display: 'block', marginBottom: '4px' }}>
-              Catatan untuk Admin
+            <label htmlFor="angkatan" style={{ fontSize: '13px', fontWeight: '600', color: '#0C447C', display: 'block', marginBottom: '4px' }}>
+              Angkatan *
             </label>
             <div style={{ fontSize: '11px', color: '#5a7da0', marginBottom: '8px' }}>
-              Tulis hal yang membantu admin mengenalimu — nama wali kelas, kelas terakhir,
-              nomor absen, atau teman seangkatan yang bisa dikonfirmasi.
+              Pilih dengan teliti — ini yang terkunci setelah kamu terdaftar.
             </div>
-            <textarea
-              id="catatan"
-              value={catatan}
-              onChange={e => setCatatan(e.target.value)}
-              rows={4}
-              placeholder="Misal: kelas 9C, wali kelas Bu Rina"
-              style={{ width: '100%', padding: '9px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', resize: 'none', boxSizing: 'border-box', fontFamily: 'sans-serif', background: '#fff' }}
-            />
+            <PilihAngkatan value={angkatan} onChange={setAngkatan} />
           </div>
         </div>
 
         {pesan && (
-          <div style={{ background: pesan.ok ? '#e8f5e9' : '#fce4e4', border: `0.5px solid ${pesan.ok ? '#a5d6a7' : '#f09595'}`, borderRadius: '8px', padding: '10px 14px', fontSize: '12px', color: pesan.ok ? '#2e7d32' : '#c62828', marginBottom: '12px' }}>
-            {pesan.text}
+          <div style={{ background: '#fce4e4', border: '0.5px solid #f09595', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', color: '#c62828', marginBottom: '12px' }}>
+            {pesan}
           </div>
         )}
 
-        {/* Tombolnya berubah, bukan hilang. Yang sedang mengantre tetap punya
-            jalan untuk membetulkan datanya. */}
         <Tombol
-          onClick={kirim}
+          onClick={mintaKirim}
           loading={mengirim}
-          teksLoading={menunggu ? 'Memperbarui...' : 'Mengirim...'}
+          teksLoading="Mendaftarkan..."
           penuh
           style={{ padding: '15px', fontSize: '14px', borderRadius: '10px', marginBottom: '10px' }}
         >
-          {menunggu ? 'Perbarui Pengajuan' : ditolak ? 'Kirim Ulang Pengajuan' : 'Kirim Pengajuan'}
+          Daftar sebagai Alumni
         </Tombol>
 
         <Link href="/" style={{ display: 'block', textAlign: 'center', color: '#5a7da0', fontSize: '13px', textDecoration: 'none', paddingBottom: '24px' }}>
           ← Kembali ke Beranda
         </Link>
       </div>
+
+      {/* Label, bukan tahun: "Superfive 92" itu yang akan terbaca orang lain
+          di samping namanya, jadi itu juga yang dikonfirmasi */}
+      <DialogKonfirmasi
+        terbuka={konfirmasi}
+        ikon="🎓"
+        judul={angkatan ? `Kamu terdaftar sebagai ${labelOpsiAngkatan(parseInt(angkatan))}.` : ''}
+        pesan="Setelah ini angkatan nggak bisa diubah sendiri. Udah bener?"
+        labelKonfirmasi="Ya, lanjut"
+        labelBatal="Ubah dulu"
+        merusak={false}
+        memproses={mengirim}
+        onKonfirmasi={kirim}
+        onBatal={() => setKonfirmasi(false)}
+      />
     </main>
   )
 }

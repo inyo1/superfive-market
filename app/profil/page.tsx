@@ -14,7 +14,7 @@ export default function ProfilPage() {
   const [userId, setUserId] = useState<string | null>(null)
   const [userEmail, setUserEmail] = useState<string>('')
   const [nama, setNama] = useState('')
-  const [angkatan, setAngkatan] = useState('')
+  const [labelAngkatan, setLabelAngkatan] = useState<string | null>(null)
   const [noHp, setNoHp] = useState('')
   const [jalan, setJalan] = useState('')
   const [kelurahan, setKelurahan] = useState('')
@@ -50,7 +50,13 @@ export default function ProfilPage() {
         setNama(data.nama ?? '')
         setStatusAlumni(data.status_alumni ?? 'umum')
         setIsInstitusi(Boolean(data.is_institusi))
-        setAngkatan(data.angkatan ? String(data.angkatan) : '')
+        // Label dari view, bukan dirangkai di klien. Baris di alumni_publik
+        // hanya ada untuk alumni, jadi yang lain memang tidak punya label.
+        if (data.status_alumni === 'alumni' && !data.is_institusi) {
+          const { data: publik } = await supabase
+            .from('alumni_publik').select('label_angkatan').eq('id', user.id).maybeSingle()
+          setLabelAngkatan(publik?.label_angkatan ?? null)
+        }
         setAvatarUrl(data.avatar_url ?? null)
         setNoHp(data.no_hp ?? '')
         setJalan(data.jalan ?? '')
@@ -102,7 +108,7 @@ export default function ProfilPage() {
         id: userId,
         email: userEmail,
         nama,
-        angkatan: angkatan ? parseInt(angkatan) : null,
+        // angkatan sengaja tidak ikut: hanya ajukan_alumni() yang mengisinya
         avatar_url: finalAvatarUrl,
         no_hp: noHp || null,
         jalan: jalan || null,
@@ -187,9 +193,9 @@ export default function ProfilPage() {
             <BadgeVerifikasi alumni={statusAlumni === 'alumni'} size={14} />
           </div>
           <div style={{ fontSize: '12px', color: '#5a7da0', marginBottom: '6px' }}>{userEmail}</div>
-          {angkatan && (
+          {!isInstitusi && labelAngkatan && (
             <div style={{ fontSize: '11px', background: '#E6F1FB', color: '#0C447C', padding: '3px 10px', borderRadius: '20px', fontWeight: '500' }}>
-              Angkatan {angkatan}
+              {labelAngkatan}
             </div>
           )}
           <div style={{ fontSize: '11px', color: '#9ab4cc', marginTop: '10px' }}>Klik foto untuk mengganti</div>
@@ -199,32 +205,24 @@ export default function ProfilPage() {
             Yang berstatus 'umum' adalah pembeli biasa dan tidak terhalang apa
             pun, jadi ini undangan, bukan peringatan: tidak ada warna merah,
             tidak ada tanda seru, dan tidak muncul di halaman lain. */}
-        {!isInstitusi && statusAlumni === 'umum' && (
+        {/* 'menunggu' ikut di sini: sejak tidak ada antrean admin, pengajuan
+            lama yang masih tertahan tinggal dikirim ulang untuk langsung
+            terdaftar — bukan ditunggu. */}
+        {!isInstitusi && (statusAlumni === 'umum' || statusAlumni === 'menunggu') && (
           <div style={{ background: '#E6F1FB', borderRadius: '16px', padding: '18px 20px', border: '0.5px solid #b3d1ee', marginBottom: '12px' }}>
             <div style={{ fontSize: '13px', fontWeight: '600', color: '#0C447C', marginBottom: '4px' }}>
               🎓 Alumni SMPN 5 Bandung?
             </div>
             <div style={{ fontSize: '12px', color: '#3d6c9c', lineHeight: '1.7', marginBottom: '12px' }}>
-              Verifikasi untuk masuk direktori alumni dan bisa berjualan.
+              Daftarkan angkatanmu untuk masuk direktori alumni dan bisa berjualan.
             </div>
             <Link href="/verifikasi" style={{
               display: 'inline-flex', alignItems: 'center', background: '#0C447C', color: '#fff',
               padding: '0 18px', minHeight: '40px', borderRadius: '8px',
               fontSize: '12px', fontWeight: '600', textDecoration: 'none',
             }}>
-              Verifikasi Alumni
+              Daftar sebagai Alumni
             </Link>
-          </div>
-        )}
-
-        {statusAlumni === 'menunggu' && (
-          <div style={{ background: '#fff8e1', borderRadius: '16px', padding: '16px 20px', border: '0.5px solid #ffe082', marginBottom: '12px' }}>
-            <div style={{ fontSize: '13px', fontWeight: '600', color: '#f57f17', marginBottom: '4px' }}>
-              ⏳ Pengajuan alumni sedang diperiksa
-            </div>
-            <div style={{ fontSize: '12px', color: '#8d6e26', lineHeight: '1.7' }}>
-              Belanjamu tidak dibatasi sama sekali sambil menunggu.
-            </div>
           </div>
         )}
 
@@ -256,20 +254,20 @@ export default function ProfilPage() {
               style={{ width: '100%', padding: '10px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
           </div>
 
-          {/* Akun institusi bukan alumni perorangan — kolom angkatan tidak
-              relevan dan kalau ditampilkan hanya akan diisi asal. Yang
-              berstatus 'umum' juga tidak diminta angkatan: jalannya lewat
-              pengajuan alumni di atas, bukan kolom yang diisi diam-diam. */}
-          {!isInstitusi && statusAlumni !== 'umum' && (
+          {/* Angkatan TIDAK bisa diubah di sini. Sejak ajukan_alumni() langsung
+              memberi status alumni, angkatannya terkunci — jaga_field_sensitif
+              menelan perubahannya diam-diam. Kolom yang bisa diedit tapi tidak
+              pernah tersimpan lebih buruk daripada tidak ada kolom sama sekali.
+              Satu-satunya jalan mengisinya adalah /verifikasi, dengan layar
+              konfirmasinya. Akun institusi tidak punya angkatan sama sekali. */}
+          {!isInstitusi && labelAngkatan && (
             <div style={{ marginBottom: '14px' }}>
-              <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '6px' }}>Angkatan (Tahun Lulus)</label>
-              <select value={angkatan} onChange={e => setAngkatan(e.target.value)}
-                style={{ width: '100%', padding: '10px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '14px', outline: 'none', background: '#fff', boxSizing: 'border-box' }}>
-                <option value="">-- Pilih Angkatan --</option>
-                {Array.from({ length: new Date().getFullYear() - 1970 + 1 }, (_, i) => new Date().getFullYear() - i).map(y => (
-                  <option key={y} value={y}>Angkatan {y}</option>
-                ))}
-              </select>
+              <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '6px' }}>Angkatan</label>
+              <input value={labelAngkatan} readOnly
+                style={{ width: '100%', padding: '10px 12px', border: '0.5px solid #e8f0f8', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: '#f8fbff', color: '#5a7da0', cursor: 'default' }} />
+              <div style={{ fontSize: '11px', color: '#9ab4cc', marginTop: '4px' }}>
+                Angkatan tidak bisa diubah sendiri. Kalau salah, hubungi admin.
+              </div>
             </div>
           )}
 

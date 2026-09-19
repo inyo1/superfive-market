@@ -5,6 +5,8 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 import Navbar from '../components/Navbar'
 import InputPassword from '../components/InputPassword'
+import PilihAngkatan, { labelOpsiAngkatan } from '../components/PilihAngkatan'
+import DialogKonfirmasi from '../components/DialogKonfirmasi'
 
 function AuthContent() {
   const searchParams = useSearchParams()
@@ -14,7 +16,10 @@ function AuthContent() {
   const redirectTo = rawRedirect.startsWith('/') && !rawRedirect.startsWith('//') ? rawRedirect : '/'
   const msg = searchParams.get('msg')
 
-  const [mode, setMode] = useState<'login' | 'register' | 'lupa'>('login')
+  // ?mode=daftar membuka tab Daftar langsung — dipakai CTA direktori alumni
+  const [mode, setMode] = useState<'login' | 'register' | 'lupa'>(
+    searchParams.get('mode') === 'daftar' ? 'register' : 'login'
+  )
   const [emailReset, setEmailReset] = useState('')
   const [resetTerkirim, setResetTerkirim] = useState(false)
   const [hitungMundur, setHitungMundur] = useState(0)
@@ -29,6 +34,10 @@ function AuthContent() {
   const [loading, setLoading] = useState(false)
   const [pesan, setPesan] = useState('')
   const [registered, setRegistered] = useState(false)
+  // Label dari ajukan_alumni() kalau angkatannya sudah terkunci saat daftar;
+  // null kalau sesi belum terbentuk (email masih harus dikonfirmasi)
+  const [labelTerkunci, setLabelTerkunci] = useState<string | null>(null)
+  const [konfirmasiAngkatan, setKonfirmasiAngkatan] = useState(false)
 
   async function handleLogin() {
     setLoading(true)
@@ -77,36 +86,62 @@ function AuthContent() {
     setPesan('')
   }
 
-  async function handleRegister() {
+  // Pemeriksaan isian saja — belum ada yang dikirim. Pendaftar alumni
+  // melewati layar konfirmasi dulu, karena angkatannya terkunci begitu
+  // ajukan_alumni() berhasil.
+  function mintaDaftar() {
     if (!nama.trim()) { setPesan('Nama lengkap wajib diisi.'); return }
     if (!jenis) { setPesan('Pilih dulu salah satu: alumni, atau teman/keluarga alumni.'); return }
     if (jenis === 'alumni' && !angkatan) { setPesan('Angkatan wajib diisi kalau kamu alumni.'); return }
+    setPesan('')
+    if (jenis === 'alumni') setKonfirmasiAngkatan(true)
+    else handleRegister()
+  }
 
+  async function handleRegister() {
     setLoading(true)
-    const { data, error } = await supabase.auth.signUp({ email, password })
-    if (error) { setPesan('Gagal daftar: ' + error.message); setLoading(false); return }
-    if (data.user) {
-      await supabase.from('users').insert({
-        id: data.user.id,
-        nama, email,
-        angkatan: jenis === 'alumni' && angkatan ? parseInt(angkatan) : null,
+    try {
+      // Baris public.users dibuat trigger trg_buat_profil_baru di auth.users,
+      // yang membaca nama dari raw_user_meta_data->>'nama'. JANGAN insert
+      // manual ke `users` di sini: anon tidak punya grant apa pun di tabel
+      // itu, dan kalau email perlu dikonfirmasi, di titik ini kita memang
+      // masih anon.
+      //
+      // Angkatan ikut disimpan di metadata (trigger tidak membacanya) supaya
+      // /verifikasi bisa mengisikannya lagi kalau RPC di bawah belum bisa
+      // dipanggil karena sesinya belum ada.
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            nama: nama.trim(),
+            ...(jenis === 'alumni' ? { angkatan: parseInt(angkatan) } : {}),
+          },
+        },
       })
+      if (error) { setPesan('Gagal daftar: ' + error.message); return }
 
-      // Pendaftar biasa berhenti di sini: status_alumni tetap 'umum', tidak ada
-      // layar menunggu, dan belanjanya tidak dihalangi apa pun.
-      if (jenis === 'alumni') {
-        // Kalau RPC-nya gagal (mis. sesi belum terbentuk karena email masih
-        // harus dikonfirmasi), pendaftarannya tetap dianggap berhasil —
-        // pengajuan alumni bisa dikirim ulang dari /verifikasi setelah masuk.
-        await supabase.rpc('ajukan_alumni', {
+      // Pendaftar biasa berhenti di sini: status_alumni tetap 'umum', dan
+      // belanjanya tidak dihalangi apa pun.
+      //
+      // Alumni langsung dikunci angkatannya — tapi hanya kalau sesinya sudah
+      // ada. Tanpa sesi (email masih harus dikonfirmasi) RPC-nya pasti ditolak
+      // "Harus login", jadi tidak dipanggil; angkatannya dikunci dari
+      // /verifikasi setelah masuk, dengan konfirmasi yang sama.
+      if (jenis === 'alumni' && data.session) {
+        const { data: hasil, error: errAlumni } = await supabase.rpc('ajukan_alumni', {
           p_angkatan: parseInt(angkatan),
           p_catatan: null,
           p_nama: nama.trim(),
         })
+        if (!errAlumni) setLabelTerkunci((hasil as { label?: string } | null)?.label ?? null)
       }
       setRegistered(true)
+    } finally {
+      setKonfirmasiAngkatan(false)
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   if (registered) {
@@ -127,10 +162,17 @@ function AuthContent() {
             </div>
             <p style={{ fontSize: '13px', color: '#9ab4cc', lineHeight: '1.6', margin: '0 0 24px' }}>
               Klik link di email untuk mengaktifkan akun, lalu kembali ke sini untuk masuk.
-              {jenis === 'alumni' && ' Pengajuan alumni-mu akan diperiksa admin — sambil menunggu, kamu sudah bisa belanja.'}
+              {jenis === 'alumni' && (labelTerkunci
+                ? ` Kamu sudah tercatat sebagai ${labelTerkunci}.`
+                : ' Setelah masuk, kamu akan diarahkan untuk mengunci angkatanmu.')}
             </p>
             <button
-              onClick={() => { setRegistered(false); setMode('login'); setPesan('') }}
+              onClick={() => {
+                setRegistered(false); setMode('login'); setPesan('')
+                // Alumni yang angkatannya belum terkunci dibawa ke /verifikasi
+                // begitu masuk — angkatan dari pendaftaran sudah terisi di sana
+                if (jenis === 'alumni' && !labelTerkunci) router.replace('/auth?redirect=/verifikasi&msg=Masuk+untuk+mengunci+angkatanmu')
+              }}
               style={{ background: '#0C447C', color: '#fff', border: 'none', padding: '11px 28px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}
             >
               Ke halaman Masuk
@@ -341,19 +383,14 @@ function AuthContent() {
                 })}
               </div>
 
-              {/* Angkatan hanya relevan untuk alumni — dan wajib, karena admin
-                  memakainya untuk memeriksa pengajuan */}
+              {/* Angkatan hanya relevan untuk alumni — dan wajib, karena ia
+                  tampil di samping namamu di seluruh Superfive */}
               {jenis==='alumni' && (
                 <div style={{marginTop:'10px'}}>
-                  <label htmlFor="angkatan" style={{fontSize:'12px',color:'#5a7da0',display:'block',marginBottom:'4px'}}>Angkatan (Tahun Lulus) *</label>
-                  <select id="angkatan" value={angkatan} onChange={e=>setAngkatan(e.target.value)} style={{width:'100%',padding:'9px 12px',border:'0.5px solid #c5d9ef',borderRadius:'8px',fontSize:'13px',outline:'none',background:'#fff'}}>
-                    <option value="">-- Pilih Angkatan --</option>
-                    {Array.from({length:new Date().getFullYear()-1970+1},(_,i)=>new Date().getFullYear()-i).map(y=>(
-                      <option key={y} value={y}>Angkatan {y}</option>
-                    ))}
-                  </select>
+                  <label htmlFor="angkatan" style={{fontSize:'12px',color:'#5a7da0',display:'block',marginBottom:'4px'}}>Angkatan *</label>
+                  <PilihAngkatan value={angkatan} onChange={setAngkatan} />
                   <div style={{fontSize:'11px',color:'#9ab4cc',marginTop:'6px',lineHeight:'1.6'}}>
-                    Pengajuanmu diperiksa admin. Sambil menunggu, kamu sudah bisa belanja seperti biasa.
+                    Pilih dengan teliti — setelah terdaftar, angkatan tidak bisa kamu ubah sendiri.
                   </div>
                 </div>
               )}
@@ -367,7 +404,7 @@ function AuthContent() {
           )}
 
           <button
-            onClick={mode==='login'?handleLogin:handleRegister}
+            onClick={mode==='login'?handleLogin:mintaDaftar}
             disabled={loading}
             style={{width:'100%',background:'#0C447C',color:'#fff',border:'none',padding:'11px',borderRadius:'8px',fontSize:'13px',fontWeight:'500',cursor:'pointer'}}>
             {loading ? 'Memproses...' : mode==='login' ? 'Masuk ke Superfive Market' : 'Daftar sebagai Superfive'}
@@ -376,6 +413,21 @@ function AuthContent() {
           )}
         </div>
       </div>
+
+      {/* Label, bukan tahun: "Superfive 92" itu yang akan terbaca orang lain
+          di samping namanya, jadi itu juga yang dikonfirmasi */}
+      <DialogKonfirmasi
+        terbuka={konfirmasiAngkatan}
+        ikon="🎓"
+        judul={angkatan ? `Kamu terdaftar sebagai ${labelOpsiAngkatan(parseInt(angkatan))}.` : ''}
+        pesan="Setelah ini angkatan nggak bisa diubah sendiri. Udah bener?"
+        labelKonfirmasi="Ya, lanjut"
+        labelBatal="Ubah dulu"
+        merusak={false}
+        memproses={loading}
+        onKonfirmasi={handleRegister}
+        onBatal={() => setKonfirmasiAngkatan(false)}
+      />
     </main>
   )
 }
