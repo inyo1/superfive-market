@@ -45,7 +45,11 @@ export function useAngkatanSaya() {
 }
 
 type Props = {
+  /** Tahun numerik — HANYA untuk penanda seangkatan, tidak pernah ditampilkan */
   angkatan: number | null | undefined
+  /** `label_angkatan` dari view ("Superfive 92"). Ini yang ditampilkan.
+   *  Jangan dirangkai sendiri dari tahun — bunyinya ditentukan database. */
+  label: string | null | undefined
   /** Akun institusi — toko resmi, panitia, dan sejenisnya. Bukan alumni
    *  perorangan, jadi angkatan tidak pernah ditampilkan untuknya. */
   institusi?: boolean | null
@@ -54,7 +58,7 @@ type Props = {
   kecil?: boolean
 }
 
-export default function BadgeAngkatan({ angkatan, institusi = false, sembunyikanKosong = true, kecil = false }: Props) {
+export default function BadgeAngkatan({ angkatan, label, institusi = false, sembunyikanKosong = true, kecil = false }: Props) {
   const angkatanSaya = useAngkatanSaya()
 
   // Dijaga di sini, bukan di tiap pemanggil: sekali akun ditandai institusi,
@@ -62,7 +66,7 @@ export default function BadgeAngkatan({ angkatan, institusi = false, sembunyikan
   // kalau kolom angkatannya suatu saat kebetulan terisi.
   if (institusi) return null
 
-  if (!angkatan) {
+  if (!label) {
     if (sembunyikanKosong) return null
     return (
       <span style={gaya(kecil, { background: '#f4f7fb', color: '#9ab4cc' })}>
@@ -71,12 +75,14 @@ export default function BadgeAngkatan({ angkatan, institusi = false, sembunyikan
     )
   }
 
-  const seangkatan = angkatanSaya !== null && angkatanSaya === angkatan
+  const seangkatan = angkatan != null && angkatanSaya !== null && angkatanSaya === angkatan
 
+  // Label tetap terbaca saat seangkatan — angkatan harus terlihat di samping
+  // nama di mana pun, termasuk oleh teman seangkatan yang paling bisa menilai
   if (seangkatan) {
     return (
       <span
-        title={`Kalian sama-sama angkatan ${angkatan}`}
+        title={`Seangkatan denganmu — kalian sama-sama ${label}`}
         style={gaya(kecil, {
           background: 'rgba(239,159,39,0.15)',
           color: '#a86a05',
@@ -84,14 +90,14 @@ export default function BadgeAngkatan({ angkatan, institusi = false, sembunyikan
         })}
       >
         <span aria-hidden style={{ fontSize: kecil ? '10px' : '11px' }}>🤝</span>
-        Seangkatan denganmu
+        {label}
       </span>
     )
   }
 
   return (
     <span style={gaya(kecil, { background: '#E6F1FB', color: '#0C447C' })}>
-      Angkatan {angkatan}
+      {label}
     </span>
   )
 }

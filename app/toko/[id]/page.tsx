@@ -17,6 +17,8 @@ import { useTampilSkeleton } from '../../hooks/useSkeleton'
 import BadgePreorder, { WARNA_PO_TUA } from '../../components/BadgePreorder'
 import { janjiKirim } from '../../../lib/preorder'
 import { emojiKategori } from '../../../lib/kategori'
+import { ambilSatuPenjualPublik, penjualAlumni } from '../../../lib/penjualPublik'
+import TombolLapor from '../../components/TombolLapor'
 
 type Toko = {
   id: string
@@ -27,8 +29,10 @@ type Toko = {
   foto_toko?: string | null
   is_official?: boolean
   users: {
+    id: string
     nama: string | null
     angkatan: number | null
+    label_angkatan: string | null
     is_institusi: boolean | null
     alumni_terverifikasi: boolean | null
   } | null
@@ -90,21 +94,30 @@ export default function TokoPage() {
 
       if (error || !tokoData) { setNotFound(true); setLoading(false); return }
 
-      // Data penjual diambil terpisah dari view alumni_publik — embed lewat
-      // foreign key ke users tidak lagi bisa dipakai sejak users ditutup.
-      // Nama dan status alumni dari pengguna_publik (semua akun aktif),
-      // angkatan dari alumni_publik. Pemilik toko resmi itu akun institusi:
-      // dia punya baris di view pertama, tidak di yang kedua.
-      const [profilRes, angkatanRes] = await Promise.all([
+      // Data penjual diambil terpisah — embed lewat foreign key ke users
+      // tidak bisa dipakai sejak users ditutup.
+      //
+      // Angkatan dan label-nya dari penjual_publik: bisa dibaca anon, tidak
+      // seperti alumni_publik. Nama dan status alumni tetap dari
+      // pengguna_publik sebagai cadangan, karena penjual_publik hanya memuat
+      // penjual AKTIF — pemilik toko yang dibekukan masih boleh membuka
+      // tokonya sendiri, dan tanpa cadangan ini namanya hilang dari header.
+      const [profilRes, penjualPub] = await Promise.all([
         supabase.from('pengguna_publik')
           .select('nama, is_institusi, alumni_terverifikasi')
           .eq('id', tokoData.seller_id).maybeSingle(),
-        supabase.from('alumni_publik').select('angkatan')
-          .eq('id', tokoData.seller_id).maybeSingle(),
+        ambilSatuPenjualPublik(tokoData.seller_id),
       ])
 
-      const penjual = profilRes.data
-        ? { ...profilRes.data, angkatan: angkatanRes.data?.angkatan ?? null }
+      const penjual = profilRes.data || penjualPub
+        ? {
+            id: tokoData.seller_id as string,
+            nama: penjualPub?.nama ?? profilRes.data?.nama ?? null,
+            is_institusi: Boolean(penjualPub?.is_institusi ?? profilRes.data?.is_institusi),
+            alumni_terverifikasi: Boolean(profilRes.data?.alumni_terverifikasi ?? penjualAlumni(penjualPub)),
+            angkatan: penjualPub?.angkatan ?? null,
+            label_angkatan: penjualPub?.label_angkatan ?? null,
+          }
         : null
 
       setToko({ ...tokoData, users: penjual } as any)
@@ -297,11 +310,27 @@ export default function TokoPage() {
               {resmi ? (
                 <BadgeOfficial aktif bentuk="lencana" />
               ) : (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', fontSize: '12px', color: '#B5D4F4' }}>
-                  <span>{toko.users?.nama || 'Penjual'}</span>
-                  <BadgeVerifikasi alumni={toko.users?.alumni_terverifikasi} size={13} />
-                  <BadgeAngkatan angkatan={toko.users?.angkatan} institusi={toko.users?.is_institusi} />
-                </div>
+                <>
+                  {/* Nama · Superfive 92 — lencana angkatan berisi label dari
+                      view, tepat di samping nama, supaya teman seangkatan bisa
+                      mengenali (atau meragukan) penjualnya */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', fontSize: '12px', color: '#B5D4F4' }}>
+                    <span>{toko.users?.nama || 'Penjual'}</span>
+                    <BadgeVerifikasi alumni={toko.users?.alumni_terverifikasi} size={13} />
+                    <BadgeAngkatan angkatan={toko.users?.angkatan} label={toko.users?.label_angkatan} institusi={toko.users?.is_institusi} />
+                  </div>
+                  {/* Mati selama NEXT_PUBLIC_WA_LAPOR kosong — komponennya
+                      mengembalikan null, bukan tombol yang tidak berfungsi */}
+                  {!isOwner && toko.users?.nama && toko.users.label_angkatan && !toko.users.is_institusi && (
+                    <div style={{ marginTop: '8px' }}>
+                      <TombolLapor
+                        penggunaId={toko.users.id}
+                        nama={toko.users.nama}
+                        labelAngkatan={toko.users.label_angkatan}
+                      />
+                    </div>
+                  )}
+                </>
               )}
             </div>
             {isOwner && !editMode && (

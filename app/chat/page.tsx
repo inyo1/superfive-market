@@ -18,6 +18,7 @@ type ConvDisplay = {
   otherAlumni: boolean
   otherInstitusi: boolean
   otherAngkatan: number | null
+  otherLabelAngkatan: string | null
   lastMessage: string | null
   lastMessageAt: string | null
   unread: number
@@ -81,11 +82,11 @@ export default function ChatListPage() {
         supabase.from('pengguna_publik')
           .select('id, nama, avatar_url, is_institusi, alumni_terverifikasi')
           .in('id', otherIds),
-        supabase.from('alumni_publik').select('id, angkatan').in('id', otherIds),
+        supabase.from('alumni_publik').select('id, angkatan, label_angkatan').in('id', otherIds),
       ])
 
       const profileMap = Object.fromEntries((profilRes.data ?? []).map(p => [p.id, p]))
-      const angkatanMap = Object.fromEntries((angkatanRes.data ?? []).map(a => [a.id, a.angkatan]))
+      const angkatanMap = Object.fromEntries((angkatanRes.data ?? []).map(a => [a.id, a]))
 
       const { data: unreadMsgs } = await supabase
         .from('messages')
@@ -109,7 +110,8 @@ export default function ChatListPage() {
           otherAvatar: p?.avatar_url ?? null,
           otherAlumni: Boolean(p?.alumni_terverifikasi),
           otherInstitusi: Boolean(p?.is_institusi),
-          otherAngkatan: angkatanMap[otherId] ?? null,
+          otherAngkatan: angkatanMap[otherId]?.angkatan ?? null,
+          otherLabelAngkatan: angkatanMap[otherId]?.label_angkatan ?? null,
           lastMessage: c.last_message,
           lastMessageAt: c.last_message_at,
           unread: unreadByConv[c.id] ?? 0,
@@ -162,7 +164,7 @@ export default function ChatListPage() {
                         {c.otherNama || 'Pengguna'}
                       </span>
                       <BadgeVerifikasi alumni={c.otherAlumni} size={13} />
-                      <BadgeAngkatan angkatan={c.otherAngkatan} institusi={c.otherInstitusi} kecil />
+                      <BadgeAngkatan angkatan={c.otherAngkatan} label={c.otherLabelAngkatan} institusi={c.otherInstitusi} kecil />
                     </div>
                     <div style={{ fontSize: '11px', color: '#9ab4cc', flexShrink: 0, marginLeft: '8px' }}>
                       {timeAgo(c.lastMessageAt)}

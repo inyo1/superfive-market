@@ -29,18 +29,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     }
   }
 
-  // Dari view publik, bukan tabel users. Nama diambil dari pengguna_publik
-  // supaya pemilik yang bukan alumni perorangan — toko resmi misalnya — tetap
-  // punya nama; angkatan tetap dari alumni_publik karena hanya ada di sana.
+  // Dari penjual_publik, bukan tabel users maupun alumni_publik — metadata
+  // dibuat dengan kunci anon, dan alumni_publik tertutup untuk anon.
+  // label_angkatan sudah jadi di view; akun institusi tidak diberi angkatan.
   let nama: string | null = null
-  let angkatan: number | null = null
+  let label: string | null = null
   if (toko.seller_id) {
-    const [profilRes, angkatanRes] = await Promise.all([
-      db.from('pengguna_publik').select('nama').eq('id', toko.seller_id).maybeSingle(),
-      db.from('alumni_publik').select('angkatan').eq('id', toko.seller_id).maybeSingle(),
-    ])
-    nama = profilRes.data?.nama ?? null
-    angkatan = angkatanRes.data?.angkatan ?? null
+    const { data: penjual } = await db
+      .from('penjual_publik')
+      .select('nama, label_angkatan, is_institusi')
+      .eq('id', toko.seller_id)
+      .maybeSingle()
+    nama = penjual?.nama ?? null
+    label = penjual && !penjual.is_institusi ? penjual.label_angkatan ?? null : null
   }
 
   const { count } = await db
@@ -56,8 +57,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const deskripsi = [
     toko.deskripsi?.trim() || `${sebutan} di Superfive Market.`,
-    nama ? `Dikelola ${nama}` : null,
-    angkatan ? `angkatan ${angkatan}.` : null,
+    nama ? `Dikelola ${nama}${label ? ` · ${label}` : ''}.` : null,
     count ? `${count} produk tersedia.` : null,
   ].filter(Boolean).join(' ')
 

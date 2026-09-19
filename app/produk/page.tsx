@@ -7,13 +7,14 @@ import FotoProduk from '../components/FotoProduk'
 import SkeletonCard from '../components/SkeletonCard'
 import BadgeVerifikasi from '../components/BadgeVerifikasi'
 import EmptyState from '../components/EmptyState'
-import BadgeAngkatan from '../components/BadgeAngkatan'
+import NamaPenjual from '../components/NamaPenjual'
 import BadgeOfficial from '../components/BadgeOfficial'
 import BadgePreorder, { WARNA_PO_TUA } from '../components/BadgePreorder'
 import BadgeTersedia from '../components/BadgeTersedia'
 import { janjiKirim } from '../../lib/preorder'
 import { useTampilSkeleton } from '../hooks/useSkeleton'
 import { KATEGORI } from '../../lib/kategori'
+import { ambilPenjualPublik, penjualAlumni, type PenjualPublik } from '../../lib/penjualPublik'
 
 type Produk = {
   id: string
@@ -27,8 +28,7 @@ type Produk = {
   is_preorder: boolean
   po_janji_kirim: string | null
   foto_url?: string | null
-  toko: { nama_toko: string; is_official: boolean; users: { angkatan: number | null } | null } | null
-  users: { angkatan: number }
+  toko: { nama_toko: string; is_official: boolean; users: PenjualPublik | null } | null
 }
 
 // 'semua' bukan kategori, hanya keadaan penyaring — karena itu ditambahkan
@@ -72,23 +72,10 @@ export default function ProdukPage() {
 
     if (error || !data) { setLoading(false); return }
 
-    // Info penjual diambil terpisah dari alumni_publik lalu digabung di sini,
-    // karena embed foreign key ke users sudah tidak bisa dibaca publik.
-    const sellerIds = [...new Set(
-      data.map((p: any) => p.toko?.seller_id).filter(Boolean)
-    )] as string[]
-
-    // Penjual yang tidak punya baris di sini bukan alumni perorangan
-    // terverifikasi — akun institusi salah satunya. Untuk mereka tidak ada
-    // angkatan dan tidak ada centang, dan itu memang yang dikehendaki.
-    let penjualById: Record<string, { angkatan: number | null }> = {}
-    if (sellerIds.length > 0) {
-      const { data: penjual } = await supabase
-        .from('alumni_publik')
-        .select('id, angkatan')
-        .in('id', sellerIds)
-      penjualById = Object.fromEntries((penjual ?? []).map(u => [u.id, u]))
-    }
+    // Info penjual diambil terpisah dari penjual_publik lalu digabung di sini,
+    // karena embed foreign key ke users tidak bisa dibaca publik — dan
+    // alumni_publik sudah tertutup untuk pengunjung anon.
+    const penjualById = await ambilPenjualPublik(data.map((p: any) => p.toko?.seller_id))
 
     setProduk(data.map((p: any) => ({
       ...p,
@@ -204,15 +191,15 @@ export default function ProdukPage() {
                           🏪 {p.toko.nama_toko}
                         </span>
                         {!p.toko.is_official && (
-                          <BadgeVerifikasi alumni={Boolean(p.toko.users)} size={11} />
+                          <BadgeVerifikasi alumni={penjualAlumni(p.toko.users)} size={11} />
                         )}
                       </div>
                       <div style={{ marginTop: '4px' }}>
                         {/* Toko resmi itu akun institusi, bukan alumni perorangan,
-                            jadi angkatan diganti lencana OFFICIAL */}
+                            jadi nama · angkatan diganti lencana OFFICIAL */}
                         {p.toko.is_official
                           ? <BadgeOfficial aktif kecil />
-                          : <BadgeAngkatan angkatan={p.toko.users?.angkatan} kecil />}
+                          : <NamaPenjual nama={p.toko.users?.nama} label={p.toko.users?.label_angkatan} angkatan={p.toko.users?.angkatan} institusi={p.toko.users?.is_institusi} kecil />}
                       </div>
                     </div>
                   )}

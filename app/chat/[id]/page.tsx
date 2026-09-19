@@ -23,6 +23,7 @@ type ConvInfo = {
   otherAlumni: boolean
   otherInstitusi: boolean
   otherAngkatan: number | null
+  otherLabelAngkatan: string | null
   produkNama: string | null
 }
 
@@ -95,7 +96,7 @@ export default function ChatRoom() {
         supabase.from('pengguna_publik')
           .select('nama, avatar_url, is_institusi, alumni_terverifikasi')
           .eq('id', otherId).maybeSingle(),
-        supabase.from('alumni_publik').select('angkatan').eq('id', otherId).maybeSingle(),
+        supabase.from('alumni_publik').select('angkatan, label_angkatan').eq('id', otherId).maybeSingle(),
       ])
       const profile = profilRes.data
 
@@ -105,6 +106,7 @@ export default function ChatRoom() {
         otherAlumni: Boolean(profile?.alumni_terverifikasi),
         otherInstitusi: Boolean(profile?.is_institusi),
         otherAngkatan: angkatanRes.data?.angkatan ?? null,
+        otherLabelAngkatan: angkatanRes.data?.label_angkatan ?? null,
         produkNama: (conv.produk as any)?.nama ?? null,
       })
 
@@ -223,7 +225,7 @@ export default function ChatRoom() {
               {convInfo?.otherNama || 'Pengguna'}
             </span>
             <BadgeVerifikasi alumni={convInfo?.otherAlumni} size={13} />
-            <BadgeAngkatan angkatan={convInfo?.otherAngkatan} institusi={convInfo?.otherInstitusi} kecil />
+            <BadgeAngkatan angkatan={convInfo?.otherAngkatan} label={convInfo?.otherLabelAngkatan} institusi={convInfo?.otherInstitusi} kecil />
           </div>
           {convInfo?.produkNama && (
             <div style={{ fontSize: '11px', color: '#5a7da0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

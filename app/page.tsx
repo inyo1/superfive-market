@@ -13,6 +13,8 @@ import BadgeTersedia from './components/BadgeTersedia'
 import { EMAS } from './components/BadgeOfficial'
 import { janjiKirim } from '../lib/preorder'
 import { KATEGORI, EMOJI_KATEGORI } from '../lib/kategori'
+import { ambilPenjualPublik, type PenjualPublik } from '../lib/penjualPublik'
+import NamaPenjual from './components/NamaPenjual'
 
 type Produk = {
   id: string
@@ -25,7 +27,8 @@ type Produk = {
   is_preorder: boolean
   po_janji_kirim: string | null
   rating: number
-  toko: { nama_toko: string } | null
+  toko: { nama_toko: string; seller_id?: string | null } | null
+  penjual?: PenjualPublik | null
 }
 
 type Stats = { produk: number; toko: number; alumni: number }
@@ -131,14 +134,14 @@ export default function Home() {
         // memang sudah angka yang benar. Jangan menyaring lagi di sini.
         supabase.from('produk').select('*', { count: 'exact', head: true }),
         supabase.from('toko').select('*', { count: 'exact', head: true }),
-        // Hitung dari view publik — tabel users tidak lagi bisa dibaca umum,
-        // kalau tetap dari sana angkanya jadi 0 untuk pengunjung. Tidak perlu
-        // disaring lagi: view-nya sudah hanya berisi alumni terverifikasi yang
-        // aktif dan bukan akun institusi, sama persis dengan isi direktori.
-        supabase.from('alumni_publik')
-          .select('*', { count: 'exact', head: true }),
+        // Dijumlah dari angkatan_ringkas, BUKAN count ke alumni_publik: sejak
+        // peluncuran reuni alumni_publik hanya bisa dibaca yang sudah login,
+        // jadi untuk pengunjung angkanya jadi 0. angkatan_ringkas terbuka
+        // untuk anon dan penyaringnya sama persis dengan direktori — alumni
+        // aktif, bukan akun institusi. Jangan menyaring lagi di sini.
+        supabase.from('angkatan_ringkas').select('jumlah'),
         supabase.from('produk')
-          .select('id, nama, harga, kategori, foto_url, terjual, rating, is_tersedia, is_preorder, po_janji_kirim, toko!inner(nama_toko, is_official)')
+          .select('id, nama, harga, kategori, foto_url, terjual, rating, is_tersedia, is_preorder, po_janji_kirim, toko!inner(nama_toko, is_official, seller_id)')
           .eq('toko.is_official', false)
           .order('created_at', { ascending: false })
           .limit(6),
@@ -148,9 +151,15 @@ export default function Home() {
       setStats({
         produk: pCount.count ?? 0,
         toko:   tCount.count ?? 0,
-        alumni: uCount.count ?? 0,
+        alumni: ((uCount.data ?? []) as { jumlah: number }[]).reduce((n, a) => n + (a.jumlah ?? 0), 0),
       })
-      setLatest((latestRes.data ?? []) as unknown as Produk[])
+
+      const baris = (latestRes.data ?? []) as unknown as Produk[]
+      const penjualById = await ambilPenjualPublik(baris.map(p => p.toko?.seller_id))
+      setLatest(baris.map(p => ({
+        ...p,
+        penjual: p.toko?.seller_id ? penjualById[p.toko.seller_id] ?? null : null,
+      })))
       setLoading(false)
     }
     load()
@@ -401,6 +410,13 @@ export default function Home() {
                       <div style={{ fontSize: '10px', background: '#E6F1FB', color: '#0C447C', padding: '2px 6px', borderRadius: '4px', display: 'inline-block' }}>
                         {p.kategori}
                       </div>
+                      {/* Nama · Superfive 92 — rak ini sudah menyaring toko
+                          resmi, jadi semua penjualnya alumni perorangan */}
+                      {p.penjual && (
+                        <div style={{ marginTop: '6px' }}>
+                          <NamaPenjual nama={p.penjual.nama} label={p.penjual.label_angkatan} angkatan={p.penjual.angkatan} institusi={p.penjual.is_institusi} kecil />
+                        </div>
+                      )}
                     </div>
                     <div className="prod-card-btn" style={{ background: '#0C447C', color: '#fff', padding: '8px', fontSize: '11px', textAlign: 'center' }}>
                       Lihat Detail

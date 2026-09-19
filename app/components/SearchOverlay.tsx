@@ -5,6 +5,8 @@ import { supabase } from '../../lib/supabase'
 import BadgeOfficial from './BadgeOfficial'
 import BadgePreorder from './BadgePreorder'
 import { emojiKategori } from '../../lib/kategori'
+import { ambilPenjualPublik, type PenjualPublik } from '../../lib/penjualPublik'
+import NamaPenjual from './NamaPenjual'
 
 type ProdukResult = {
   id: string
@@ -13,14 +15,15 @@ type ProdukResult = {
   kategori: string
   foto_url?: string | null
   is_preorder?: boolean
-  toko: { nama_toko: string; is_official?: boolean } | null
+  toko: { nama_toko: string; is_official?: boolean; seller_id?: string | null } | null
+  penjual?: PenjualPublik | null
 }
 
 type TokoResult = {
   id: string
   nama_toko: string
   kategori: string
-  users: { angkatan: number } | null
+  users: PenjualPublik | null
   is_official?: boolean
 }
 
@@ -76,7 +79,7 @@ export default function SearchOverlay({ open, onClose }: { open: boolean; onClos
   }
 
   async function runSearch(q: string) {
-    const kolomProduk = 'id, nama, harga, kategori, foto_url, is_preorder, toko!inner(nama_toko, is_official)'
+    const kolomProduk = 'id, nama, harga, kategori, foto_url, is_preorder, toko!inner(nama_toko, is_official, seller_id)'
     const cocok = `nama.ilike.%${q}%,deskripsi.ilike.%${q}%`
 
     // Merchandise resmi dicari lewat query terpisah, bukan disaring dari satu
@@ -99,28 +102,29 @@ export default function SearchOverlay({ open, onClose }: { open: boolean; onClos
         .limit(4),
     ])
 
-    // Angkatan penjual digabung dari alumni_publik — users tidak lagi terbaca publik
+    // Identitas penjual dari penjual_publik — users tidak terbaca publik, dan
+    // alumni_publik tertutup untuk pengunjung anon. Satu query untuk penjual
+    // di hasil produk maupun hasil toko.
     const tokoRows = (tokoRes.data ?? []) as { id: string; nama_toko: string; kategori: string; seller_id: string | null; is_official: boolean }[]
-    const sellerIds = [...new Set(tokoRows.map(t => t.seller_id).filter(Boolean))] as string[]
-
-    let angkatanById: Record<string, number | null> = {}
-    if (sellerIds.length > 0) {
-      const { data: penjual } = await supabase
-        .from('alumni_publik')
-        .select('id, angkatan')
-        .in('id', sellerIds)
-      angkatanById = Object.fromEntries((penjual ?? []).map(u => [u.id, u.angkatan]))
-    }
-
-    // Resmi selalu di depan supaya beda kelasnya langsung terbaca
-    setProduk([
+    const produkRows = [
       ...(resmiRes.data ?? []),
       ...(memberRes.data ?? []),
-    ] as unknown as ProdukResult[])
+    ] as unknown as ProdukResult[]
+
+    const penjualById = await ambilPenjualPublik([
+      ...tokoRows.map(t => t.seller_id),
+      ...produkRows.map(p => p.toko?.seller_id),
+    ])
+
+    // Resmi selalu di depan supaya beda kelasnya langsung terbaca
+    setProduk(produkRows.map(p => ({
+      ...p,
+      penjual: p.toko?.seller_id ? penjualById[p.toko.seller_id] ?? null : null,
+    })))
     setToko(tokoRows.map(t => ({
       ...t,
-      users: t.seller_id ? { angkatan: angkatanById[t.seller_id] ?? null } : null,
-    })) as unknown as TokoResult[])
+      users: t.seller_id ? penjualById[t.seller_id] ?? null : null,
+    })))
     setLoading(false)
   }
 
@@ -287,8 +291,13 @@ export default function SearchOverlay({ open, onClose }: { open: boolean; onClos
                       {fmt(p.harga)}
                     </div>
                     {p.toko && (
-                      <div style={{ fontSize: '11px', color: '#5a7da0', marginTop: '1px' }}>
-                        {(p.toko as any).nama_toko}
+                      <div style={{ fontSize: '11px', color: '#5a7da0', marginTop: '1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {p.toko.nama_toko}
+                        {/* Nama · Superfive 92 di samping toko member; toko
+                            resmi sudah ditandai lencana OFFICIAL */}
+                        {!p.toko.is_official && p.penjual && (
+                          <>{' — '}<NamaPenjual nama={p.penjual.nama} label={p.penjual.label_angkatan} angkatan={p.penjual.angkatan} institusi={p.penjual.is_institusi} style={{ fontSize: '11px' }} /></>
+                        )}
                       </div>
                     )}
                   </div>
@@ -344,9 +353,7 @@ export default function SearchOverlay({ open, onClose }: { open: boolean; onClos
                     </div>
                     {/* Toko resmi akun institusi, angkatan tidak ditampilkan */}
                     {!t.is_official && t.users && (
-                      <div style={{ fontSize: '11px', color: '#5a7da0' }}>
-                        Alumni Angkatan {(t.users as any).angkatan}
-                      </div>
+                      <NamaPenjual nama={t.users.nama} label={t.users.label_angkatan} angkatan={t.users.angkatan} institusi={t.users.is_institusi} style={{ fontSize: '11px', display: 'block' }} />
                     )}
                   </div>
                   <span style={{

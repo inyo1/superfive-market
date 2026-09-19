@@ -16,6 +16,8 @@ import { useHitungMundur } from '../../hooks/useHitungMundur'
 import { statusPO, alasanTidakBisa, tanggalPanjang, formatSisa, janjiKirim, type DataPO } from '../../../lib/preorder'
 import { emojiKategori } from '../../../lib/kategori'
 import { transaksiBeku } from '../../../lib/config'
+import { ambilSatuPenjualPublik, type PenjualPublik } from '../../../lib/penjualPublik'
+import NamaPenjual from '../../components/NamaPenjual'
 
 type Produk = DataPO & {
   id: string
@@ -29,8 +31,7 @@ type Produk = DataPO & {
   rating: number
   foto_url?: string | null
   created_at: string
-  toko: { nama_toko: string; seller_id: string; is_official?: boolean }
-  users?: { angkatan: number }
+  toko: { nama_toko: string; seller_id: string; is_official?: boolean; users?: PenjualPublik | null }
 }
 
 // Satu baris dari view preorder_progress
@@ -88,19 +89,9 @@ export default function DetailProduk() {
       if (error || !data) {
         setNotFound(true)
       } else {
-        // Angkatan penjual diambil dari alumni_publik, bukan embed ke users
-        const sellerId = (data as any).toko?.seller_id
-        let penjual: { angkatan: number | null } | null = null
-        if (sellerId) {
-          // maybeSingle: penjual toko resmi itu akun institusi dan memang
-          // tidak punya baris di view alumni
-          const { data: u } = await supabase
-            .from('alumni_publik')
-            .select('angkatan')
-            .eq('id', sellerId)
-            .maybeSingle()
-          penjual = u ?? null
-        }
+        // Identitas penjual dari penjual_publik — bisa dibaca anon, tidak
+        // seperti alumni_publik, dan label_angkatan-nya sudah jadi
+        const penjual = await ambilSatuPenjualPublik((data as any).toko?.seller_id)
         const toko = (data as any).toko
         setProduk({ ...data, toko: toko ? { ...toko, users: penjual } : null } as any)
 
@@ -206,7 +197,7 @@ export default function DetailProduk() {
   }
 
   const emoji = emojiKategori(produk.kategori)
-  const angkatan = (produk.toko as any)?.users?.angkatan
+  const penjual = ((produk.toko as any)?.users ?? null) as PenjualPublik | null
   const resmi = Boolean((produk.toko as any)?.is_official)
 
   const punyaVarian = varian.length > 0
@@ -471,9 +462,13 @@ export default function DetailProduk() {
                 </span>
                 <BadgeOfficial aktif={resmi} />
               </div>
-              {/* Toko resmi akun institusi — angkatan tidak relevan di sini */}
-              {!resmi && angkatan && (
-                <div style={{ fontSize: '12px', color: '#5a7da0' }}>Alumni Angkatan {angkatan}</div>
+              {/* Nama · Superfive 92 — koreksi sosial: angkatan terbaca di
+                  mana pun nama penjual muncul. Toko resmi itu akun institusi,
+                  jadi yang tampil lencana OFFICIAL di atas, bukan angkatan. */}
+              {!resmi && penjual && (
+                <div style={{ marginTop: '2px' }}>
+                  <NamaPenjual nama={penjual.nama} label={penjual.label_angkatan} angkatan={penjual.angkatan} institusi={penjual.is_institusi} />
+                </div>
               )}
             </div>
             <div style={{ fontSize: '12px', color: '#0C447C' }}>Lihat Toko →</div>

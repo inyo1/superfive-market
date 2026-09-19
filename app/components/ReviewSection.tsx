@@ -52,7 +52,7 @@ function StarDisplay({ value, size = 14 }: { value: number; size?: number }) {
 
 export default function ReviewSection({ produkId }: { produkId: string }) {
   const [reviews, setReviews] = useState<Review[]>([])
-  const [profilPengulas, setProfilPengulas] = useState<Record<string, { angkatan: number | null }>>({})
+  const [profilPengulas, setProfilPengulas] = useState<Record<string, { angkatan: number | null; label: string | null }>>({})
   const [loading, setLoading] = useState(true)
   const tampilSkeleton = useTampilSkeleton(loading)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
@@ -83,13 +83,19 @@ export default function ReviewSection({ produkId }: { produkId: string }) {
     if (!error && data) {
       setReviews(data as Review[])
 
-      // Angkatan pengulas diambil terpisah dari view publik — reviews sendiri
-      // hanya menyimpan nama, bukan angkatan
+      // Angkatan pengulas diambil terpisah dari alumni_publik — reviews sendiri
+      // hanya menyimpan nama, bukan angkatan.
+      //
+      // Sejak peluncuran reuni alumni_publik hanya untuk yang sudah login,
+      // jadi pengunjung anon melihat ulasan TANPA lencana angkatan. Itu
+      // disengaja oleh grant-nya, bukan error: query-nya gagal, peta tetap
+      // kosong, dan ulasannya tampil seperti biasa. penjual_publik bukan
+      // pengganti di sini — pengulas umumnya bukan penjual.
       const ids = [...new Set(data.map(r => r.user_id).filter(Boolean))]
       if (ids.length > 0) {
         const { data: profil } = await supabase
-          .from('alumni_publik').select('id, angkatan').in('id', ids)
-        setProfilPengulas(Object.fromEntries((profil ?? []).map(p => [p.id, { angkatan: p.angkatan }])))
+          .from('alumni_publik').select('id, angkatan, label_angkatan').in('id', ids)
+        setProfilPengulas(Object.fromEntries((profil ?? []).map(p => [p.id, { angkatan: p.angkatan, label: p.label_angkatan }])))
       }
     }
     setLoading(false)
@@ -309,7 +315,7 @@ export default function ReviewSection({ produkId }: { produkId: string }) {
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
                       <span style={{ fontSize: '12px', fontWeight: '500', color: '#1a1a1a' }}>{r.nama_reviewer}</span>
-                      <BadgeAngkatan angkatan={profilPengulas[r.user_id]?.angkatan} kecil />
+                      <BadgeAngkatan angkatan={profilPengulas[r.user_id]?.angkatan} label={profilPengulas[r.user_id]?.label} kecil />
                     </div>
                     {/* Bulan dieja penuh — ulasan dibaca sambil lalu, bukan dibandingkan */}
                     <div style={{ fontSize: '10px', color: '#5a7da0' }}>{tanggalPeristiwa(r.created_at, true)}</div>
