@@ -24,19 +24,6 @@ const ATURAN = [
   'Nomor resi wajib diisi saat menandai pesanan dikirim.',
 ]
 
-function rangkaiAlamat(d: Record<string, string | null>) {
-  const bagian: string[] = []
-  if (d.jalan) bagian.push(d.jalan)
-  const kelKec = [
-    d.kelurahan && `Kel. ${d.kelurahan}`,
-    d.kecamatan && `Kec. ${d.kecamatan}`,
-  ].filter(Boolean).join(', ')
-  if (kelKec) bagian.push(kelKec)
-  const kota = [d.kota, d.provinsi, d.kode_pos].filter(Boolean).join(', ')
-  if (kota) bagian.push(kota)
-  return bagian.join('\n')
-}
-
 const KOTAK = { background: '#fff', borderRadius: '12px', padding: '16px', border: '0.5px solid #c5d9ef', marginBottom: '12px' } as const
 const LABEL = { fontSize: '13px', fontWeight: '600', color: '#0C447C', display: 'block', marginBottom: '4px' } as const
 const KETERANGAN = { fontSize: '11px', color: '#5a7da0', marginBottom: '8px', lineHeight: '1.6' } as const
@@ -52,7 +39,7 @@ export default function JualPage() {
   const [statusPenjual, setStatusPenjual] = useState<string | null>(null)
   const [alasanPenjual, setAlasanPenjual] = useState<string | null>(null)
 
-  const [alamat, setAlamat] = useState('')
+  const [kotaAsal, setKotaAsal] = useState('')
   const [bankNama, setBankNama] = useState('')
   const [bankRekening, setBankRekening] = useState('')
   const [bankAtasNama, setBankAtasNama] = useState('')
@@ -71,7 +58,7 @@ export default function JualPage() {
 
       const { data } = await supabase
         .from('users')
-        .select('nama, status_alumni, status_penjual, alasan_penjual, alamat_lengkap, bank_nama, bank_rekening, bank_atas_nama, jalan, kelurahan, kecamatan, kota, provinsi, kode_pos')
+        .select('nama, status_alumni, status_penjual, alasan_penjual, bank_nama, bank_rekening, bank_atas_nama, kota')
         .eq('id', user.id)
         .single()
 
@@ -80,12 +67,11 @@ export default function JualPage() {
         setStatusAlumni(data.status_alumni ?? 'umum')
         setStatusPenjual(data.status_penjual ?? 'belum_ajukan')
         setAlasanPenjual(data.alasan_penjual ?? null)
-        // Alamat pengiriman dipakai ulang dari alamat profil kalau belum pernah
-        // diisi, supaya penjual tidak mengetik dua kali hal yang sama
-        setAlamat(data.alamat_lengkap ?? rangkaiAlamat(data))
+        // Kota asal dipakai ulang dari profil supaya tidak diketik dua kali
+        setKotaAsal(data.kota ?? '')
         setBankNama(data.bank_nama ?? '')
         setBankRekening(data.bank_rekening ?? '')
-        setBankAtasNama(data.bank_atas_nama ?? data.nama ?? '')
+        setBankAtasNama(data.bank_atas_nama ?? '')
       }
       setLoading(false)
     }
@@ -96,11 +82,16 @@ export default function JualPage() {
     setMengirim(true)
     setPesan(null)
     try {
+      // Mode katalog: tidak ada pembayaran lewat platform dan tidak ada
+      // ekspedisi, jadi kota asal dan rekening OPSIONAL. Isian kosong dikirim
+      // sebagai null — RPC-nya mempertahankan nilai lama untuk yang kosong.
+      // Kota asal masuk ke p_alamat (kolom alamat_lengkap); tidak ada kolom
+      // kota tersendiri di RPC ini.
       const { error } = await supabase.rpc('ajukan_jadi_penjual', {
-        p_alamat: alamat.trim(),
-        p_bank_nama: bankNama.trim(),
-        p_bank_rekening: bankRekening.trim(),
-        p_bank_atas_nama: bankAtasNama.trim(),
+        p_alamat: kotaAsal.trim() || null,
+        p_bank_nama: bankNama.trim() || null,
+        p_bank_rekening: bankRekening.trim() || null,
+        p_bank_atas_nama: bankAtasNama.trim() || null,
         p_setuju_aturan: setuju,
       })
       if (error) throw new Error(error.message)
@@ -135,15 +126,14 @@ export default function JualPage() {
       <div style={{ ...KOTAK, textAlign: 'center', padding: '28px 20px' }}>
         <div style={{ fontSize: '44px', marginBottom: '12px' }}>🎓</div>
         <div style={{ fontSize: '15px', fontWeight: '700', color: '#1a1a1a', marginBottom: '8px' }}>
-          Verifikasi alumni dulu
+          Daftar sebagai alumni dulu
         </div>
         <p style={{ fontSize: '13px', color: '#5a7da0', lineHeight: '1.7', margin: '0 0 18px' }}>
-          {statusAlumni === 'menunggu'
-            ? 'Pengajuan alumni-mu sedang diperiksa admin. Begitu disetujui, halaman ini terbuka sendiri.'
-            : 'Yang boleh berjualan di Superfive Market hanya alumni SMPN 5 Bandung yang sudah terverifikasi.'}
+          Yang boleh berjualan di Superfive Market hanya alumni SMPN 5 Bandung.
+          Daftarkan angkatanmu — langsung aktif, tanpa menunggu.
         </p>
         <Link href="/verifikasi" style={{ display: 'inline-flex', alignItems: 'center', background: '#0C447C', color: '#fff', padding: '0 20px', minHeight: '44px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', textDecoration: 'none' }}>
-          {statusAlumni === 'menunggu' ? 'Lihat Status Pengajuan' : 'Verifikasi Alumni'}
+          Daftar sebagai Alumni
         </Link>
       </div>
     </Bingkai>
@@ -178,7 +168,7 @@ export default function JualPage() {
           ⏳ Pengajuanmu sedang diperiksa
         </div>
         <div style={{ fontSize: '12px', color: '#8d6e26', lineHeight: '1.7' }}>
-          Admin memeriksa alamat dan data rekeningmu, biasanya 1–2 hari.
+          Admin memeriksa pengajuanmu, biasanya 1–2 hari.
           Begitu disetujui, tokomu langsung bisa dibuka.
         </div>
       </div>
@@ -219,7 +209,8 @@ export default function JualPage() {
 
   // 'belum_ajukan' dan 'ditolak' — keduanya boleh mengisi formulir
   const ditolak = statusPenjual === 'ditolak'
-  const lengkap = Boolean(alamat.trim() && bankNama.trim() && bankRekening.trim() && bankAtasNama.trim() && setuju)
+  // Satu-satunya yang wajib: menyetujui aturan
+  const lengkap = setuju
 
   return (
     <Bingkai>
@@ -237,28 +228,30 @@ export default function JualPage() {
         </div>
       )}
 
-      {/* Alamat asal pengiriman */}
+      {/* Kota asal — dulu alamat lengkap untuk penjemputan kurir. Sejak mode
+          katalog tidak ada ekspedisi lewat platform, jadi cukup kotanya. */}
       <div style={KOTAK}>
-        <label htmlFor="alamat" style={LABEL}>Alamat Lengkap *</label>
+        <label htmlFor="kota-asal" style={LABEL}>Kota Asal <span style={{ fontWeight: '400', color: '#9ab4cc' }}>(opsional)</span></label>
         <div style={KETERANGAN}>
-          Ini alamat asal pengiriman — dari sini barangmu dijemput kurir.
+          Membantu pembeli memperkirakan ongkir saat menghubungimu.
         </div>
-        <textarea
-          id="alamat"
-          value={alamat}
-          onChange={e => setAlamat(e.target.value)}
-          rows={4}
-          placeholder={'Jl. Contoh No. 10, RT 01/RW 02\nKel. Sukajadi, Kec. Sukajadi\nBandung, Jawa Barat, 40161'}
-          style={{ ...ISIAN, resize: 'none' }}
+        <input
+          id="kota-asal"
+          value={kotaAsal}
+          onChange={e => setKotaAsal(e.target.value)}
+          placeholder="Bandung"
+          autoComplete="address-level2"
+          style={ISIAN}
         />
       </div>
 
-      {/* Rekening */}
+      {/* Rekening — opsional di mode katalog: pembayaran terjadi langsung
+          antara pembeli dan penjual, tidak lewat Superfive */}
       <div style={KOTAK}>
-        <div style={LABEL}>Data Rekening *</div>
+        <div style={LABEL}>Data Rekening <span style={{ fontWeight: '400', color: '#9ab4cc' }}>(opsional)</span></div>
         <div style={KETERANGAN}>
-          Ke sinilah hasil penjualanmu dikirim. Nama rekening harus sama dengan nama akun
-          {namaAkun ? <> — akunmu terdaftar sebagai <strong style={{ color: '#1a1a1a' }}>{namaAkun}</strong>.</> : '.'}
+          Belum dipakai selama Superfive dalam mode katalog. Boleh dikosongkan
+          {namaAkun ? <> — kalau diisi, pakai rekening atas nama <strong style={{ color: '#1a1a1a' }}>{namaAkun}</strong>.</> : '.'}
         </div>
 
         <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
