@@ -9,7 +9,10 @@ import { tanggalPeristiwa } from '../../lib/format'
 
 type BarisProspek = {
   id: string
-  user_id: string | null
+  /** NULL = pengunjung yang belum login (buka_kontak_toko boleh dipanggil
+   *  anon), atau akun yang sudah dihapus (FK-nya ON DELETE SET NULL).
+   *  Keduanya tidak bisa dibedakan dari baris ini. */
+  peminat_id: string | null
   kanal: string | null
   created_at: string
   produk: { nama: string } | null
@@ -18,12 +21,14 @@ type BarisProspek = {
 type Peminat = {
   nama: string | null
   angkatan: number | null
+  labelAngkatan: string | null
   alumni: boolean
 }
 
 const KANAL: Record<string, { label: string; bg: string; teks: string }> = {
   wa: { label: 'WhatsApp', bg: '#e8f5e9', teks: '#2e7d32' },
   ig: { label: 'Instagram', bg: '#fce4ec', teks: '#ad1457' },
+  link: { label: 'Link', bg: '#f0f5fb', teks: '#0C447C' },
 }
 
 /**
@@ -37,7 +42,12 @@ const KANAL: Record<string, { label: string; bg: string; teks: string }> = {
  * embed `users(nama)` di query prospek akan mengembalikan null untuk semua
  * baris, dan yang terlihat penjual adalah daftar peminat tanpa nama. Nama
  * diambil dari view `pengguna_publik`, angkatan dari `alumni_publik`, lalu
- * digabung di JavaScript — pola yang sama dengan /produk dan /toko/[id].
+ * digabung di JavaScript. Keduanya terbaca karena yang membuka tab ini
+ * penjual yang sudah login.
+ *
+ * Kolom peminatnya `peminat_id`, bukan `user_id` — salah nama kolom di sini
+ * tidak menghasilkan daftar kosong melainkan error query, dan seluruh tab
+ * gagal dimuat.
  */
 export default function DaftarProspek({ tokoId }: { tokoId: string }) {
   const toast = useToast()
@@ -55,7 +65,7 @@ export default function DaftarProspek({ tokoId }: { tokoId: string }) {
       const [daftarRes, hitungRes] = await Promise.all([
         supabase
           .from('prospek')
-          .select('id, user_id, kanal, created_at, produk(nama)')
+          .select('id, peminat_id, kanal, created_at, produk(nama)')
           .eq('toko_id', tokoId)
           .order('created_at', { ascending: false })
           .limit(200),
@@ -78,21 +88,22 @@ export default function DaftarProspek({ tokoId }: { tokoId: string }) {
       setBaris(data)
       setTotal30(hitungRes.count ?? 0)
 
-      const ids = [...new Set(data.map(b => b.user_id).filter(Boolean))] as string[]
+      const ids = [...new Set(data.map(b => b.peminat_id).filter(Boolean))] as string[]
       if (ids.length > 0) {
         const [profilRes, angkatanRes] = await Promise.all([
           supabase.from('pengguna_publik').select('id, nama, alumni_terverifikasi').in('id', ids),
-          supabase.from('alumni_publik').select('id, angkatan').in('id', ids),
+          supabase.from('alumni_publik').select('id, angkatan, label_angkatan').in('id', ids),
         ])
         if (!hidup) return
 
         const angkatanById = Object.fromEntries(
-          (angkatanRes.data ?? []).map(u => [u.id, u.angkatan])
+          (angkatanRes.data ?? []).map(u => [u.id, u])
         )
         setPeminat(Object.fromEntries(
           (profilRes.data ?? []).map(u => [u.id, {
             nama: u.nama,
-            angkatan: angkatanById[u.id] ?? null,
+            angkatan: angkatanById[u.id]?.angkatan ?? null,
+            labelAngkatan: angkatanById[u.id]?.label_angkatan ?? null,
             alumni: Boolean(u.alumni_terverifikasi),
           }])
         ))
@@ -137,7 +148,7 @@ export default function DaftarProspek({ tokoId }: { tokoId: string }) {
       ) : (
         <div style={{ background: '#fff', borderRadius: '12px', border: '0.5px solid #c5d9ef', overflow: 'hidden' }}>
           {baris.map((b, i) => {
-            const p = b.user_id ? peminat[b.user_id] : null
+            const p = b.peminat_id ? peminat[b.peminat_id] : null
             const k = KANAL[b.kanal ?? ''] ?? { label: b.kanal ?? '—', bg: '#f0f5fb', teks: '#5a7da0' }
             return (
               <div
@@ -150,14 +161,19 @@ export default function DaftarProspek({ tokoId }: { tokoId: string }) {
               >
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '13px', fontWeight: '600', color: '#1a1a1a' }}>
-                      {/* Akun yang sudah dihapus meninggalkan prospeknya dengan
-                          user_id NULL — barisnya tetap dihitung, namanya tidak
-                          bisa dipulihkan */}
-                      {p?.nama || (b.user_id ? 'Pengguna' : 'Akun Dihapus')}
+                    {/* peminat_id NULL paling sering berarti pengunjung yang
+                        menekan Hubungi tanpa login. Akun yang dihapus juga
+                        meninggalkan NULL, tapi jumlahnya jauh lebih sedikit
+                        dan tidak bisa dibedakan dari baris ini. */}
+                    <span style={{ fontSize: '13px', fontWeight: '600', color: b.peminat_id ? '#1a1a1a' : '#5a7da0' }}>
+                      {b.peminat_id ? (p?.nama || 'Pengguna') : 'Pengunjung (belum login)'}
                     </span>
-                    <BadgeVerifikasi alumni={Boolean(p?.alumni)} size={11} />
-                    <BadgeAngkatan angkatan={p?.angkatan} kecil />
+                    {b.peminat_id && (
+                      <>
+                        <BadgeVerifikasi alumni={Boolean(p?.alumni)} size={11} />
+                        <BadgeAngkatan angkatan={p?.angkatan} label={p?.labelAngkatan} kecil />
+                      </>
+                    )}
                   </div>
                   <div style={{ fontSize: '12px', color: '#5a7da0', marginTop: '3px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     📦 {b.produk?.nama ?? 'Produk sudah dihapus'}

@@ -1,6 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
+import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToast } from '../context/ToastContext'
 import { pesanDefault, urlWhatsApp, urlInstagram, urlLinkLain } from '../../lib/kontak'
@@ -28,7 +27,6 @@ type Kontak = {
   pesan_awal: string | null
 }
 
-const BIRU = '#0C447C'
 const WA_HIJAU = '#25D366'
 const WA_HIJAU_TUA = '#128C7E'
 
@@ -55,50 +53,41 @@ function IkonWA({ size = 17 }: { size?: number }) {
 export default function TombolHubungi({
   produkId, tokoId, namaProduk, tersedia = true, kecil = false, matiKarena = null,
 }: Props) {
-  const router = useRouter()
-  const pathname = usePathname()
   const { error: toastError, peringatan } = useToast()
-
-  const [login, setLogin] = useState<boolean | null>(null)
   const [memuat, setMemuat] = useState(false)
 
-  // getSession() membaca token dari penyimpanan lokal tanpa memanggil server.
-  // Penting karena tombol ini bisa muncul puluhan kali di satu halaman toko —
-  // getUser() akan jadi puluhan permintaan jaringan hanya untuk memilih label.
-  useEffect(() => {
-    let hidup = true
-    supabase.auth.getSession().then(({ data }) => {
-      if (hidup) setLogin(Boolean(data.session))
-    })
-    const { data: listener } = supabase.auth.onAuthStateChange((_e, session) => {
-      if (hidup) setLogin(Boolean(session))
-    })
-    return () => { hidup = false; listener.subscription.unsubscribe() }
-  }, [])
-
+  // TIDAK ADA GATE LOGIN. Sejak peluncuran reuni buka_kontak_toko() boleh
+  // dipanggil anon, dan prospeknya tetap tercatat dengan peminat_id NULL.
+  // Memaksa login dulu justru membuang pengunjung yang datang dari tautan
+  // yang dibagikan di grup WhatsApp angkatan — mereka paling banyak, dan
+  // paling tidak mau membuat akun hanya untuk bertanya "masih ada?".
   const mati = !tersedia || Boolean(matiKarena) || memuat
 
   // Nama dan angkatan dibaca dari baris sendiri di `users` — satu-satunya
-  // baris yang boleh dibaca klien, lewat policy users_select_own.
+  // baris yang boleh dibaca klien, lewat policy users_select_own. Pengunjung
+  // yang belum login mendapat pesan tanpa nama.
+  //
+  // getSession() dulu, bukan langsung getUser(): untuk pengunjung anon itu
+  // tidak memanggil server sama sekali.
   async function pesanUntukSaya(): Promise<string> {
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { session } } = await supabase.auth.getSession()
+    const user = session?.user ?? null
     let nama = ''
-    let angkatan: number | null = null
+    let labelAngkatan: string | null = null
 
     if (user) {
-      const { data } = await supabase
-        .from('users')
-        .select('nama, angkatan, status_alumni')
-        .eq('id', user.id)
-        .maybeSingle()
-      nama = data?.nama ?? ''
-      // Angkatan hanya disebut kalau sudah terverifikasi. Pendaftar yang masih
-      // 'menunggu' sudah mengisi angkatannya, tapi menuliskannya di pesan
-      // pertama ke penjual membuatnya terbaca seolah-olah sudah sah.
-      angkatan = data?.status_alumni === 'alumni' ? (data?.angkatan ?? null) : null
+      // Nama dari baris sendiri; label angkatan dari alumni_publik supaya
+      // bunyinya ditentukan database. Baris di sana hanya ada untuk alumni,
+      // jadi yang belum terdaftar otomatis tanpa angkatan.
+      const [saya, publik] = await Promise.all([
+        supabase.from('users').select('nama').eq('id', user.id).maybeSingle(),
+        supabase.from('alumni_publik').select('label_angkatan').eq('id', user.id).maybeSingle(),
+      ])
+      nama = saya.data?.nama ?? ''
+      labelAngkatan = publik.data?.label_angkatan ?? null
     }
 
-    return pesanDefault({ namaPembeli: nama, angkatan, namaProduk })
+    return pesanDefault({ namaPembeli: nama, labelAngkatan, namaProduk })
   }
 
   async function hubungi() {
@@ -176,31 +165,6 @@ export default function TombolHubungi({
     border: 'none', fontWeight: '600', textDecoration: 'none',
     boxSizing: 'border-box', lineHeight: 1.2,
     ...gaya,
-  }
-
-  // Status login belum diketahui. Tombolnya tetap dirender supaya tata letak
-  // tidak melompat begitu jawabannya datang.
-  if (login === null) {
-    return (
-      <button disabled style={{ ...dasar, background: '#e8f0f8', color: '#9ab4cc', cursor: 'wait' }}>
-        …
-      </button>
-    )
-  }
-
-  if (!login) {
-    // Kembali ke halaman yang sedang dilihat, bukan ke beranda — orang yang
-    // login demi satu produk tidak semestinya harus mencarinya lagi.
-    const kembali = encodeURIComponent(pathname || '/produk/' + produkId)
-    const pesan = encodeURIComponent('Login dulu untuk menghubungi penjual')
-    return (
-      <button
-        onClick={() => router.push('/auth?redirect=' + kembali + '&msg=' + pesan)}
-        style={{ ...dasar, background: '#fff', color: BIRU, border: '1.5px solid ' + BIRU, cursor: 'pointer' }}
-      >
-        {kecil ? 'Login untuk hubungi' : 'Login untuk hubungi penjual'}
-      </button>
-    )
   }
 
   return (

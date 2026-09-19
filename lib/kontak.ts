@@ -71,8 +71,10 @@ export function normalisasiIG(masukan: string): string {
 }
 
 type IsiPesan = {
+  /** Kosong untuk pengunjung yang belum login */
   namaPembeli: string
-  angkatan?: number | null
+  /** `label_angkatan` dari view ("Superfive 92") — bukan tahun mentah */
+  labelAngkatan?: string | null
   namaProduk: string
 }
 
@@ -80,16 +82,19 @@ type IsiPesan = {
  * Template pesan pembuka kalau penjual belum menulis `pesan_awal` sendiri.
  *
  * Angkatan sengaja DILEWATI kalau kosong. Sejak pembeli boleh siapa saja,
- * yang berstatus `umum` memang tidak punya angkatan — dan "(Angkatan null)"
- * di pesan pertama ke penjual terbaca seperti aplikasi yang rusak.
+ * yang berstatus `umum` memang tidak punya angkatan — dan "(null)" di pesan
+ * pertama ke penjual terbaca seperti aplikasi yang rusak.
+ *
+ * Pengunjung anonim tidak memperkenalkan diri sama sekali, dan itu
+ * disengaja: menuliskan "saya alumni Superfive" atas nama orang yang
+ * belum tentu alumni adalah klaim yang tidak pernah dia buat.
  */
-export function pesanDefault({ namaPembeli, angkatan, namaProduk }: IsiPesan): string {
-  const nama = namaPembeli.trim() || 'alumni Superfive'
-  const identitas = angkatan ? `${nama} (Angkatan ${angkatan})` : nama
-  return (
-    `Halo, saya ${identitas} dari Superfive Market. ` +
-    `Saya tertarik dengan produk ${namaProduk}. Apakah masih tersedia?`
-  )
+export function pesanDefault({ namaPembeli, labelAngkatan, namaProduk }: IsiPesan): string {
+  const nama = namaPembeli.trim()
+  const pembuka = nama
+    ? `Halo, saya ${labelAngkatan ? `${nama} (${labelAngkatan})` : nama} dari Superfive Market. `
+    : 'Halo, saya lihat produk Anda di Superfive Market. '
+  return pembuka + `Saya tertarik dengan produk ${namaProduk}. Apakah masih tersedia?`
 }
 
 /**
