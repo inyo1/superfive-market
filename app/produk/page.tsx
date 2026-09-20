@@ -7,8 +7,8 @@ import FotoProduk from '../components/FotoProduk'
 import SkeletonCard from '../components/SkeletonCard'
 import BadgeVerifikasi from '../components/BadgeVerifikasi'
 import EmptyState from '../components/EmptyState'
+import LapakSegeraDibuka from '../components/LapakSegeraDibuka'
 import NamaPenjual from '../components/NamaPenjual'
-import BadgeOfficial from '../components/BadgeOfficial'
 import BadgePreorder, { WARNA_PO_TUA } from '../components/BadgePreorder'
 import BadgeTersedia from '../components/BadgeTersedia'
 import { janjiKirim } from '../../lib/preorder'
@@ -41,6 +41,21 @@ export default function ProdukPage() {
   const tampilSkeleton = useTampilSkeleton(loading)
   const [search, setSearch] = useState('')
   const [kategori, setKategori] = useState('semua')
+  // Ajakan menambah produk hanya masuk akal untuk penjual aktif; yang lain
+  // akan ditolak /produk/tambah setelah terlanjur menekannya
+  const [penjualAktif, setPenjualAktif] = useState(false)
+
+  // Dideklarasikan sebelum useEffect yang memanggilnya — kalau ditaruh di
+  // bawah, lint mengeluh "cannot access variable before it is declared"
+  async function cekPenjual() {
+    // getSession dulu: untuk pengunjung anon tidak ada panggilan jaringan
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.user) return
+    // Baris sendiri — satu-satunya baris `users` yang boleh dibaca klien
+    const { data } = await supabase
+      .from('users').select('status_penjual').eq('id', session.user.id).maybeSingle()
+    setPenjualAktif(data?.status_penjual === 'aktif')
+  }
 
   useEffect(() => {
     // Pre-fill search/kategori from URL params (set by search overlay or category shortcuts)
@@ -50,24 +65,25 @@ export default function ProdukPage() {
     if (q) setSearch(q)
     if (kat && kategoris.includes(kat)) setKategori(kat)
     fetchProduk()
+    cekPenjual()
   }, [])
 
   async function fetchProduk() {
-    // Etalase memuat SEMUA produk, termasuk merchandise resmi. Dulu merchandise
-    // dikecualikan di sini, dan akibatnya lima dari enam produk hilang dari
-    // katalog utama: rak sorotan justru mengeluarkan barang, bukan
-    // menonjolkannya. Orang yang membuka menu Produk berharap melihat semua
-    // yang dijual.
+    // Etalase ini KHUSUS LAPAK ALUMNI — merchandise resmi dikecualikan.
+    // Halaman ini juga yang melayani penjelajahan per kategori (?kategori=),
+    // jadi satu penyaring di sini menutup keduanya sekaligus.
     //
-    // Yang membedakan merchandise resmi cukup lencana OFFICIAL di kartunya.
-    // SectionOfficial di beranda tetap jadi rak sorotan — tidak menggantikan
-    // tempat produknya di sini.
+    // Merchandise resmi punya tiga tempatnya sendiri: carousel INILIMA di
+    // beranda, halaman toko INILIMA, dan halaman detail produknya kalau
+    // tautannya dibuka langsung. Sengaja dipisah supaya terasa eksklusif,
+    // bukan bercampur dengan lapak alumni.
     //
-    // toko!inner tetap dipakai supaya `is_official` ikut terambil untuk
-    // lencananya, dan produk tanpa toko tidak lolos.
+    // toko!inner tetap dipakai supaya penyaringnya bisa menyentuh kolom toko,
+    // dan produk tanpa toko tidak lolos.
     const { data, error } = await supabase
       .from('produk')
       .select(`*, toko!inner(nama_toko, seller_id, is_official)`)
+      .eq('toko.is_official', false)
       .order('created_at', { ascending: false })
 
     if (error || !data) { setLoading(false); return }
@@ -143,20 +159,17 @@ export default function ProdukPage() {
               onAksi={() => { setSearch(''); setKategori('semua') }}
             />
           ) : (
-            <EmptyState
-              ikon="📦"
-              judul="Etalase masih kosong"
-              pesan="Belum ada alumni yang membuka lapak. Jadi yang pertama — produkmu akan dilihat seluruh angkatan Superfive."
-              aksiLabel="+ Jualan Pertama"
-              aksiHref="/produk/tambah"
-            />
+            // Etalase benar-benar kosong — bukan hasil penyaring pencarian.
+            // Teksnya dibagi dengan rak Produk Terbaru di beranda.
+            <LapakSegeraDibuka penjualAktif={penjualAktif} />
           )
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
             {filtered.map((p, i) => (
               <Link key={p.id} href={`/produk/${p.id}`} className="prod-card" style={{ background: '#fff', borderRadius: '10px', border: '0.5px solid #e8f0f8', overflow: 'hidden', textDecoration: 'none', display: 'block', animation: `fadeInUp 0.28s ease both`, animationDelay: `${Math.min(i * 40, 300)}ms` }}>
+                {/* Tidak ada pita OFFICIAL di sini: etalase ini menyaring
+                    toko resmi, jadi kartunya selalu milik alumni */}
                 <div style={{ position: 'relative' }}>
-                  <BadgeOfficial aktif={p.toko?.is_official} bentuk="pita" />
                   <BadgePreorder aktif={p.is_preorder} bentuk="pita" />
                   <FotoProduk src={p.foto_url} kategori={p.kategori} height={120} fontSize={40} />
                 </div>
@@ -190,16 +203,10 @@ export default function ProdukPage() {
                         <span style={{ fontSize: '10px', color: '#5a7da0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           🏪 {p.toko.nama_toko}
                         </span>
-                        {!p.toko.is_official && (
-                          <BadgeVerifikasi alumni={penjualAlumni(p.toko.users)} size={11} />
-                        )}
+                        <BadgeVerifikasi alumni={penjualAlumni(p.toko.users)} size={11} />
                       </div>
                       <div style={{ marginTop: '4px' }}>
-                        {/* Toko resmi itu akun institusi, bukan alumni perorangan,
-                            jadi nama · angkatan diganti lencana OFFICIAL */}
-                        {p.toko.is_official
-                          ? <BadgeOfficial aktif kecil />
-                          : <NamaPenjual nama={p.toko.users?.nama} label={p.toko.users?.label_angkatan} angkatan={p.toko.users?.angkatan} institusi={p.toko.users?.is_institusi} kecil />}
+                        <NamaPenjual nama={p.toko.users?.nama} label={p.toko.users?.label_angkatan} angkatan={p.toko.users?.angkatan} institusi={p.toko.users?.is_institusi} kecil />
                       </div>
                     </div>
                   )}
@@ -212,11 +219,15 @@ export default function ProdukPage() {
           </div>
         )}
 
-        <div style={{ marginTop: '16px', textAlign: 'center' }}>
-          <Link href="/produk/tambah" style={{ background: '#fff', border: '1px dashed #378ADD', color: '#0C447C', padding: '12px 24px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none', display: 'inline-block' }}>
-            + Tambah Produk Baru
-          </Link>
-        </div>
+        {/* Sama alasannya dengan state kosong: yang bukan penjual aktif akan
+            ditolak /produk/tambah, jadi jangan ditawari */}
+        {penjualAktif && (
+          <div style={{ marginTop: '16px', textAlign: 'center' }}>
+            <Link href="/produk/tambah" style={{ background: '#fff', border: '1px dashed #378ADD', color: '#0C447C', padding: '12px 24px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none', display: 'inline-block' }}>
+              + Tambah Produk Baru
+            </Link>
+          </div>
+        )}
       </div>
     </main>
   )

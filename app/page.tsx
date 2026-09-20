@@ -10,7 +10,8 @@ import SkeletonCard from './components/SkeletonCard'
 import SectionOfficial from './components/SectionOfficial'
 import BadgePreorder, { WARNA_PO, WARNA_PO_TUA } from './components/BadgePreorder'
 import BadgeTersedia from './components/BadgeTersedia'
-import BadgeOfficial, { EMAS } from './components/BadgeOfficial'
+import { EMAS } from './components/BadgeOfficial'
+import LapakSegeraDibuka from './components/LapakSegeraDibuka'
 import { janjiKirim } from '../lib/preorder'
 import { KATEGORI, EMOJI_KATEGORI } from '../lib/kategori'
 import { ambilPenjualPublik, type PenjualPublik } from '../lib/penjualPublik'
@@ -118,8 +119,17 @@ export default function Home() {
   // Tujuannya bergantung status login, jadi ini tombol aksi — bukan tautan.
   // Sebelumnya <a href> dengan preventDefault, yang menyesatkan pembaca layar
   // karena href-nya tidak pernah benar-benar dipakai.
+  // Tujuannya mengikuti peran, bukan cuma "sudah login atau belum".
+  // /produk/tambah menolak siapa pun yang status_penjual-nya bukan 'aktif',
+  // jadi mengirim pengguna biasa ke sana berarti menawarkan tombol yang
+  // pasti berujung penolakan. Yang belum jadi penjual dibawa ke pintunya
+  // dulu (/jual), yang belum punya akun ke pendaftaran.
   function handleJualClick() {
-    router.push(loggedIn ? '/produk/tambah' : '/auth')
+    if (penjualAktif) router.push('/produk/tambah')
+    else if (loggedIn) router.push('/jual')
+    // msg diisi eksplisit: tanpa itu /auth memakai kalimat bawaannya,
+    // "Login dulu untuk melanjutkan pembelian" — alur ini soal berjualan
+    else router.push('/auth?mode=daftar&redirect=/jual&msg=' + encodeURIComponent('Daftar dulu untuk mulai berjualan'))
   }
 
   useEffect(() => {
@@ -142,15 +152,17 @@ export default function Home() {
         // untuk anon dan penyaringnya sama persis dengan direktori — alumni
         // aktif, bukan akun institusi. Jangan menyaring lagi di sini.
         supabase.from('angkatan_ringkas').select('jumlah'),
-        // TANPA penyaring is_official. Dulu rak ini sengaja mengecualikan
-        // toko resmi supaya tidak mengulang carousel merchandise di atasnya
-        // — tapi begitu produk member habis, yang terlihat pengunjung adalah
-        // "Belum ada produk" padahal ada lima produk yang tayang normal
-        // beberapa piksel di atasnya. Rak kosong jauh lebih buruk daripada
-        // rak yang sebagian isinya sama; yang membedakan merchandise di sini
-        // cukup lencana OFFICIAL di kartunya, sama seperti di etalase.
+        // Merchandise resmi DIKELUARKAN dari rak ini, sama seperti dari
+        // seluruh daftar umum lainnya — tempatnya carousel INILIMA tepat di
+        // atas. Rak ini khusus lapak alumni.
+        //
+        // Penyaring yang sama pernah dibuang karena membuat rak ini kosong
+        // dan berbunyi "Belum ada produk" padahal merchandise tayang di
+        // atasnya. Yang dibetulkan sekarang bukan penyaringnya, melainkan
+        // kalimatnya — lihat LapakSegeraDibuka.
         supabase.from('produk')
           .select('id, nama, harga, kategori, foto_url, terjual, rating, is_tersedia, is_preorder, po_janji_kirim, toko!inner(nama_toko, is_official, seller_id)')
+          .eq('toko.is_official', false)
           .order('created_at', { ascending: false })
           .limit(6),
       ])
@@ -375,28 +387,11 @@ export default function Home() {
               ? Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
               : latest.length === 0
                 ? (
-                  <div style={{ gridColumn: '1 / -1', background: '#fff', borderRadius: '12px', padding: '36px 20px', textAlign: 'center', border: '0.5px solid #e8f0f8' }}>
-                    {/* Ajakannya mengikuti siapa yang melihat. "Tambah Produk
-                        Pertama" hanya masuk akal untuk penjual aktif —
-                        pengunjung biasa yang menekannya akan dilempar ke
-                        halaman yang menolaknya. */}
-                    <div style={{ fontSize: '36px', marginBottom: '10px' }}>📦</div>
-                    <div style={{ fontSize: '13px', color: '#5a7da0', marginBottom: '14px' }}>
-                      {penjualAktif ? 'Belum ada produk' : 'Belum ada produk yang dipajang'}
-                    </div>
-                    {penjualAktif ? (
-                      <button onClick={() => router.push('/produk/tambah')} style={{ background: '#0C447C', color: '#fff', border: 'none', padding: '0 20px', minHeight: '44px', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' }}>
-                        + Tambah Produk Pertama
-                      </button>
-                    ) : loggedIn ? (
-                      <Link href="/jual" style={{ display: 'inline-flex', alignItems: 'center', background: '#0C447C', color: '#fff', padding: '0 20px', minHeight: '44px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none' }}>
-                        Mulai Berjualan
-                      </Link>
-                    ) : (
-                      <Link href="/alumni" style={{ display: 'inline-flex', alignItems: 'center', background: '#fff', color: '#0C447C', border: '1px solid #0C447C', padding: '0 20px', minHeight: '44px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none' }}>
-                        Lihat Direktori Alumni
-                      </Link>
-                    )}
+                  // Ajakannya mengikuti siapa yang melihat — penjual aktif
+                  // ditawari menambah produk, sisanya diberi dua jalan keluar.
+                  // Teksnya dibagi dengan /produk, jadi ada di komponennya.
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <LapakSegeraDibuka penjualAktif={penjualAktif} />
                   </div>
                 )
                 : latest.map((p, i) => (
@@ -442,19 +437,14 @@ export default function Home() {
                       <div style={{ fontSize: '10px', background: '#E6F1FB', color: '#0C447C', padding: '2px 6px', borderRadius: '4px', display: 'inline-block' }}>
                         {p.kategori}
                       </div>
-                      {/* Sejak rak ini tidak lagi mengecualikan toko resmi,
-                          penandanya ikut dua macam — sama seperti kartu di
-                          etalase /produk: lencana OFFICIAL untuk akun
-                          institusi, "Nama · Superfive 92" untuk alumni */}
-                      {p.toko?.is_official ? (
-                        <div style={{ marginTop: '6px' }}>
-                          <BadgeOfficial aktif kecil />
-                        </div>
-                      ) : p.penjual ? (
+                      {/* Nama · Superfive 92. Tidak ada cabang OFFICIAL di
+                          sini: rak ini menyaring toko resmi, jadi semua
+                          penjualnya alumni perorangan */}
+                      {p.penjual && (
                         <div style={{ marginTop: '6px' }}>
                           <NamaPenjual nama={p.penjual.nama} label={p.penjual.label_angkatan} angkatan={p.penjual.angkatan} institusi={p.penjual.is_institusi} kecil />
                         </div>
-                      ) : null}
+                      )}
                     </div>
                     <div className="prod-card-btn" style={{ background: '#0C447C', color: '#fff', padding: '8px', fontSize: '11px', textAlign: 'center' }}>
                       Lihat Detail
@@ -482,19 +472,25 @@ export default function Home() {
             Bergabung dan mulai berjualan ke sesama alumni Superfive secara gratis.
           </p>
           <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            {/* Aturan yang sama dengan /produk dan state kosong: "+ Tambah
+                Produk" hanya untuk penjual aktif. Yang lain diajak ke pintu
+                berjualan, bukan ke halaman yang akan menolaknya. */}
             <button onClick={handleJualClick} style={{
               background: '#fff', color: '#0C447C', fontWeight: '700', border: 'none',
               padding: '0 22px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', borderRadius: '8px', fontSize: '13px', cursor: 'pointer',
             }}>
-              + Tambah Produk
+              {penjualAktif ? '+ Tambah Produk' : 'Mulai Berjualan'}
             </button>
-            <Link href="/auth" style={{
-              background: 'rgba(255,255,255,0.15)', color: '#fff',
-              border: '1px solid rgba(255,255,255,0.3)',
-              padding: '0 22px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', borderRadius: '8px', fontSize: '13px', textDecoration: 'none',
-            }}>
-              Daftar Sekarang
-            </Link>
+            {/* Ajakan mendaftar tidak ada artinya untuk yang sudah punya akun */}
+            {!loggedIn && (
+              <Link href="/auth?mode=daftar" style={{
+                background: 'rgba(255,255,255,0.15)', color: '#fff',
+                border: '1px solid rgba(255,255,255,0.3)',
+                padding: '0 22px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', borderRadius: '8px', fontSize: '13px', textDecoration: 'none',
+              }}>
+                Daftar Sekarang
+              </Link>
+            )}
           </div>
         </div>
 

@@ -82,20 +82,20 @@ export default function SearchOverlay({ open, onClose }: { open: boolean; onClos
     const kolomProduk = 'id, nama, harga, kategori, foto_url, is_preorder, toko!inner(nama_toko, is_official, seller_id)'
     const cocok = `nama.ilike.%${q}%,deskripsi.ilike.%${q}%`
 
-    // Merchandise resmi dicari lewat query terpisah, bukan disaring dari satu
-    // daftar. Kalau digabung dengan limit, hasil member bisa memenuhi kuota
-    // lebih dulu dan yang resmi tidak pernah muncul sama sekali.
-    const [resmiRes, memberRes, tokoRes] = await Promise.all([
-      supabase.from('produk')
-        .select(kolomProduk)
-        .eq('toko.is_official', true)
-        .or(cocok)
-        .limit(3),
+    // Hasil PRODUK khusus lapak alumni — merchandise resmi dikecualikan, sama
+    // seperti di etalase dan rak Produk Terbaru. Dulu merchandise dicari lewat
+    // query terpisah dan diletakkan paling atas; sekarang tempatnya cuma
+    // carousel INILIMA, halaman tokonya, dan halaman detail produknya.
+    //
+    // Hasil TOKO tidak disaring: toko INILIMA tetap boleh ditemukan lewat
+    // pencarian, karena kartunya menuju halaman toko itu sendiri — salah satu
+    // tempat merchandise memang boleh muncul.
+    const [memberRes, tokoRes] = await Promise.all([
       supabase.from('produk')
         .select(kolomProduk)
         .eq('toko.is_official', false)
         .or(cocok)
-        .limit(5),
+        .limit(8),
       supabase.from('toko')
         .select('id, nama_toko, kategori, seller_id, is_official')
         .ilike('nama_toko', `%${q}%`)
@@ -106,17 +106,13 @@ export default function SearchOverlay({ open, onClose }: { open: boolean; onClos
     // alumni_publik tertutup untuk pengunjung anon. Satu query untuk penjual
     // di hasil produk maupun hasil toko.
     const tokoRows = (tokoRes.data ?? []) as { id: string; nama_toko: string; kategori: string; seller_id: string | null; is_official: boolean }[]
-    const produkRows = [
-      ...(resmiRes.data ?? []),
-      ...(memberRes.data ?? []),
-    ] as unknown as ProdukResult[]
+    const produkRows = (memberRes.data ?? []) as unknown as ProdukResult[]
 
     const penjualById = await ambilPenjualPublik([
       ...tokoRows.map(t => t.seller_id),
       ...produkRows.map(p => p.toko?.seller_id),
     ])
 
-    // Resmi selalu di depan supaya beda kelasnya langsung terbaca
     setProduk(produkRows.map(p => ({
       ...p,
       penjual: p.toko?.seller_id ? penjualById[p.toko.seller_id] ?? null : null,
@@ -284,7 +280,8 @@ export default function SearchOverlay({ open, onClose }: { open: boolean; onClos
                       }}>
                         {p.nama}
                       </span>
-                      <BadgeOfficial aktif={p.toko?.is_official} kecil />
+                      {/* Tanpa lencana OFFICIAL: hasil produk menyaring toko
+                          resmi, jadi semuanya lapak alumni */}
                       <BadgePreorder aktif={p.is_preorder} kecil />
                     </div>
                     <div style={{ fontSize: '13px', fontWeight: '600', color: '#0C447C' }}>
@@ -293,9 +290,8 @@ export default function SearchOverlay({ open, onClose }: { open: boolean; onClos
                     {p.toko && (
                       <div style={{ fontSize: '11px', color: '#5a7da0', marginTop: '1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {p.toko.nama_toko}
-                        {/* Nama · Superfive 92 di samping toko member; toko
-                            resmi sudah ditandai lencana OFFICIAL */}
-                        {!p.toko.is_official && p.penjual && (
+                        {/* Nama · Superfive 92 di samping nama tokonya */}
+                        {p.penjual && (
                           <>{' — '}<NamaPenjual nama={p.penjual.nama} label={p.penjual.label_angkatan} angkatan={p.penjual.angkatan} institusi={p.penjual.is_institusi} style={{ fontSize: '11px' }} /></>
                         )}
                       </div>
