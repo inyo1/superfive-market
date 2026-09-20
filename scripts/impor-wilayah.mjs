@@ -12,20 +12,23 @@
  *
  * ⚠ JANGAN dipanggil dari aplikasi. Ini skrip sekali pakai.
  *
- * ⚠ BUTUH SERVICE ROLE KEY. Tabel `wilayah` bisa DIBACA siapa saja
- * (policy wilayah_baca_semua) tapi tidak ada hak tulis untuk `anon` maupun
- * `authenticated` — memang begitu maunya: isinya data referensi yang hanya
- * berubah kalau Kemendagri mengubahnya. Dengan anon key skrip ini akan
- * ditolak, dan yang terlihat bukan error izin yang jelas melainkan "0 baris
- * tersimpan" tanpa sebab.
+ * ⚠ BUTUH SECRET KEY (`sb_secret_...`). Tabel `wilayah` bisa DIBACA siapa
+ * saja (policy wilayah_baca_semua) tapi tidak ada hak tulis untuk `anon`
+ * maupun `authenticated` — memang begitu maunya: isinya data referensi yang
+ * hanya berubah kalau Kemendagri mengubahnya. Dengan publishable key skrip
+ * ini ditolak, dan tanpa penjaga di bawah yang terlihat bukan error izin yang
+ * jelas melainkan "0 baris tersimpan" tanpa sebab.
  *
  * Kuncinya dibaca dari env (.env.local atau environment shell):
- *   SUPABASE_SERVICE_ROLE_KEY
+ *   SUPABASE_SERVICE_ROLE_KEY   ← isinya sb_secret_..., bukan JWT lama
+ *
+ * Nama variabelnya sengaja TIDAK diganti meski isinya bukan lagi service role
+ * JWT — lihat [Kunci API](../CLAUDE.md) soal kenapa.
  *
  * JANGAN menaruh kunci itu di NEXT_PUBLIC_*. Apa pun yang berawalan
- * NEXT_PUBLIC_ ditanam ke bundel yang dikirim ke peramban, dan service role
- * key melewati SELURUH RLS — bocor sekali berarti seluruh tabel `users`
- * terbuka untuk siapa pun yang membuka DevTools.
+ * NEXT_PUBLIC_ ditanam ke bundel yang dikirim ke peramban, dan secret key
+ * melewati SELURUH RLS — bocor sekali berarti seluruh tabel `users` terbuka
+ * untuk siapa pun yang membuka DevTools.
  */
 
 import { createClient } from '@supabase/supabase-js'
@@ -69,15 +72,25 @@ function bacaEnv() {
   return { ...dariBerkas, ...process.env }
 }
 
-/** Peran yang tertulis di dalam JWT Supabase, tanpa memverifikasi tanda tangan.
- *  Dipakai hanya untuk menolak lebih awal kalau yang dipakai anon key. */
-function peranKunci(kunci) {
-  try {
-    const isi = JSON.parse(Buffer.from(kunci.split('.')[1], 'base64').toString('utf8'))
-    return isi.role ?? null
-  } catch {
-    return null
+/**
+ * Menolak lebih awal kalau kuncinya bukan secret key.
+ *
+ * DIPERIKSA DARI AWALANNYA, bukan dengan mendekode JWT. Kunci Supabase yang
+ * baru (`sb_publishable_`, `sb_secret_`) BUKAN JWT, jadi penjaga versi lama
+ * yang membaca klaim `role` di payload selalu mendapat null — dan meloloskan
+ * publishable key tanpa suara, persis keadaan yang mau dicegah.
+ */
+function periksaKunci(kunci) {
+  if (kunci.startsWith('sb_secret_')) return null
+  if (kunci.startsWith('sb_publishable_')) {
+    return 'Kunci yang dipakai publishable key (sb_publishable_), yang berperan anon dan tetap kena RLS. ' +
+      'Tabel wilayah tidak bisa ditulis dengannya. Pakai secret key (sb_secret_).'
   }
+  if (kunci.startsWith('eyJ')) {
+    return 'Kunci yang dipakai JWT lama (anon/service_role). Kunci legacy sudah DINONAKTIFKAN di project ini — ' +
+      'pakai secret key baru (sb_secret_).'
+  }
+  return 'Bentuk kunci tidak dikenali. Yang dibutuhkan secret key Supabase (sb_secret_...).'
 }
 
 /**
@@ -141,13 +154,8 @@ async function main() {
     )
   }
 
-  const peran = peranKunci(kunci)
-  if (peran && peran !== 'service_role') {
-    throw new Error(
-      `Kunci yang dipakai berperan '${peran}', bukan 'service_role'. ` +
-      'Tabel wilayah tidak bisa ditulis dengan kunci itu.'
-    )
-  }
+  const salahKunci = periksaKunci(kunci)
+  if (salahKunci) throw new Error(salahKunci)
 
   const supabase = createClient(url, kunci, {
     auth: { persistSession: false, autoRefreshToken: false },

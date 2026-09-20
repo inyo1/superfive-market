@@ -111,6 +111,71 @@ Client Supabase ada di [lib/supabase.js](lib/supabase.js) — **tanpa tipe gener
 jadi semua hasil query bertipe `any`. Kalau butuh tipe, deklarasikan `type` manual
 di file yang bersangkutan.
 
+### ⚠ Kunci API: publishable + secret. JWT lama SUDAH DINONAKTIFKAN
+
+Sejak 20 September 2026 project ini memakai kunci Supabase bentuk baru, dan
+**kunci legacy (`anon` / `service_role` yang berbentuk JWT `eyJ...`) sudah
+dimatikan di dashboard.** Jangan menghidupkannya lagi, dan jangan menyalin
+kunci JWT dari catatan atau tutorial lama — yang berbentuk JWT sekarang
+ditolak server.
+
+| Dipakai apa | Kunci | Disimpan di | Sifat |
+|---|---|---|---|
+| Aplikasi (peramban & Server Component) | `sb_publishable_...` | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | berperan `anon`, **tetap kena RLS** |
+| Skrip yang menulis data referensi | `sb_secret_...` | `SUPABASE_SERVICE_ROLE_KEY` di `.env.local` | **melewati SELURUH RLS** |
+
+**Nama variabelnya sengaja tidak diganti**, meski isinya bukan lagi anon JWT
+maupun service role JWT. Nama itu dipakai di [lib/supabase.js](lib/supabase.js),
+[lib/supabaseServer.ts](lib/supabaseServer.ts), tiga skrip di `scripts/`, dan
+environment Vercel; menggantinya berarti menyentuh semuanya serentak demi
+kerapian nama saja. Konsekuensinya harus diingat: **nama variabelnya tidak
+lagi memberi tahu bentuk kuncinya** — jangan menyimpulkan isi dari namanya,
+periksa nilainya.
+
+#### Memeriksa kunci: lihat AWALANNYA, jangan mendekode JWT
+
+Ini sudah memakan korban sekali, di [scripts/impor-wilayah.mjs](scripts/impor-wilayah.mjs).
+Penjaganya dulu mendekode payload JWT untuk membaca klaim `role`, lalu menolak
+kalau bukan `service_role`. Kunci baru **bukan JWT**, jadi pendekodean selalu
+gagal, perannya terbaca `null`, dan penjaga itu **meloloskan publishable key
+tanpa suara** — persis keadaan yang mau dicegah. Sekarang yang diperiksa
+awalannya:
+
+```js
+if (kunci.startsWith('sb_secret_'))      // boleh menulis
+if (kunci.startsWith('sb_publishable_')) // tolak: kena RLS
+if (kunci.startsWith('eyJ'))             // tolak: legacy, sudah dimatikan
+```
+
+Pelajaran umumnya sama dengan penjaga lain di dokumen ini: **penjaga yang
+gagal ke arah "izinkan" lebih berbahaya daripada tidak ada penjaga**, karena
+ia terbaca seperti sedang menjaga.
+
+#### Aturan yang tidak berubah
+
+- **`sb_secret_` TIDAK BOLEH ada di `NEXT_PUBLIC_*` mana pun.** Apa pun yang
+  berawalan itu ditanam ke bundel yang dikirim ke peramban, dan secret key
+  melewati seluruh RLS — bocor sekali berarti seluruh tabel `users` terbuka
+  untuk siapa saja yang membuka DevTools
+- `.env.local` gitignored dan memang harus tetap begitu
+- Kalau deployment produksi tiba-tiba gagal total menyeluruh, periksa env
+  Vercel lebih dulu: deployment yang masih memegang JWT lama tidak akan bisa
+  menyentuh database sama sekali sejak legacy dimatikan
+
+Memastikan kunci di `.env.local` benar. Yang dicetak hanya **jenisnya**,
+bukan nilainya maupun potongannya — kunci yang terlanjur tercetak di layar
+atau transkrip harus dianggap bocor dan dirotasi:
+
+```bash
+node -e "const e=require('fs').readFileSync('.env.local','utf8');for(const n of ['NEXT_PUBLIC_SUPABASE_ANON_KEY','SUPABASE_SERVICE_ROLE_KEY']){const v=(e.match(new RegExp('^'+n+'=(.*)$','m'))||[])[1]||'';console.log(n, v.startsWith('sb_publishable_')?'publishable ✓':v.startsWith('sb_secret_')?'secret ✓':v.startsWith('eyJ')?'JWT LAMA ✗':'kosong/tak dikenal ✗')}"
+```
+
+Jebakan yang sudah terjadi saat mencari kunci di `.env.local`: perintah yang
+menyembunyikan nilai dengan mengganti `=.*` **tidak menyembunyikan apa pun**
+kalau barisnya ditulis dengan pemisah lain (`service_role_key:eyJ...`) —
+seluruh kuncinya ikut tercetak. Pakai pemeriksa di atas, yang membaca nama
+variabelnya secara eksplisit.
+
 ## Struktur Direktori
 
 ```
