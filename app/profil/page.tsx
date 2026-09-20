@@ -7,6 +7,7 @@ import Navbar from '../components/Navbar'
 import BadgeVerifikasi from '../components/BadgeVerifikasi'
 import Skeleton, { SkeletonPanel } from '../components/Skeleton'
 import Tombol from '../components/Tombol'
+import PilihWilayah from '../components/PilihWilayah'
 import { useTampilSkeleton } from '../hooks/useSkeleton'
 
 export default function ProfilPage() {
@@ -22,6 +23,11 @@ export default function ProfilPage() {
   const [kota, setKota] = useState('')
   const [provinsi, setProvinsi] = useState('')
   const [kodePos, setKodePos] = useState('')
+  const [wilayahKode, setWilayahKode] = useState<string | null>(null)
+  // Pengguna lama punya alamat teks tanpa kode wilayah. Selama pemilihnya
+  // tidak disentuh, teks itu disimpan ulang apa adanya — bukan dikosongkan
+  // hanya karena bentuk isiannya berubah.
+  const [wilayahDisentuh, setWilayahDisentuh] = useState(false)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [file, setFile] = useState<File | null>(null)
@@ -42,7 +48,7 @@ export default function ProfilPage() {
 
       const { data } = await supabase
         .from('users')
-        .select('nama, email, angkatan, avatar_url, no_hp, jalan, kelurahan, kecamatan, kota, provinsi, kode_pos, status_alumni, is_institusi')
+        .select('nama, email, angkatan, avatar_url, no_hp, jalan, kelurahan, kecamatan, kota, provinsi, kode_pos, wilayah_kode, status_alumni, is_institusi')
         .eq('id', user.id)
         .single()
 
@@ -65,6 +71,7 @@ export default function ProfilPage() {
         setKota(data.kota ?? '')
         setProvinsi(data.provinsi ?? '')
         setKodePos(data.kode_pos ?? '')
+        setWilayahKode(data.wilayah_kode ?? null)
         if (data.email) setUserEmail(data.email)
       }
       setLoading(false)
@@ -117,6 +124,14 @@ export default function ProfilPage() {
         kota: kota || null,
         provinsi: provinsi || null,
         kode_pos: kodePos || null,
+        // Kode kelurahan dari pemilih wilayah. Nama tiap tingkat tetap ikut
+        // disimpan di kolomnya masing-masing supaya menampilkan alamat tidak
+        // perlu join, dan alamat teks lama tetap sebentuk dengan yang baru.
+        //
+        // Hanya ditulis kalau pemilihnya benar-benar disentuh: tanpa penjaga
+        // ini, pengguna lama yang membuka /profil lalu menekan Simpan untuk
+        // urusan lain akan kehilangan alamat teksnya.
+        ...(wilayahDisentuh ? { wilayah_kode: wilayahKode } : {}),
       })
 
     if (error) {
@@ -281,7 +296,7 @@ export default function ProfilPage() {
         {/* Kontak & Alamat */}
         <div style={{ background: '#fff', borderRadius: '16px', padding: '20px', border: '0.5px solid #c5d9ef', marginBottom: '12px' }}>
           <div style={{ fontSize: '13px', fontWeight: '600', color: '#0C447C', marginBottom: '4px' }}>Kontak & Alamat</div>
-          <div style={{ fontSize: '11px', color: '#9ab4cc', marginBottom: '16px' }}>Digunakan untuk auto-fill saat checkout</div>
+          <div style={{ fontSize: '11px', color: '#9ab4cc', marginBottom: '16px' }}>Ditampilkan ke pembeli supaya tahu lokasimu</div>
 
           <div style={{ marginBottom: '14px' }}>
             <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '6px' }}>Nomor HP / WhatsApp</label>
@@ -295,36 +310,28 @@ export default function ProfilPage() {
               style={{ width: '100%', padding: '10px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '14px', outline: 'none', resize: 'none', boxSizing: 'border-box', fontFamily: 'sans-serif' }} />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '14px' }}>
-            <div>
-              <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '6px' }}>Kelurahan</label>
-              <input value={kelurahan} onChange={e => setKelurahan(e.target.value)} placeholder="Kelurahan"
-                style={{ width: '100%', padding: '10px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
-            </div>
-            <div>
-              <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '6px' }}>Kecamatan</label>
-              <input value={kecamatan} onChange={e => setKecamatan(e.target.value)} placeholder="Kecamatan"
-                style={{ width: '100%', padding: '10px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
-            </div>
+          {/* Empat tingkat dari tabel `wilayah`, bukan lagi teks bebas.
+              Kode Pos tetap diketik sendiri: dataset Kepmendagri tidak
+              memuatnya. */}
+          <div style={{ marginBottom: '14px' }}>
+            <PilihWilayah
+              kodeAwal={wilayahKode}
+              tersimpan={{ provinsi, kota, kecamatan, kelurahan }}
+              onChange={n => {
+                setWilayahDisentuh(true)
+                setWilayahKode(n.kode)
+                setProvinsi(n.provinsi ?? '')
+                setKota(n.kota ?? '')
+                setKecamatan(n.kecamatan ?? '')
+                setKelurahan(n.kelurahan ?? '')
+              }}
+            />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '14px' }}>
-            <div>
-              <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '6px' }}>Kota / Kabupaten</label>
-              <input value={kota} onChange={e => setKota(e.target.value)} placeholder="Bandung"
-                style={{ width: '100%', padding: '10px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
-            </div>
-            <div>
-              <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '6px' }}>Kode Pos</label>
-              <input value={kodePos} onChange={e => setKodePos(e.target.value.replace(/\D/g, ''))} type="tel" inputMode="numeric" maxLength={5} placeholder="40xxx"
-                style={{ width: '100%', padding: '10px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
-            </div>
-          </div>
-
-          <div>
-            <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '6px' }}>Provinsi</label>
-            <input value={provinsi} onChange={e => setProvinsi(e.target.value)} placeholder="Jawa Barat"
-              style={{ width: '100%', padding: '10px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
+          <div style={{ maxWidth: '160px' }}>
+            <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '6px' }}>Kode Pos</label>
+            <input value={kodePos} onChange={e => setKodePos(e.target.value.replace(/\D/g, ''))} type="tel" inputMode="numeric" maxLength={5} placeholder="40xxx"
+              style={{ width: '100%', padding: '10px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
           </div>
         </div>
 
