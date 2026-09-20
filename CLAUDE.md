@@ -554,21 +554,31 @@ produk. Satu-satunya penyuntingan toko dari UI ada di
 - lencana OFFICIAL menggantikan badge angkatan, karena pemiliknya akun
   institusi
 
-**Penyaring `.eq('toko.is_official', false)` sekarang hanya berlaku di satu
-tempat: section Produk Terbaru di beranda.** Dulu dipakai di tiga tempat, dan
-dua di antaranya keliru:
+**Penyaring `.eq('toko.is_official', false)` sekarang TIDAK dipakai di mana
+pun.** Dulu dipakai di tiga tempat, dan ketiganya berakhir keliru:
 
 | Tempat | Menyaring? | Kenapa |
 |---|---|---|
-| Produk Terbaru (beranda) | **ya** | rak merchandise ada tepat di atasnya; dua rak berisi barang sama persis terlihat aneh |
 | Etalase `/produk` | tidak | katalog utama harus memuat semua yang dijual |
 | Hitungan PRODUK di hero | tidak | angkanya menjawab "seberapa ramai Superfive", bukan "berapa isi etalase" |
+| Produk Terbaru (beranda) | tidak, **sejak 20 September 2026** | rak kosong jauh lebih buruk daripada rak yang sebagian isinya sama |
 
-Dua yang terakhir sempat ikut menyaring, dan akibatnya nyata: dari enam produk
+Dua yang pertama dibetulkan lebih dulu, dan akibatnya nyata: dari enam produk
 yang ada, lima milik toko resmi — jadi hero menampilkan `1 PRODUK` dan etalase
 `/produk` hanya berisi satu barang. **Rak sorotan seharusnya menonjolkan
 barang, bukan mengeluarkannya dari katalog.** Yang membedakan merchandise di
 etalase cukup lencana OFFICIAL di kartunya.
+
+Produk Terbaru bertahan menyaring dengan alasan yang terdengar masuk akal —
+carousel merchandise ada tepat di atasnya, jadi dua rak berisi barang sama
+persis terlihat aneh. Alasan itu runtuh begitu produk member habis: yang
+terlihat pengunjung adalah **"Belum ada produk"** padahal lima produk tayang
+normal beberapa piksel di atasnya. Rak yang menyaring isinya sendiri sampai
+kosong mengaku seolah Superfive tidak menjual apa pun.
+
+Pelajaran yang sama dengan dua sebelumnya, dan ini ketiga kalinya:
+**penyaring yang dipasang demi kerapian tampilan akan menjadi kebohongan
+begitu data yang tersisa semuanya masuk ke sisi yang disaring.**
 
 Untuk hitungan hero, yang menentukan apa yang boleh terlihat sudah RLS, jadi
 `count` polos tanpa penyaring memang angka yang benar.
