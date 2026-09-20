@@ -10,7 +10,7 @@ import SkeletonCard from './components/SkeletonCard'
 import SectionOfficial from './components/SectionOfficial'
 import BadgePreorder, { WARNA_PO, WARNA_PO_TUA } from './components/BadgePreorder'
 import BadgeTersedia from './components/BadgeTersedia'
-import { EMAS } from './components/BadgeOfficial'
+import BadgeOfficial, { EMAS } from './components/BadgeOfficial'
 import { janjiKirim } from '../lib/preorder'
 import { KATEGORI, EMOJI_KATEGORI } from '../lib/kategori'
 import { ambilPenjualPublik, type PenjualPublik } from '../lib/penjualPublik'
@@ -27,7 +27,7 @@ type Produk = {
   is_preorder: boolean
   po_janji_kirim: string | null
   rating: number
-  toko: { nama_toko: string; seller_id?: string | null } | null
+  toko: { nama_toko: string; is_official?: boolean; seller_id?: string | null } | null
   penjual?: PenjualPublik | null
 }
 
@@ -112,6 +112,8 @@ export default function Home() {
   const [latest, setLatest] = useState<Produk[]>([])
   const [loading, setLoading] = useState(true)
   const [loggedIn, setLoggedIn] = useState(false)
+  // Hanya penjual aktif yang ditawari menambah produk saat raknya kosong
+  const [penjualAktif, setPenjualAktif] = useState(false)
 
   // Tujuannya bergantung status login, jadi ini tombol aksi — bukan tautan.
   // Sebelumnya <a href> dengan preventDefault, yang menyesatkan pembaca layar
@@ -140,13 +142,27 @@ export default function Home() {
         // untuk anon dan penyaringnya sama persis dengan direktori — alumni
         // aktif, bukan akun institusi. Jangan menyaring lagi di sini.
         supabase.from('angkatan_ringkas').select('jumlah'),
+        // TANPA penyaring is_official. Dulu rak ini sengaja mengecualikan
+        // toko resmi supaya tidak mengulang carousel merchandise di atasnya
+        // — tapi begitu produk member habis, yang terlihat pengunjung adalah
+        // "Belum ada produk" padahal ada lima produk yang tayang normal
+        // beberapa piksel di atasnya. Rak kosong jauh lebih buruk daripada
+        // rak yang sebagian isinya sama; yang membedakan merchandise di sini
+        // cukup lencana OFFICIAL di kartunya, sama seperti di etalase.
         supabase.from('produk')
           .select('id, nama, harga, kategori, foto_url, terjual, rating, is_tersedia, is_preorder, po_janji_kirim, toko!inner(nama_toko, is_official, seller_id)')
-          .eq('toko.is_official', false)
           .order('created_at', { ascending: false })
           .limit(6),
       ])
-      setLoggedIn(!!authRes.data.user)
+      const user = authRes.data.user
+      setLoggedIn(!!user)
+
+      // Baris sendiri — satu-satunya baris `users` yang boleh dibaca klien
+      if (user) {
+        const { data: saya } = await supabase
+          .from('users').select('status_penjual').eq('id', user.id).maybeSingle()
+        setPenjualAktif(saya?.status_penjual === 'aktif')
+      }
 
       setStats({
         produk: pCount.count ?? 0,
@@ -360,11 +376,27 @@ export default function Home() {
               : latest.length === 0
                 ? (
                   <div style={{ gridColumn: '1 / -1', background: '#fff', borderRadius: '12px', padding: '36px 20px', textAlign: 'center', border: '0.5px solid #e8f0f8' }}>
+                    {/* Ajakannya mengikuti siapa yang melihat. "Tambah Produk
+                        Pertama" hanya masuk akal untuk penjual aktif —
+                        pengunjung biasa yang menekannya akan dilempar ke
+                        halaman yang menolaknya. */}
                     <div style={{ fontSize: '36px', marginBottom: '10px' }}>📦</div>
-                    <div style={{ fontSize: '13px', color: '#5a7da0', marginBottom: '14px' }}>Belum ada produk</div>
-                    <button onClick={handleJualClick} style={{ background: '#0C447C', color: '#fff', border: 'none', padding: '0 20px', minHeight: '44px', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' }}>
-                      + Tambah Produk Pertama
-                    </button>
+                    <div style={{ fontSize: '13px', color: '#5a7da0', marginBottom: '14px' }}>
+                      {penjualAktif ? 'Belum ada produk' : 'Belum ada produk yang dipajang'}
+                    </div>
+                    {penjualAktif ? (
+                      <button onClick={() => router.push('/produk/tambah')} style={{ background: '#0C447C', color: '#fff', border: 'none', padding: '0 20px', minHeight: '44px', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' }}>
+                        + Tambah Produk Pertama
+                      </button>
+                    ) : loggedIn ? (
+                      <Link href="/jual" style={{ display: 'inline-flex', alignItems: 'center', background: '#0C447C', color: '#fff', padding: '0 20px', minHeight: '44px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none' }}>
+                        Mulai Berjualan
+                      </Link>
+                    ) : (
+                      <Link href="/alumni" style={{ display: 'inline-flex', alignItems: 'center', background: '#fff', color: '#0C447C', border: '1px solid #0C447C', padding: '0 20px', minHeight: '44px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none' }}>
+                        Lihat Direktori Alumni
+                      </Link>
+                    )}
                   </div>
                 )
                 : latest.map((p, i) => (
@@ -410,13 +442,19 @@ export default function Home() {
                       <div style={{ fontSize: '10px', background: '#E6F1FB', color: '#0C447C', padding: '2px 6px', borderRadius: '4px', display: 'inline-block' }}>
                         {p.kategori}
                       </div>
-                      {/* Nama · Superfive 92 — rak ini sudah menyaring toko
-                          resmi, jadi semua penjualnya alumni perorangan */}
-                      {p.penjual && (
+                      {/* Sejak rak ini tidak lagi mengecualikan toko resmi,
+                          penandanya ikut dua macam — sama seperti kartu di
+                          etalase /produk: lencana OFFICIAL untuk akun
+                          institusi, "Nama · Superfive 92" untuk alumni */}
+                      {p.toko?.is_official ? (
+                        <div style={{ marginTop: '6px' }}>
+                          <BadgeOfficial aktif kecil />
+                        </div>
+                      ) : p.penjual ? (
                         <div style={{ marginTop: '6px' }}>
                           <NamaPenjual nama={p.penjual.nama} label={p.penjual.label_angkatan} angkatan={p.penjual.angkatan} institusi={p.penjual.is_institusi} kecil />
                         </div>
-                      )}
+                      ) : null}
                     </div>
                     <div className="prod-card-btn" style={{ background: '#0C447C', color: '#fff', padding: '8px', fontSize: '11px', textAlign: 'center' }}>
                       Lihat Detail
