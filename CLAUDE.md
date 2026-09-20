@@ -619,34 +619,54 @@ produk. Satu-satunya penyuntingan toko dari UI ada di
 - lencana OFFICIAL menggantikan badge angkatan, karena pemiliknya akun
   institusi
 
-**Penyaring `.eq('toko.is_official', false)` sekarang TIDAK dipakai di mana
-pun.** Dulu dipakai di tiga tempat, dan ketiganya berakhir keliru:
+### ⚠ Merchandise resmi DIPISAH dari daftar umum (sejak 21 September 2026)
 
-| Tempat | Menyaring? | Kenapa |
-|---|---|---|
-| Etalase `/produk` | tidak | katalog utama harus memuat semua yang dijual |
-| Hitungan PRODUK di hero | tidak | angkanya menjawab "seberapa ramai Superfive", bukan "berapa isi etalase" |
-| Produk Terbaru (beranda) | tidak, **sejak 20 September 2026** | rak kosong jauh lebih buruk daripada rak yang sebagian isinya sama |
+**Produk toko resmi tidak muncul di daftar umum mana pun.** Keputusan produk:
+merchandise INILIMA harus terasa eksklusif, bukan bercampur dengan lapak
+alumni. Penyaringnya `.eq('toko.is_official', false)`, dan harus ada di
+**semua** permukaan daftar — ketinggalan satu saja membuat aturannya bocor di
+tempat yang tidak diduga.
 
-Dua yang pertama dibetulkan lebih dulu, dan akibatnya nyata: dari enam produk
-yang ada, lima milik toko resmi — jadi hero menampilkan `1 PRODUK` dan etalase
-`/produk` hanya berisi satu barang. **Rak sorotan seharusnya menonjolkan
-barang, bukan mengeluarkannya dari katalog.** Yang membedakan merchandise di
-etalase cukup lencana OFFICIAL di kartunya.
+| Permukaan | Menyaring? |
+|---|---|
+| Produk Terbaru (beranda) — [app/page.tsx](app/page.tsx) | **ya** |
+| Etalase & penjelajahan kategori (`/produk`, `?kategori=`) — [app/produk/page.tsx](app/produk/page.tsx) | **ya** |
+| Hasil **produk** di pencarian — [SearchOverlay](app/components/SearchOverlay.tsx) | **ya** |
+| Hasil **toko** di pencarian | tidak — kartunya menuju halaman toko INILIMA, salah satu tempat yang memang boleh |
+| Carousel [SectionOfficial](app/components/SectionOfficial.tsx) | kebalikannya: `is_official = true` |
+| Halaman toko INILIMA, detail produknya | tidak — keduanya memang rumahnya |
+| **Hitungan PRODUK di hero** | **tidak**, dan jangan diubah |
 
-Produk Terbaru bertahan menyaring dengan alasan yang terdengar masuk akal —
-carousel merchandise ada tepat di atasnya, jadi dua rak berisi barang sama
-persis terlihat aneh. Alasan itu runtuh begitu produk member habis: yang
-terlihat pengunjung adalah **"Belum ada produk"** padahal lima produk tayang
-normal beberapa piksel di atasnya. Rak yang menyaring isinya sendiri sampai
-kosong mengaku seolah Superfive tidak menjual apa pun.
+Hitungan hero menjawab "seberapa ramai Superfive", bukan "berapa isi
+etalase", jadi merchandise ikut dihitung. Yang menentukan apa yang boleh
+terlihat sudah RLS, jadi `count` polos memang angka yang benar.
 
-Pelajaran yang sama dengan dua sebelumnya, dan ini ketiga kalinya:
-**penyaring yang dipasang demi kerapian tampilan akan menjadi kebohongan
-begitu data yang tersisa semuanya masuk ke sisi yang disaring.**
+Kalau menambah permukaan daftar produk baru, penyaring ini ikut — dan
+sebutkan di tabel ini.
 
-Untuk hitungan hero, yang menentukan apa yang boleh terlihat sudah RLS, jadi
-`count` polos tanpa penyaring memang angka yang benar.
+#### Kosongnya harus terbaca sengaja
+
+Sekarang **seluruh produk di database milik toko resmi**, jadi semua daftar
+umum benar-benar kosong sampai ada alumni yang membuka lapak. Ini pernah
+dicoba diselesaikan dengan membuang penyaringnya, dan itu keliru: yang salah
+bukan penyaringnya melainkan kalimatnya. "Belum ada produk" terbaca seperti
+Superfive tidak menjual apa pun, padahal merchandise tayang beberapa piksel
+di atasnya.
+
+Gantinya [LapakSegeraDibuka](app/components/LapakSegeraDibuka.tsx) —
+"Lapak alumni segera dibuka", dengan dua jalan keluar (Lihat Merchandise
+Resmi, Jadi Penjual Pertama). Dipakai beranda **dan** `/produk`; teksnya ada
+di komponennya, bukan disalin ke dua halaman. Penjual aktif dapat varian lain:
+ajakan menambah produknya sendiri.
+
+Pelajarannya: **daftar yang menyaring isinya sendiri sampai kosong wajib
+punya state kosong yang menjelaskan kenapa** — tanpa itu, penyaring yang
+benar akan terbaca seperti aplikasi yang rusak.
+
+Ajakan "+ Tambah Produk" di daftar umum hanya untuk `status_penjual = 'aktif'`.
+Pengunjung yang menekannya akan ditolak `/produk/tambah`, dan penolakan
+setelah menekan tombol yang ditawarkan sendiri adalah janji yang ditarik
+kembali.
 
 Trigger `trg_jaga_toko_official` (BEFORE INSERT OR UPDATE) mengembalikan diam-diam
 `is_official` ke `false` saat INSERT dan ke nilai lama saat UPDATE, kecuali yang
