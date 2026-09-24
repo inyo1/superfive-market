@@ -136,8 +136,20 @@ karena `NEXT_PUBLIC_*` ditanam saat build.
 | Bahasa | TypeScript (strict), beberapa file lama masih `.js` |
 | Database & Auth | Supabase (Postgres 17), project ref `cbepplpvlizwyaalndas` |
 | Storage | Supabase Storage, bucket `produk-foto` |
-| Hosting | Vercel |
+| Hosting | Vercel, team `inyo-s-projects` — project **`superfive-market-gg6o`** (lihat di bawah) |
 | Styling | Inline `style={{}}` — lihat bagian Konvensi Kode |
+
+### Project Vercel: yang produksi `superfive-market-gg6o`
+
+| Project | ID | Status |
+|---|---|---|
+| **`superfive-market-gg6o`** | `prj_ZgV99480YB48XzRYD1mw90AMgbOR` | **PRODUKSI** — memegang domain `superfivemarket.com` |
+| `superfive-market` | `prj_W2kFXCBzsihdMVItggJv8m3Zns8x` | sisa lama, akan dilepas dari Git. **Jangan dipakai** |
+
+Nama yang lebih pendek justru yang lama — jangan menebak dari namanya. Selama
+yang lama belum dilepas, setiap push ke GitHub di-build **dua kali**, jadi
+ada dua URL preview per commit. Yang dilaporkan dan diuji adalah milik
+`superfive-market-gg6o`; env, domain, dan log produksi juga dibaca dari sana.
 
 Client Supabase ada di [lib/supabase.js](lib/supabase.js) — **tanpa tipe generic**,
 jadi semua hasil query bertipe `any`. Kalau butuh tipe, deklarasikan `type` manual
