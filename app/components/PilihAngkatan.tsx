@@ -46,9 +46,9 @@ export default function PilihAngkatan({ id = 'angkatan', value, onChange, style 
     >
       {/* Tanpa nilai awal: angkatan yang terkunci tidak boleh terisi hanya
           karena orangnya tidak menyentuh pemilihnya */}
-      <option value="" disabled>Pilih angkatan</option>
+      <option value="" disabled>Pilih tahun lulus</option>
       {daftar.map(th => (
-        <option key={th} value={th} style={{ color: '#1a1a1a' }}>{labelOpsiAngkatan(th)}</option>
+        <option key={th} value={th} style={{ color: '#1a1a1a' }}>{th} ({labelOpsiAngkatan(th)})</option>
       ))}
     </select>
   )

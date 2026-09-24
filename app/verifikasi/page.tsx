@@ -119,7 +119,7 @@ export default function VerifikasiPage() {
     // Indonesia bernama satu kata, dan aturan "harus dua kata" akan menolak
     // nama yang justru benar.
     if (!nama.trim()) { setPesan('Isi dulu nama lengkapmu.'); return }
-    if (!angkatan) { setPesan('Pilih dulu angkatanmu.'); return }
+    if (!angkatan) { setPesan('Pilih dulu tahun lulusmu.'); return }
     setPesan(null)
     setKonfirmasi(true)
   }
@@ -188,7 +188,7 @@ export default function VerifikasiPage() {
             </Link>
           </div>
           <div style={{ fontSize: '11px', color: '#9ab4cc', marginTop: '16px', lineHeight: 1.6 }}>
-            Angkatan tidak bisa diubah sendiri. Kalau ternyata salah, hubungi admin.
+            Tahun lulus tidak bisa diubah sendiri. Kalau ternyata salah, hubungi pengurus.
           </div>
         </div>
       </div>

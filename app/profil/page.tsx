@@ -246,7 +246,7 @@ export default function ProfilPage() {
               🎓 Alumni SMPN 5 Bandung?
             </div>
             <div style={{ fontSize: '12px', color: '#3d6c9c', lineHeight: '1.7', marginBottom: '12px' }}>
-              Daftarkan angkatanmu untuk masuk direktori alumni dan bisa berjualan.
+              Daftarkan tahun lulusmu untuk masuk direktori alumni dan bisa berjualan.
             </div>
             <Link href="/verifikasi" style={{
               display: 'inline-flex', alignItems: 'center', background: '#0C447C', color: '#fff',

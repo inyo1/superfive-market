@@ -92,7 +92,7 @@ function AuthContent() {
   function mintaDaftar() {
     if (!nama.trim()) { setPesan('Nama lengkap wajib diisi.'); return }
     if (!jenis) { setPesan('Pilih dulu salah satu: alumni, atau teman/keluarga alumni.'); return }
-    if (jenis === 'alumni' && !angkatan) { setPesan('Angkatan wajib diisi kalau kamu alumni.'); return }
+    if (jenis === 'alumni' && !angkatan) { setPesan('Tahun lulus wajib diisi kalau kamu alumni.'); return }
     setPesan('')
     if (jenis === 'alumni') setKonfirmasiAngkatan(true)
     else handleRegister()
@@ -108,8 +108,8 @@ function AuthContent() {
       // masih anon.
       //
       // Angkatan ikut disimpan di metadata (trigger tidak membacanya) supaya
-      // /verifikasi bisa mengisikannya lagi kalau RPC di bawah belum bisa
-      // dipanggil karena sesinya belum ada.
+      // AutoAlumni bisa menyelesaikan pendaftarannya di sesi pertama kalau
+      // RPC di bawah belum bisa dipanggil karena sesinya belum ada.
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -127,8 +127,8 @@ function AuthContent() {
       //
       // Alumni langsung dikunci angkatannya — tapi hanya kalau sesinya sudah
       // ada. Tanpa sesi (email masih harus dikonfirmasi) RPC-nya pasti ditolak
-      // "Harus login", jadi tidak dipanggil; angkatannya dikunci dari
-      // /verifikasi setelah masuk, dengan konfirmasi yang sama.
+      // "Harus login", jadi tidak dipanggil; AutoAlumni (di layout) yang
+      // memanggilnya di sesi pertama, tanpa konfirmasi kedua.
       if (jenis === 'alumni' && data.session) {
         const { data: hasil, error: errAlumni } = await supabase.rpc('ajukan_alumni', {
           p_angkatan: parseInt(angkatan),
@@ -161,18 +161,15 @@ function AuthContent() {
               {email}
             </div>
             <p style={{ fontSize: '13px', color: '#9ab4cc', lineHeight: '1.6', margin: '0 0 24px' }}>
-              Klik link di email untuk mengaktifkan akun, lalu kembali ke sini untuk masuk.
-              {jenis === 'alumni' && (labelTerkunci
-                ? ` Kamu sudah tercatat sebagai ${labelTerkunci}.`
-                : ' Setelah masuk, kamu akan diarahkan untuk mengunci angkatanmu.')}
+              {jenis === 'alumni'
+                ? (labelTerkunci
+                    ? `Kamu sudah tercatat sebagai ${labelTerkunci}.`
+                    // AutoAlumni mencatatnya di sesi pertama, di perangkat mana pun
+                    : `Cek email untuk konfirmasi. Setelah dikonfirmasi, kamu langsung tercatat sebagai ${labelOpsiAngkatan(parseInt(angkatan))}.`)
+                : 'Klik link di email untuk mengaktifkan akun, lalu kembali ke sini untuk masuk.'}
             </p>
             <button
-              onClick={() => {
-                setRegistered(false); setMode('login'); setPesan('')
-                // Alumni yang angkatannya belum terkunci dibawa ke /verifikasi
-                // begitu masuk — angkatan dari pendaftaran sudah terisi di sana
-                if (jenis === 'alumni' && !labelTerkunci) router.replace('/auth?redirect=/verifikasi&msg=Masuk+untuk+mengunci+angkatanmu')
-              }}
+              onClick={() => { setRegistered(false); setMode('login'); setPesan('') }}
               style={{ background: '#0C447C', color: '#fff', border: 'none', padding: '11px 28px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}
             >
               Ke halaman Masuk

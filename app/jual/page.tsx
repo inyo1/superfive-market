@@ -145,7 +145,7 @@ export default function JualPage() {
         </div>
         <p style={{ fontSize: '13px', color: '#5a7da0', lineHeight: '1.7', margin: '0 0 18px' }}>
           Yang boleh berjualan di Superfive Market hanya alumni SMPN 5 Bandung.
-          Daftarkan angkatanmu — langsung aktif, tanpa menunggu.
+          Daftarkan tahun lulusmu — langsung aktif, tanpa menunggu.
         </p>
         <Link href="/verifikasi" style={{ display: 'inline-flex', alignItems: 'center', background: '#0C447C', color: '#fff', padding: '0 20px', minHeight: '44px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', textDecoration: 'none' }}>
           Daftar sebagai Alumni
