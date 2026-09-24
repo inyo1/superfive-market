@@ -79,6 +79,38 @@ kejujuran angkatan sekarang dua hal, keduanya sesudah daftar:
   pengurus membaca siapa yang baru bergabung dan mencabut status alumni yang
   janggal lewat `verifikasi_alumni(id, false, alasan)`
 
+**Angkatan = TAHUN LULUS dari SMPN 5 Bandung, bukan tahun masuk.** Lulus
+1992 → Superfive 92. Semua teks UI yang meminta orang memilih atau
+mendaftarkan angkatan menyebutnya "tahun lulus"; label identitas yang tampil
+tetap "Superfive NN".
+
+### Alur pendaftaran alumni
+
+```
+/auth (pilih tahun lulus + dialog konfirmasi)
+  → signUp, angkatan tersimpan di user_metadata.angkatan
+  → sesi sudah ada?  ya → /auth memanggil ajukan_alumni() sendiri
+                     tidak (konfirmasi email) → AutoAlumni di sesi pertama
+```
+
+[AutoAlumni](app/components/AutoAlumni.tsx) dipasang di layout dan memanggil
+`ajukan_alumni()` di sesi pertama **di perangkat mana pun** — metadata melekat
+di akun, bukan di peramban tempat mendaftar. Syaratnya: `user_metadata.angkatan`
+bilangan bulat ≥ 1956, `status_alumni = 'umum'`, dan `nonaktif_at` NULL.
+Tidak ada konfirmasi kedua; dialognya sudah di /auth. Kalau berhasil: toast di
+halaman yang sedang dibuka, lalu sinyal [profilBerubah](lib/profilBerubah.ts)
+supaya /profil, /jual, dan /verifikasi menyegarkan statusnya. Kalau gagal:
+dibawa ke `/verifikasi?msg=<pesan RPC>`, login tidak diblok. Penandanya di
+sessionStorage per user, dibersihkan saat `SIGNED_OUT`.
+
+Kenapa di client, bukan route callback: supabase-js di project ini memakai
+flow implicit dengan sesi di localStorage — token dari link email ada di hash
+URL dan tidak pernah sampai ke server.
+
+**[/verifikasi](app/verifikasi/page.tsx) hanya untuk user tanpa metadata
+angkatan, atau yang auto-apply-nya gagal.** Isian tahun lulusnya tetap diambil
+dari metadata kalau ada.
+
 Yang berubah bersamaan:
 
 | Apa | Sekarang |
@@ -204,6 +236,7 @@ app/
     PilihAngkatan    dropdown 1956–sekarang; satu-satunya perangkai label di klien
     TombolHubungi    Hubungi Penjual → buka_kontak_toko → wa.me
     TombolLapor      lapor keabsahan angkatan; null selama env kosong
+    AutoAlumni       di layout; ajukan_alumni() dari user_metadata di sesi pertama
     Editor*          EditorVarian, EditorPreorder — dipakai form tambah & edit
     SectionOfficial  karosel merchandise resmi di beranda
     RekapPO          ringkasan PO satu produk untuk penjual
@@ -1413,11 +1446,12 @@ Dua akibatnya untuk UI:
 
 ### `ajukan_alumni` — pengguna sendiri, LANGSUNG jadi alumni
 
-Mendaftar sebagai alumni. Dipanggil dari [/verifikasi](app/verifikasi/page.tsx),
-dan dari [/auth](app/auth/page.tsx) tepat setelah `signUp` — **hanya kalau
-sesinya sudah ada**. Kalau email masih harus dikonfirmasi, RPC-nya pasti
-ditolak "Harus login", jadi tidak dipanggil; angkatannya disimpan di metadata
-auth sebagai isian awal /verifikasi setelah masuk.
+Mendaftar sebagai alumni. Dipanggil dari tiga tempat:
+[/auth](app/auth/page.tsx) tepat setelah `signUp` — **hanya kalau sesinya
+sudah ada**; [AutoAlumni](app/components/AutoAlumni.tsx) di sesi pertama
+kalau email harus dikonfirmasi dulu (angkatannya dibaca dari
+`user_metadata.angkatan`); dan [/verifikasi](app/verifikasi/page.tsx) untuk
+sisanya. Lihat [Alur pendaftaran alumni](#alur-pendaftaran-alumni).
 
 ```ts
 const { data, error } = await supabase.rpc('ajukan_alumni', {
@@ -1434,26 +1468,24 @@ yang membedakan pendaftaran mandiri dari keputusan pengurus.
 
 **Angkatannya terkunci begitu RPC ini berhasil** (lihat
 [Dua sumbu verifikasi](#dua-sumbu-verifikasi)). Karena itu UI **wajib**
-menampilkan layar konfirmasi sebelum memanggilnya, dengan LABEL, bukan
-tahunnya: *"Kamu terdaftar sebagai Superfive 92. Setelah ini angkatan nggak
-bisa diubah sendiri. Udah bener?"* — sudah terpasang di /auth dan /verifikasi
-memakai `DialogKonfirmasi`. Pakai `label` dari nilai balik untuk kalimat
-sesudahnya, jangan dirangkai sendiri.
+menampilkan layar konfirmasi sebelum memanggilnya, dengan tahun DAN
+labelnya: *"Kamu lulus dari SMPN 5 Bandung tahun 1992 dan akan tercatat
+sebagai Superfive 92. Setelah disimpan, tahun lulus tidak bisa diubah
+sendiri. Lanjutkan?"* — sudah terpasang di /auth dan /verifikasi memakai
+`DialogKonfirmasi`. AutoAlumni tidak menampilkannya lagi karena dialog di
+/auth sudah dilewati. Pakai `label` dari nilai balik untuk kalimat sesudahnya,
+jangan dirangkai sendiri.
 
 Menolak kalau sudah `alumni` ("Kamu sudah terdaftar sebagai Superfive NN"),
-akunnya nonaktif, angkatannya di luar 1956–tahun berjalan, atau `p_nama`
-dikirim tapi isinya spasi belaka ("Nama tidak boleh kosong"). Kolom `angkatan`
-dan `nama` diisi RPC ini, jadi UI **tidak boleh** menulisnya terpisah.
+**sudah `ditolak`** ("Status alumnimu dicabut pengurus. Hubungi pengurus untuk
+meluruskannya."), akunnya nonaktif, angkatannya di luar 1956–tahun berjalan,
+atau `p_nama` dikirim tapi isinya spasi belaka ("Nama tidak boleh kosong").
+Kolom `angkatan` dan `nama` diisi RPC ini, jadi UI **tidak boleh** menulisnya
+terpisah.
 
-#### ⚠ Celah: status `ditolak` tidak ditolak
-
-RPC ini **hanya menolak status `alumni`**. Orang yang status alumninya dicabut
-pengurus (jadi `ditolak`) bisa memanggilnya lagi dan langsung jadi alumni —
-bahkan dengan angkatan berbeda, karena kunci angkatan hanya berlaku untuk
-`OLD.status_alumni = 'alumni'`. [/verifikasi](app/verifikasi/page.tsx)
-menutup pintunya di UI (status `ditolak` hanya melihat pesan dicabut, tanpa
-formulir), tapi REST-nya masih terbuka. Perbaikan sebenarnya di RPC — lihat
-[Utang Teknis](#utang-teknis-yang-diketahui).
+Pesan "Kamu sudah terdaftar sebagai Superfive" dipakai AutoAlumni sebagai
+tanda sukses diam-diam (tab lain sudah menyelesaikannya) — kalau bunyinya
+diubah di RPC, ubah juga pencocokan awalannya di sana.
 
 #### Pelajaran lama soal mengunci, dan kenapa angkatan tetap dikunci
 
@@ -2236,6 +2268,14 @@ lalu **minta ke Inyo** untuk dijalankan. Inyo yang pegang migrasi.
 Membaca skema, menjalankan `SELECT`, dan memeriksa definisi function lewat
 Supabase MCP tetap boleh dan memang dianjurkan sebelum menulis query.
 
+**Sumber kebenaran untuk definisi fungsi, trigger, policy, dan grant adalah
+DATABASE LIVE — bukan dokumen ini, bukan komentar kode, bukan file SQL di
+`scripts/`.** Semua itu hanya catatan dan bisa basi. Sebelum menyimpulkan
+perilaku RPC atau RLS, baca definisinya lewat Supabase MCP
+(`pg_get_functiondef`, `pg_policies`); kalau tidak bisa, minta dicekkan dulu.
+Sudah terjadi: celah `ditolak` di `ajukan_alumni` masih tercatat terbuka di
+sini dan di komentar /verifikasi padahal RPC live sudah menutupnya.
+
 **Semua perubahan skema dikerjakan Inyo di sesi terpisah**, jadi dokumen ini
 bisa saja tertinggal dari kondisi database sebenarnya. Kalau ada info skema di
 sini yang terasa aneh atau tidak cocok dengan gejala yang kamu lihat,
@@ -2403,18 +2443,6 @@ lihat [Utang Teknis](#utang-teknis-yang-diketahui).
   fungsinya lewat SQL, bukan halamannya. Yang perlu dilihat saat ada
   akunnya: Alumni Terbaru hanya berisi seangkatan, tombol cabut bekerja untuk
   seangkatan, dan /admin serta /admin/penjual menolaknya.
-- **`ajukan_alumni` tidak menolak status `ditolak`** (20 September 2026).
-  Alumni yang dicabut pengurus bisa langsung mendaftar lagi lewat REST —
-  dengan angkatan berbeda sekalipun — dan pencabutannya batal. UI sudah
-  menutup pintunya (/verifikasi tidak menampilkan formulir untuk `ditolak`),
-  tapi pagar sebenarnya harus di RPC. Usulan, dijalankan Inyo: di dalam
-  `ajukan_alumni`, setelah pemeriksaan status `alumni`, tambahkan
-  `IF v_u.status_alumni = 'ditolak' AND v_u.diverifikasi_oleh IS NOT NULL THEN
-  RAISE EXCEPTION 'Status alumnimu dicabut pengurus. Hubungi pengurus untuk
-  meluruskannya.'; END IF;` — `diverifikasi_oleh` terisi hanya kalau
-  keputusannya dari pengurus, jadi penolakan lama dari masa antrean (kalau
-  ada) ikut tertahan, sementara pendaftaran mandiri tidak pernah
-  menghasilkan `ditolak`.
 - **Alur peluncuran reuni belum diuji di browser** (per 20 September 2026).
   Dev server tidak menyala saat dikerjakan; yang dipastikan hanya `tsc`,
   lint, dan query view sebagai anon lewat REST. Yang perlu dilihat langsung:

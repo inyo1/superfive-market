@@ -195,11 +195,10 @@ export default function VerifikasiPage() {
     </main>
   )
 
-  // Dicabut pengurus dari /admin/verifikasi (Alumni Terbaru). Formulirnya
-  // SENGAJA tidak ditampilkan: ajukan_alumni() hanya menolak status
-  // 'alumni', jadi formulir di sini akan langsung memberi status alumni lagi
-  // — pencabutannya jadi tidak berarti apa-apa. Pagar yang sebenarnya harus
-  // di RPC-nya; ini hanya menutup pintu yang terlihat.
+  // Dicabut pengurus dari /admin/verifikasi (Alumni Terbaru). Pagarnya ada di
+  // RPC: ajukan_alumni() menolak status 'ditolak' ("Status alumnimu dicabut
+  // pengurus..."). Formulirnya tidak ditampilkan hanya supaya orangnya tidak
+  // mengisi lalu ditolak — yang dibutuhkan di sini penjelasan, bukan formulir.
   if (status === 'ditolak') return (
     <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
       <Navbar />
