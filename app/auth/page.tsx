@@ -387,10 +387,16 @@ function AuthContent() {
                   tampil di samping namamu di seluruh Superfive */}
               {jenis==='alumni' && (
                 <div style={{marginTop:'10px'}}>
-                  <label htmlFor="angkatan" style={{fontSize:'12px',color:'#5a7da0',display:'block',marginBottom:'4px'}}>Angkatan *</label>
+                  <label htmlFor="angkatan" style={{fontSize:'12px',color:'#5a7da0',display:'block',marginBottom:'4px'}}>Tahun lulus dari SMPN 5 Bandung *</label>
+                  <div style={{fontSize:'11px',color:'#5a7da0',marginBottom:'6px',lineHeight:'1.6'}}>
+                    Angkatan dihitung dari tahun lulus. Contoh: lulus 1992 → Superfive 92.
+                    Status alumnimu aktif saat itu juga, tanpa perlu menunggu persetujuan.
+                  </div>
                   <PilihAngkatan value={angkatan} onChange={setAngkatan} />
-                  <div style={{fontSize:'11px',color:'#9ab4cc',marginTop:'6px',lineHeight:'1.6'}}>
-                    Pilih dengan teliti — setelah terdaftar, angkatan tidak bisa kamu ubah sendiri.
+                  <div style={{marginTop:'8px',background:'#fff8e1',border:'0.5px solid #ffe082',borderRadius:'8px',padding:'9px 12px',fontSize:'11px',color:'#8d6e26',lineHeight:'1.7'}}>
+                    Pastikan tahun lulusnya benar, karena setelah disimpan kamu tidak bisa
+                    mengubahnya sendiri. Teman seangkatan dan pengurus bisa membantu mengoreksi
+                    kalau ada yang tidak sesuai.
                   </div>
                 </div>
               )}
@@ -414,15 +420,15 @@ function AuthContent() {
         </div>
       </div>
 
-      {/* Label, bukan tahun: "Superfive 92" itu yang akan terbaca orang lain
-          di samping namanya, jadi itu juga yang dikonfirmasi */}
+      {/* Tahun DAN label: orang mengingat tahun lulusnya, tapi "Superfive 92"
+          itu yang akan terbaca orang lain di samping namanya */}
       <DialogKonfirmasi
         terbuka={konfirmasiAngkatan}
         ikon="🎓"
-        judul={angkatan ? `Kamu terdaftar sebagai ${labelOpsiAngkatan(parseInt(angkatan))}.` : ''}
-        pesan="Setelah ini angkatan nggak bisa diubah sendiri. Udah bener?"
-        labelKonfirmasi="Ya, lanjut"
-        labelBatal="Ubah dulu"
+        judul="Simpan tahun lulus?"
+        pesan={angkatan ? `Kamu lulus dari SMPN 5 Bandung tahun ${angkatan} dan akan tercatat sebagai ${labelOpsiAngkatan(parseInt(angkatan))}. Setelah disimpan, tahun lulus tidak bisa diubah sendiri. Lanjutkan?` : ''}
+        labelKonfirmasi="Ya, simpan"
+        labelBatal="Periksa lagi"
         merusak={false}
         memproses={loading}
         onKonfirmasi={handleRegister}

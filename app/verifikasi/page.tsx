@@ -262,12 +262,18 @@ export default function VerifikasiPage() {
 
           <div>
             <label htmlFor="angkatan" style={{ fontSize: '13px', fontWeight: '600', color: '#0C447C', display: 'block', marginBottom: '4px' }}>
-              Angkatan *
+              Tahun lulus dari SMPN 5 Bandung *
             </label>
-            <div style={{ fontSize: '11px', color: '#5a7da0', marginBottom: '8px' }}>
-              Pilih dengan teliti — ini yang terkunci setelah kamu terdaftar.
+            <div style={{ fontSize: '11px', color: '#5a7da0', marginBottom: '8px', lineHeight: '1.6' }}>
+              Angkatan dihitung dari tahun lulus. Contoh: lulus 1992 → Superfive 92.
+              Status alumnimu aktif saat itu juga, tanpa perlu menunggu persetujuan.
             </div>
             <PilihAngkatan value={angkatan} onChange={setAngkatan} />
+            <div style={{ marginTop: '8px', background: '#fff8e1', border: '0.5px solid #ffe082', borderRadius: '8px', padding: '9px 12px', fontSize: '11px', color: '#8d6e26', lineHeight: '1.7' }}>
+              Pastikan tahun lulusnya benar, karena setelah disimpan kamu tidak bisa
+              mengubahnya sendiri. Teman seangkatan dan pengurus bisa membantu mengoreksi
+              kalau ada yang tidak sesuai.
+            </div>
           </div>
         </div>
 
@@ -292,15 +298,15 @@ export default function VerifikasiPage() {
         </Link>
       </div>
 
-      {/* Label, bukan tahun: "Superfive 92" itu yang akan terbaca orang lain
-          di samping namanya, jadi itu juga yang dikonfirmasi */}
+      {/* Tahun DAN label: orang mengingat tahun lulusnya, tapi "Superfive 92"
+          itu yang akan terbaca orang lain di samping namanya */}
       <DialogKonfirmasi
         terbuka={konfirmasi}
         ikon="🎓"
-        judul={angkatan ? `Kamu terdaftar sebagai ${labelOpsiAngkatan(parseInt(angkatan))}.` : ''}
-        pesan="Setelah ini angkatan nggak bisa diubah sendiri. Udah bener?"
-        labelKonfirmasi="Ya, lanjut"
-        labelBatal="Ubah dulu"
+        judul="Simpan tahun lulus?"
+        pesan={angkatan ? `Kamu lulus dari SMPN 5 Bandung tahun ${angkatan} dan akan tercatat sebagai ${labelOpsiAngkatan(parseInt(angkatan))}. Setelah disimpan, tahun lulus tidak bisa diubah sendiri. Lanjutkan?` : ''}
+        labelKonfirmasi="Ya, simpan"
+        labelBatal="Periksa lagi"
         merusak={false}
         memproses={mengirim}
         onKonfirmasi={kirim}
