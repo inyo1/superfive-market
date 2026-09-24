@@ -9,6 +9,7 @@ import Skeleton, { SkeletonPanel } from '../components/Skeleton'
 import Tombol from '../components/Tombol'
 import PilihWilayah from '../components/PilihWilayah'
 import { useTampilSkeleton } from '../hooks/useSkeleton'
+import { dengarProfilBerubah } from '../../lib/profilBerubah'
 
 export default function ProfilPage() {
   const router = useRouter()
@@ -78,6 +79,22 @@ export default function ProfilPage() {
     }
     load()
   }, [])
+
+  // AutoAlumni menyelesaikan pendaftaran alumni di latar. Yang dibaca ulang
+  // hanya status dan label — bukan seluruh formulir, supaya isian alamat
+  // yang sedang diketik tidak tertimpa.
+  useEffect(() => dengarProfilBerubah(async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const { data } = await supabase.from('users').select('status_alumni, is_institusi').eq('id', user.id).single()
+    if (!data) return
+    setStatusAlumni(data.status_alumni ?? 'umum')
+    if (data.status_alumni === 'alumni' && !data.is_institusi) {
+      const { data: publik } = await supabase
+        .from('alumni_publik').select('label_angkatan').eq('id', user.id).maybeSingle()
+      setLabelAngkatan(publik?.label_angkatan ?? null)
+    }
+  }), [])
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]

@@ -9,6 +9,7 @@ import Tombol from '../components/Tombol'
 import DialogKonfirmasi from '../components/DialogKonfirmasi'
 import PilihAngkatan, { ANGKATAN_PERTAMA, labelOpsiAngkatan } from '../components/PilihAngkatan'
 import { useTampilSkeleton } from '../hooks/useSkeleton'
+import { dengarProfilBerubah } from '../../lib/profilBerubah'
 
 // Halaman ini SATU-SATUNYA urusan: mengaku alumni. Bukan pagar belanja.
 //
@@ -89,10 +90,28 @@ export default function VerifikasiPage() {
           setLabelAngkatan(publik?.label_angkatan ?? null)
         }
       }
+      // Pesan dari AutoAlumni kalau pendaftaran otomatis ditolak RPC —
+      // ditampilkan apa adanya di atas formulir yang sudah terisi
+      const msg = new URLSearchParams(window.location.search).get('msg')
+      if (msg) setPesan(msg)
       setLoading(false)
     }
     muat()
   }, [])
+
+  // AutoAlumni menyelesaikan pendaftaran di latar saat halaman ini terbuka:
+  // cukup baca ulang statusnya, formulirnya diganti layar "sudah terdaftar"
+  useEffect(() => dengarProfilBerubah(async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const { data } = await supabase.from('users').select('status_alumni').eq('id', user.id).single()
+    if (data?.status_alumni !== 'alumni') return
+    const { data: publik } = await supabase
+      .from('alumni_publik').select('label_angkatan').eq('id', user.id).maybeSingle()
+    setLabelAngkatan(publik?.label_angkatan ?? null)
+    setPesan(null)
+    setStatus('alumni')
+  }), [])
 
   // Pemeriksaan isian saja. Tidak ada yang dikirim sebelum konfirmasi.
   function mintaKirim() {

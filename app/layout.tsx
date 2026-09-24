@@ -5,6 +5,7 @@ import { CartProvider } from "./context/CartContext";
 import { ChatProvider } from "./context/ChatContext";
 import { ToastProvider } from "./context/ToastContext";
 import BottomNav from "./components/BottomNav";
+import AutoAlumni from "./components/AutoAlumni";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -101,6 +102,8 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <ToastProvider>
+          {/* Menyelesaikan pendaftaran alumni yang tertunda konfirmasi email */}
+          <AutoAlumni />
           <CartProvider>
             <ChatProvider>
               {children}

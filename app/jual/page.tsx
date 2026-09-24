@@ -7,6 +7,7 @@ import Navbar from '../components/Navbar'
 import Skeleton, { SkeletonPanel } from '../components/Skeleton'
 import Tombol from '../components/Tombol'
 import { useTampilSkeleton } from '../hooks/useSkeleton'
+import { dengarProfilBerubah } from '../../lib/profilBerubah'
 
 // Pintu berjualan — satu-satunya pagar yang tersisa setelah verifikasi dipecah
 // dua sumbu. Yang menentukan toko tayang hanya users.status_penjual; belanja
@@ -82,6 +83,15 @@ export default function JualPage() {
     }
     muat()
   }, [])
+
+  // AutoAlumni menyelesaikan pendaftaran alumni di latar: layar "daftar
+  // alumni dulu" diganti formulir penjual tanpa memuat ulang halaman
+  useEffect(() => dengarProfilBerubah(async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const { data } = await supabase.from('users').select('status_alumni').eq('id', user.id).single()
+    if (data) setStatusAlumni(data.status_alumni ?? 'umum')
+  }), [])
 
   async function kirim() {
     setMengirim(true)
