@@ -7,8 +7,9 @@ import FotoProduk from './FotoProduk'
 import BadgeOfficial from './BadgeOfficial'
 import LogoInilima from './LogoInilima'
 import { SkeletonKartuProduk } from './Skeleton'
+import { IkonLencana, IkonHati, IkonPanah } from './beranda/Ikon'
 
-const EMAS = '#EF9F27'
+const EMAS = '#FFB51B'
 const JEDA_OTOMATIS = 4000   // jarak antar geseran otomatis
 const DURASI_LUNCUR = 500    // lama animasi meluncur
 const TUNDA_SETELAH_MANUAL = 8000
@@ -34,7 +35,7 @@ export default function SectionOfficial() {
 
   // Berapa kartu terlihat sekaligus. 0 berarti mode mobile: geser manual
   // dengan scroll-snap, bukan transform.
-  const [perView, setPerView] = useState(4)
+  const [perView, setPerView] = useState(3)
   const [mobile, setMobile] = useState(false)
   const [kurangiGerak, setKurangiGerak] = useState(false)
 
@@ -72,7 +73,9 @@ export default function SectionOfficial() {
 
     function terapkan() {
       setMobile(mqMobile.matches)
-      setPerView(mqTablet.matches ? 3 : 4)
+      // Tiga kartu di desktop maupun tablet: di desktop deretannya hanya
+      // mengisi kolom kanan panel, di tablet panelnya bertumpuk penuh
+      setPerView(3)
       setIndex(0)
     }
     terapkan()
@@ -180,215 +183,206 @@ export default function SectionOfficial() {
   }
 
   const gayaPanah: React.CSSProperties = {
-    position: 'absolute', top: '50%', transform: 'translateY(-50%)',
+    position: 'absolute', top: '42%', transform: 'translateY(-50%)',
     width: '44px', height: '44px', borderRadius: '50%',
-    background: 'rgba(255,255,255,0.94)', color: '#0C447C',
+    background: '#fff', color: '#062F59',
     border: 'none', cursor: 'pointer', zIndex: 3,
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontSize: '18px', lineHeight: 1,
-    boxShadow: '0 4px 14px rgba(0,0,0,0.22)',
+    fontSize: '22px', lineHeight: 1,
+    boxShadow: '0 6px 18px rgba(0,0,0,0.22)',
     opacity: hover ? 1 : 0,
     transition: 'opacity 0.2s ease',
     pointerEvents: hover ? 'auto' : 'none',
   }
 
   return (
-    <section
-      style={{
-        background: 'linear-gradient(180deg, #0a3a6b 0%, #0C447C 100%)',
-        padding: '22px 0 26px',
-      }}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      aria-label="Official Merchandise INILIMA"
-    >
-      <div style={{ maxWidth: '700px', margin: '0 auto', padding: '0 16px' }}>
-
-        {/* Di HP logonya di ATAS judul, bukan jadi kolom kiri: dua kolom di
-            layar sempit menyisakan kartu yang terlalu ramping. */}
-        {mobile && (
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '14px' }}>
-            <LogoInilima lebar={90} />
-          </div>
-        )}
-
-        {/* Judul */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
-          <h2 style={{ fontSize: '18px', fontWeight: '800', margin: 0, color: EMAS, letterSpacing: '0.3px' }}>
-            Official Merchandise INILIMA
-          </h2>
-          <span style={{
-            background: EMAS, color: '#3d2600',
-            fontSize: '9px', fontWeight: '800', letterSpacing: '0.8px',
-            padding: '3px 8px', borderRadius: '4px', lineHeight: 1.4,
-          }}>
-            RESMI
-          </span>
-        </div>
-        <p style={{ fontSize: '12px', color: '#B5D4F4', margin: 0, lineHeight: 1.6 }}>
-          Merchandise resmi komunitas alumni SMPN 5 Bandung.
-        </p>
-
-        <div style={{ width: '54px', height: '3px', background: EMAS, borderRadius: '2px', margin: '12px 0 14px' }} />
-
-        {/* Dua kolom: logo di kiri, deretan kartu bergeser ke kanan.
-            Rata tengah vertikal terhadap deretan kartu.
-
-            Batasnya 160px, bukan 200px: logonya lencana bundar, dan bentuk
-            bundar terbaca lebih besar daripada logo persegi seukuran sama.
-            Jaraknya juga dirapatkan jadi 16px — tepi bundar sudah memberi
-            ruang kosong sendiri di sudut-sudutnya, jadi jarak selebar logo
-            persegi akan terasa menganga. */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          {!mobile && (
-            <div style={{
-              flex: '0 0 22%', maxWidth: '160px',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <LogoInilima lebar="100%" />
-            </div>
-          )}
-
-          <div style={{ flex: 1, minWidth: 0 }}>
-
-        {/* ── Skeleton ── */}
-        {tampilSkeleton ? (
-          <div className="merch-track">
-            {Array.from({ length: 4 }, (_, i) => (
-              <div key={i} className="merch-item"><SkeletonKartuProduk /></div>
-            ))}
-          </div>
-        ) : mobile ? (
-          /* ── Mobile: geser manual dengan snap, tanpa putaran otomatis ── */
-          <div className="merch-track">
-            {produk.map(p => (
-              <div key={p.id} className="merch-item">
-                <KartuMerch produk={p} />
+    <section className="b-seksi" aria-labelledby="judul-inilima">
+      <div className="b-wadah">
+        {/* Panel kampanye: identitas IniLima di kiri, deretan merchandise di
+            kanan. Bertumpuk di bawah 1024px. Rak ini SATU-SATUNYA tempat
+            merchandise di beranda — Produk Terbaru di bawahnya menyaringnya. */}
+        <div
+          className="inilima-panel"
+          onMouseEnter={() => setHover(true)}
+          onMouseLeave={() => setHover(false)}
+        >
+          <div className="inilima-info">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
+              <div style={{ width: '84px', flexShrink: 0 }}>
+                <LogoInilima lebar="100%" />
               </div>
-            ))}
+              <div style={{ borderLeft: '1px solid rgba(255,255,255,0.2)', paddingLeft: '18px', minWidth: 0 }}>
+                <h2 id="judul-inilima" style={{ margin: 0, color: '#fff', lineHeight: 1.15 }}>
+                  <span style={{ display: 'block', fontSize: '15px', fontWeight: 600, color: '#C4DCF2', letterSpacing: '0.2px' }}>
+                    Official Merchandise
+                  </span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', fontSize: 'clamp(28px, 3.2vw, 36px)', fontWeight: 800, letterSpacing: '-0.5px' }}>
+                    IniLima
+                    <span style={{
+                      background: EMAS, color: '#3d2600',
+                      fontSize: '11px', fontWeight: 800, letterSpacing: '1px',
+                      padding: '4px 8px', borderRadius: '6px', lineHeight: 1.2,
+                    }}>
+                      RESMI
+                    </span>
+                  </span>
+                </h2>
+              </div>
+            </div>
+
+            <p style={{ fontSize: '16px', color: '#C4DCF2', lineHeight: 1.65, margin: '20px 0 24px', maxWidth: '380px' }}>
+              Merchandise original untuk kebanggaan alumni SMPN 5 Bandung.
+            </p>
+
+            {tokoResmiId && (
+              <Link href={`/toko/${tokoResmiId}`} className="b-tombol b-tombol-emas">
+                Lihat Koleksi IniLima <IkonPanah size={18} tebal={2} />
+              </Link>
+            )}
+
+            {/* Hanya dua janji yang memang benar hari ini: tokonya toko resmi,
+                dan pembelinya mendukung komunitas. "Kualitas terjamin" sengaja
+                tidak ditulis — tidak ada apa pun di sistem yang menjaminnya. */}
+            <ul className="inilima-janji" role="list">
+              <li>
+                <span className="inilima-janji-ikon"><IkonLencana size={20} /></span>
+                <span><strong>Original</strong><span>Produk resmi IniLima</span></span>
+              </li>
+              <li>
+                <span className="inilima-janji-ikon"><IkonHati size={20} /></span>
+                <span><strong>Dukungan Alumni</strong><span>Setiap pembelian berarti</span></span>
+              </li>
+            </ul>
           </div>
-        ) : (
-          /* ── Desktop & tablet: satu baris, digeser lewat transform ── */
-          <div style={{ position: 'relative' }}>
-            <div style={{ overflow: 'hidden' }}>
-              <div
-                style={{
-                  display: 'flex',
-                  transform: `translate3d(-${index * lebarKartu}%, 0, 0)`,
-                  transition: transisi && !kurangiGerak
-                    ? `transform ${DURASI_LUNCUR}ms cubic-bezier(0.22, 1, 0.36, 1)`
-                    : 'none',
-                }}
-              >
-                {[...produk, ...kloning].map((p, i) => (
-                  <div
-                    key={`${p.id}-${i}`}
-                    style={{ flex: `0 0 ${lebarKartu}%`, minWidth: 0, paddingRight: '12px', boxSizing: 'border-box' }}
-                    aria-hidden={i >= jumlah}
-                  >
+
+          <div className="inilima-rak">
+            {tampilSkeleton ? (
+              <div className="merch-track">
+                {Array.from({ length: 3 }, (_, i) => (
+                  <div key={i} className="merch-item"><SkeletonKartuProduk /></div>
+                ))}
+              </div>
+            ) : mobile ? (
+              /* ── Mobile: geser manual dengan snap, tanpa putaran otomatis ── */
+              <div className="merch-track">
+                {produk.map(p => (
+                  <div key={p.id} className="merch-item">
                     <KartuMerch produk={p} />
                   </div>
                 ))}
               </div>
-            </div>
+            ) : (
+              /* ── Desktop & tablet: satu baris, digeser lewat transform ── */
+              <div style={{ position: 'relative' }}>
+                <div style={{ overflow: 'hidden', margin: '-12px -8px', padding: '12px 0' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      transform: `translate3d(-${index * lebarKartu}%, 0, 0)`,
+                      transition: transisi && !kurangiGerak
+                        ? `transform ${DURASI_LUNCUR}ms cubic-bezier(0.22, 1, 0.36, 1)`
+                        : 'none',
+                    }}
+                  >
+                    {[...produk, ...kloning].map((p, i) => (
+                      <div
+                        key={`${p.id}-${i}`}
+                        style={{ flex: `0 0 ${lebarKartu}%`, minWidth: 0, padding: '0 8px', boxSizing: 'border-box' }}
+                        aria-hidden={i >= jumlah}
+                      >
+                        <KartuMerch produk={p} tersembunyi={i >= jumlah} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
 
-            {bisaGeser && (
-              <>
-                <button
-                  onClick={() => { tundaOtomatis(); mundur() }}
-                  style={{ ...gayaPanah, left: '-6px' }}
-                  aria-label="Lihat merchandise sebelumnya"
-                >
-                  ‹
-                </button>
-                <button
-                  onClick={() => { tundaOtomatis(); maju() }}
-                  style={{ ...gayaPanah, right: '-6px' }}
-                  aria-label="Lihat merchandise berikutnya"
-                >
-                  ›
-                </button>
-              </>
+                {bisaGeser && (
+                  <>
+                    <button
+                      type="button"
+                      className="merch-panah"
+                      onClick={() => { tundaOtomatis(); mundur() }}
+                      style={{ ...gayaPanah, left: '-14px' }}
+                      aria-label="Lihat merchandise sebelumnya"
+                    >
+                      ‹
+                    </button>
+                    <button
+                      type="button"
+                      className="merch-panah"
+                      onClick={() => { tundaOtomatis(); maju() }}
+                      style={{ ...gayaPanah, right: '-14px' }}
+                      aria-label="Lihat merchandise berikutnya"
+                    >
+                      ›
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Titik indikator — hanya kalau memang ada yang bisa digeser */}
+            {!tampilSkeleton && bisaGeser && (
+              <div style={{ display: 'flex', gap: '4px', justifyContent: 'center', marginTop: '16px' }}>
+                {Array.from({ length: jumlahTitik }, (_, k) => {
+                  const aktif = k === titikAktif
+                  return (
+                    <button
+                      type="button"
+                      key={k}
+                      onClick={() => keTitik(k)}
+                      aria-label={`Ke merchandise kelompok ${k + 1} dari ${jumlahTitik}`}
+                      aria-current={aktif ? 'true' : undefined}
+                      style={{
+                        width: '24px', height: '24px', padding: 0,
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}
+                    >
+                      <span style={{
+                        display: 'block',
+                        width: aktif ? '20px' : '7px', height: '7px', borderRadius: '4px',
+                        background: aktif ? EMAS : 'rgba(255,255,255,0.35)',
+                        transition: kurangiGerak ? 'none' : 'width 0.25s ease, background 0.25s ease',
+                      }} />
+                    </button>
+                  )
+                })}
+              </div>
             )}
           </div>
-        )}
-
-          </div>
         </div>
-
-        {/* Titik indikator — hanya kalau memang ada yang bisa digeser */}
-        {!tampilSkeleton && bisaGeser && (
-          <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', marginTop: '14px' }}>
-            {Array.from({ length: jumlahTitik }, (_, k) => {
-              const aktif = k === titikAktif
-              return (
-                <button
-                  key={k}
-                  onClick={() => keTitik(k)}
-                  aria-label={`Ke merchandise kelompok ${k + 1} dari ${jumlahTitik}`}
-                  aria-current={aktif ? 'true' : undefined}
-                  style={{
-                    width: '24px', height: '24px', padding: 0,
-                    background: 'none', border: 'none', cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}
-                >
-                  <span style={{
-                    display: 'block',
-                    width: aktif ? '20px' : '7px', height: '7px', borderRadius: '4px',
-                    background: aktif ? EMAS : 'rgba(255,255,255,0.35)',
-                    transition: kurangiGerak ? 'none' : 'width 0.25s ease, background 0.25s ease',
-                  }} />
-                </button>
-              )
-            })}
-          </div>
-        )}
-
-        {tokoResmiId && (
-          <div style={{ marginTop: '16px', textAlign: 'center' }}>
-            <Link
-              href={`/toko/${tokoResmiId}`}
-              className="btn-primary"
-              style={{
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                minHeight: '44px', padding: '0 26px', borderRadius: '9px',
-                background: EMAS, color: '#3d2600',
-                fontSize: '13px', fontWeight: '700', textDecoration: 'none',
-              }}
-            >
-              Lihat Semua Merchandise →
-            </Link>
-          </div>
-        )}
       </div>
     </section>
   )
 }
 
-function KartuMerch({ produk: p }: { produk: ProdukResmi }) {
+function KartuMerch({ produk: p, tersembunyi = false }: { produk: ProdukResmi; tersembunyi?: boolean }) {
   return (
     <Link
       href={`/produk/${p.id}`}
       className="prod-card"
+      // Kartu kloning untuk putaran mulus tidak boleh ikut dijelajahi Tab
+      tabIndex={tersembunyi ? -1 : undefined}
       style={{
-        background: '#fff', borderRadius: '10px',
-        border: '0.5px solid rgba(255,255,255,0.18)',
+        background: '#fff', borderRadius: '16px',
         overflow: 'hidden', textDecoration: 'none', display: 'block',
+        boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
       }}
     >
       <div style={{ position: 'relative' }}>
         <BadgeOfficial aktif bentuk="pita" />
-        <FotoProduk src={p.foto_url} kategori={p.kategori ?? ''} height={130} fontSize={40} />
+        <FotoProduk src={p.foto_url} kategori={p.kategori ?? ''} height={190} fontSize={44} />
       </div>
-      <div style={{ padding: '10px' }}>
+      <div style={{ padding: '14px 14px 16px' }}>
         <div style={{
-          fontSize: '12px', fontWeight: '500', color: '#1a1a1a',
-          marginBottom: '5px', height: '32px', overflow: 'hidden', lineHeight: 1.35,
+          fontSize: '14px', fontWeight: 600, color: '#092D52',
+          marginBottom: '6px', lineHeight: 1.35,
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>
           {p.nama}
         </div>
-        <div style={{ fontSize: '14px', fontWeight: '700', color: '#0C447C' }}>
+        <div style={{ fontSize: '16px', fontWeight: 800, color: '#07589F' }}>
           {fmt(p.harga)}
         </div>
       </div>

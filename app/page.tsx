@@ -1,21 +1,35 @@
 'use client'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabase'
 import Navbar from './components/Navbar'
 import FotoProduk from './components/FotoProduk'
 import SkeletonCard from './components/SkeletonCard'
 import SectionOfficial from './components/SectionOfficial'
-import BadgePreorder, { WARNA_PO, WARNA_PO_TUA } from './components/BadgePreorder'
+import BadgePreorder, { WARNA_PO_TUA } from './components/BadgePreorder'
 import BadgeTersedia from './components/BadgeTersedia'
-import { EMAS } from './components/BadgeOfficial'
 import LapakSegeraDibuka from './components/LapakSegeraDibuka'
+import { IkonProduk, IkonToko, IkonAlumni } from './components/IkonStatistik'
+import {
+  IKON_KATEGORI, IkonPanah, IkonCari, IkonOrang, IkonPerisai, IkonPetak, IkonGrafik, IkonCentang,
+} from './components/beranda/Ikon'
+import SiteFooter from './components/beranda/SiteFooter'
 import { janjiKirim } from '../lib/preorder'
-import { KATEGORI, EMOJI_KATEGORI } from '../lib/kategori'
+import { KATEGORI } from '../lib/kategori'
 import { ambilPenjualPublik, type PenjualPublik } from '../lib/penjualPublik'
 import NamaPenjual from './components/NamaPenjual'
+
+// Beranda — redesain Oktober 2026.
+//
+// Yang berubah hanya tampilannya. Semua query, penyaring, dan aturan siapa
+// diajak ke mana sama persis dengan versi sebelumnya:
+//   - hitungan hero polos tanpa penyaring (merchandise ikut dihitung)
+//   - Produk Terbaru MENYARING toko resmi; merchandise hanya di rak IniLima
+//   - tombol jualan mengikuti status_penjual, bukan sekadar login
+// Urutan section: hero → statistik → kategori → IniLima → Produk Terbaru →
+// Kenapa Superfive → ajakan berjualan → footer.
 
 type Produk = {
   id: string
@@ -56,52 +70,31 @@ function useCountUp(target: number, duration = 900) {
   return count
 }
 
-// Satu blok statistik: garis aksen berwarna di kiri, lalu angka + label
-// sebaris, lalu keterangan pendek di bawahnya.
+// Satu blok statistik di kartu putih yang menumpang di kaki hero.
 //
-// Garis aksennya yang jadi penanda visual, jadi TIDAK ada ikon di sini —
-// keduanya sekaligus hanya membuat barisnya ramai. Komponen ikonnya pindah ke
-// components/IkonStatistik.tsx, bukan dihapus.
+// Hanya tiga besaran yang memang dihitung dari database. Mockup memuat blok
+// keempat ("1 Komunitas") — sengaja tidak ada, karena angkanya tidak datang
+// dari mana pun dan akan jadi satu-satunya angka karangan di halaman.
 //
-// Keterangannya ditulis tetap, bukan dihitung dari data: kalimatnya
-// menjelaskan arti angkanya ("Siap dibeli hari ini"), bukan melaporkan angka
-// kedua yang harus ikut benar.
-function Statistik({ label, value, keterangan, warna }: {
+// Keterangannya ditulis tetap, bukan dihitung: kalimatnya menjelaskan arti
+// angkanya, bukan melaporkan angka kedua yang harus ikut benar.
+function Statistik({ label, value, keterangan, ikon }: {
   label: string
   value: number
   keterangan: string
-  warna: string
+  ikon: React.ReactNode
 }) {
   const count = useCountUp(value)
   return (
-    <div className="stat-blok" style={{
-      flex: 1, minWidth: 0,
-      borderLeft: `3px solid ${warna}`,
-      paddingLeft: '15px',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: '7px', minWidth: 0 }}>
-        <span className="stat-angka" style={{
-          fontSize: '27px', fontWeight: '800', color: '#0C447C',
-          lineHeight: 1.1, letterSpacing: '-0.5px',
-          // Angka berubah selama animasi hitung naik; tabular-nums menjaga
-          // lebarnya tetap supaya barisnya tidak bergeser-geser
-          fontVariantNumeric: 'tabular-nums',
-        }}>
-          {count}
-        </span>
-        <span style={{
-          fontSize: '13px', fontWeight: '600', color: '#5a7da0',
-          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-        }}>
-          {label}
-        </span>
-      </div>
-      {/* Disembunyikan di HP lewat CSS — tanpa itu tiap blok jadi dua baris
-          dan sectionnya terlalu tinggi di layar sempit */}
-      <div className="stat-ket" style={{
-        fontSize: '11.5px', color: '#9ab4cc', marginTop: '3px', lineHeight: 1.45,
-      }}>
-        {keterangan}
+    <div className="b-stat">
+      <span className="b-stat-ikon">{ikon}</span>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', flexWrap: 'wrap' }}>
+          {/* tabular-nums menjaga lebar angka tetap selama animasi hitung */}
+          <span className="b-stat-angka">{count}</span>
+          <span className="b-stat-label">{label}</span>
+        </div>
+        <div className="b-stat-ket">{keterangan}</div>
       </div>
     </div>
   )
@@ -115,10 +108,8 @@ export default function Home() {
   const [loggedIn, setLoggedIn] = useState(false)
   // Hanya penjual aktif yang ditawari menambah produk saat raknya kosong
   const [penjualAktif, setPenjualAktif] = useState(false)
+  const [cari, setCari] = useState('')
 
-  // Tujuannya bergantung status login, jadi ini tombol aksi — bukan tautan.
-  // Sebelumnya <a href> dengan preventDefault, yang menyesatkan pembaca layar
-  // karena href-nya tidak pernah benar-benar dipakai.
   // Tujuannya mengikuti peran, bukan cuma "sudah login atau belum".
   // /produk/tambah menolak siapa pun yang status_penjual-nya bukan 'aktif',
   // jadi mengirim pengguna biasa ke sana berarti menawarkan tombol yang
@@ -130,6 +121,14 @@ export default function Home() {
     // msg diisi eksplisit: tanpa itu /auth memakai kalimat bawaannya,
     // "Login dulu untuk melanjutkan pembelian" — alur ini soal berjualan
     else router.push('/auth?mode=daftar&redirect=/jual&msg=' + encodeURIComponent('Daftar dulu untuk mulai berjualan'))
+  }
+
+  // Kolom cari hero memakai pencarian yang sudah dilayani /produk lewat ?q=
+  // (halaman itu yang membaca parameternya). Kosong = buka etalase saja.
+  function handleCari(e: FormEvent) {
+    e.preventDefault()
+    const q = cari.trim()
+    router.push(q ? `/produk?q=${encodeURIComponent(q)}` : '/produk')
   }
 
   useEffect(() => {
@@ -153,7 +152,7 @@ export default function Home() {
         // aktif, bukan akun institusi. Jangan menyaring lagi di sini.
         supabase.from('angkatan_ringkas').select('jumlah'),
         // Merchandise resmi DIKELUARKAN dari rak ini, sama seperti dari
-        // seluruh daftar umum lainnya — tempatnya carousel INILIMA tepat di
+        // seluruh daftar umum lainnya — tempatnya rak IniLima tepat di
         // atas. Rak ini khusus lapak alumni.
         //
         // Penyaring yang sama pernah dibuang karena membuat rak ini kosong
@@ -193,8 +192,11 @@ export default function Home() {
     load()
   }, [])
 
+  // Label tombol jualan mengikuti peran yang sama dengan tujuannya
+  const labelJual = penjualAktif ? 'Tambah Produk' : 'Buka Toko Gratis'
+
   return (
-    <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
+    <main className="beranda">
       <Navbar />
 
       {/* Banner verifikasi sengaja tidak ada di sini. Sejak pembeli tidak lagi
@@ -202,309 +204,220 @@ export default function Home() {
           daftar — padahal tidak ada satu pun yang terhalang. Ajakannya cukup
           sekali, di halaman profil. */}
 
-      {/* ── Hero Banner ── */}
-      <div style={{
-        background: 'linear-gradient(150deg, #0d4f91 0%, #0C447C 45%, #082e57 100%)',
-        padding: '32px 20px 28px',
-        position: 'relative', overflow: 'hidden',
-      }}>
-        {/* Decorative watermark */}
-        <div aria-hidden style={{
-          position: 'absolute', right: '-10px', top: '-24px',
-          fontSize: '200px', fontWeight: '900', color: 'rgba(255,255,255,0.045)',
-          lineHeight: 1, userSelect: 'none', pointerEvents: 'none', fontFamily: 'sans-serif',
-        }}>5</div>
-        <div aria-hidden style={{ position: 'absolute', bottom: '-50px', left: '-30px', width: '160px', height: '160px', borderRadius: '50%', background: 'rgba(255,255,255,0.04)', pointerEvents: 'none' }} />
-        <div aria-hidden style={{ position: 'absolute', top: '-30px', right: '120px', width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(255,255,255,0.06)', pointerEvents: 'none' }} />
+      {/* ── Hero ── */}
+      <section className="b-hero" aria-labelledby="judul-hero">
+        {/* Gedung SMPN 5 sebagai latar. Lapisan gradien di atasnya yang
+            menjaga teks tetap terbaca — di HP lapisannya lebih pekat karena
+            teks menumpuk tepat di atas foto. */}
+        <div className="b-hero-foto" aria-hidden>
+          <Image src="/smpn5-hero.png" alt="" fill priority sizes="(max-width: 1023px) 100vw, 60vw" style={{ objectFit: 'cover', objectPosition: 'center 30%' }} />
+        </div>
+        <div className="b-hero-lapis" aria-hidden />
 
-        {/* Logo + brand */}
-        <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
-          {/* Persegi, tanpa borderRadius: logo Superfive punya sudut yang ikut
-              terpangkas kalau kotaknya dibulatkan. objectFit 'contain' menjaga
-              seluruh logo tetap masuk tanpa terpotong. */}
-          <Image
-            src="/LOGO-512.png" alt="Superfive Market"
-            width={120} height={120} priority
-            style={{ objectFit: 'contain', flexShrink: 0, filter: 'drop-shadow(0 4px 16px rgba(0,0,0,0.28))' }}
-          />
-          <div>
-            <div style={{ fontSize: '11px', color: '#7eb8f0', letterSpacing: '1.8px', textTransform: 'uppercase', marginBottom: '5px' }}>
-              Alumni SMPN 5 Bandung
-            </div>
-            <h1 style={{ fontSize: '26px', fontWeight: '800', color: '#fff', margin: 0, lineHeight: 1.2 }}>
-              Superfive Market
+        <div className="b-wadah b-hero-isi">
+          <div className="b-hero-teks">
+            <p className="b-eyebrow">Marketplace Alumni SMPN 5 Bandung</p>
+            <h1 id="judul-hero" className="b-hero-judul">
+              Dari Alumni,<br /><span>Untuk Alumni.</span>
             </h1>
+            <p className="b-hero-sub">
+              Temukan produk, jasa, dan bisnis dari keluarga besar SMPN 5 Bandung.
+              Belanja, berjualan, dan berkembang bersama.
+            </p>
+
+            <form role="search" onSubmit={handleCari} className="b-hero-cari">
+              <label htmlFor="cari-hero" className="sr-only">Cari produk, jasa, atau usaha alumni</label>
+              <span className="b-hero-cari-ikon"><IkonCari size={20} /></span>
+              <input
+                id="cari-hero"
+                type="search"
+                value={cari}
+                onChange={e => setCari(e.target.value)}
+                placeholder="Cari produk, jasa, atau usaha alumni..."
+                enterKeyHint="search"
+              />
+              <button type="submit">Cari</button>
+            </form>
+
+            <div className="b-hero-cta">
+              <Link href="/produk" className="b-tombol b-tombol-emas">
+                Jelajahi Marketplace <IkonPanah size={18} tebal={2} />
+              </Link>
+              <button type="button" onClick={handleJualClick} className="b-tombol b-tombol-garis">
+                {labelJual}
+              </button>
+            </div>
+          </div>
+
+          <div className="b-hero-semboyan" aria-hidden>
+            <span>Satu Keluarga</span>
+            <span>Selamanya</span>
+            <i />
           </div>
         </div>
+      </section>
 
-        <p style={{ fontSize: '14px', color: '#B5D4F4', lineHeight: '1.75', margin: '0 0 22px', maxWidth: '360px' }}>
-          Platform marketplace eksklusif tempat alumni berbelanja, berjualan, dan berkembang bersama.
-        </p>
-
-        {/* CTA buttons — guest only */}
-        {!loggedIn && (
-          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '24px' }}>
-            <Link href="/auth" style={{
-              background: '#fff', color: '#0C447C',
-              padding: '0 22px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', borderRadius: '9px',
-              fontSize: '13px', fontWeight: '700', textDecoration: 'none',
-              textTransform: 'uppercase', letterSpacing: '0.5px',
-            }}>
-              MASUK
-            </Link>
-            <Link href="/auth" style={{
-              background: 'rgba(255,255,255,0.14)', color: '#fff',
-              padding: '0 22px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', borderRadius: '9px',
-              fontSize: '13px', fontWeight: '600', textDecoration: 'none',
-              border: '1px solid rgba(255,255,255,0.28)',
-              textTransform: 'uppercase', letterSpacing: '0.5px',
-            }}>
-              DAFTAR SEKARANG
-            </Link>
-          </div>
-        )}
-
-        {/* Foto gedung SMPN 5 — desktop only, blends with hero gradient */}
-        <div
-          className="hero-building"
-          aria-hidden
-          style={{
-            position: 'absolute', right: 0, top: 0, bottom: 0,
-            width: '50%', pointerEvents: 'none', overflow: 'hidden',
-          }}
-        >
-          <Image
-            src="/smpn5-hero.png"
-            alt=""
-            fill
-            sizes="50vw"
-            style={{
-              objectFit: 'cover', objectPosition: 'center',
-              mixBlendMode: 'luminosity',
-              opacity: 0.28,
-              WebkitMaskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.6) 30%, black 60%)',
-              maskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.6) 30%, black 60%)',
-            }}
-          />
+      {/* ── Statistik ── menumpang di kaki hero */}
+      <div className="b-wadah" style={{ position: 'relative', zIndex: 2 }}>
+        <div className="b-stat-kartu">
+          <Statistik label="Produk" value={stats.produk} keterangan="Siap dibeli hari ini" ikon={<IkonProduk size={24} />} />
+          <Statistik label="Toko" value={stats.toko} keterangan="Dikelola alumni" ikon={<IkonToko size={24} />} />
+          <Statistik label="Alumni" value={stats.alumni} keterangan="Terverifikasi" ikon={<IkonAlumni size={24} />} />
         </div>
       </div>
 
-      {/* ── Statistik ──
-          Tiga blok bergaris aksen, tepat di bawah hero. Latar putih polos
-          dengan garis tipis di bawah section sebagai pembatas — bukan kotak
-          berlatar yang mengurung ketiganya.
+      {/* ── Kategori ── */}
+      <section className="b-seksi" aria-labelledby="judul-kategori">
+        <div className="b-wadah">
+          <div className="b-kepala">
+            <div>
+              <h2 id="judul-kategori" className="b-judul">Jelajahi Kategori</h2>
+              <p className="b-sub">Temukan berbagai produk dan jasa dari alumni sesuai kebutuhan Anda.</p>
+            </div>
+            <Link href="/produk" className="b-tautan">Lihat Semua Produk <IkonPanah size={16} tebal={2} /></Link>
+          </div>
 
-          Warna aksennya diambil dari bahasa warna yang sudah ada, bukan warna
-          baru: emas OFFICIAL, navy merek, dan ungu PRE-ORDER.
-
-          Tiga kolom sejajar di lebar berapa pun — `flex` tanpa `flexWrap`.
-          Di HP jaraknya dirapatkan, angkanya mengecil, dan baris keterangan
-          menyingkir; semuanya lewat CSS di globals.css. */}
-      <div style={{ background: '#fff', borderBottom: '0.5px solid #eef3f8' }}>
-        <div className="stat-baris" style={{
-          maxWidth: '700px', margin: '0 auto', padding: '18px 16px',
-          display: 'flex', alignItems: 'center', gap: '22px',
-        }}>
-          <Statistik
-            label="Produk" value={stats.produk}
-            keterangan="Siap dibeli hari ini" warna={EMAS}
-          />
-          <Statistik
-            label="Toko" value={stats.toko}
-            keterangan="Dikelola alumni" warna="#0C447C"
-          />
-          <Statistik
-            label="Alumni" value={stats.alumni}
-            keterangan="Terverifikasi" warna={WARNA_PO}
-          />
+          <ul className="b-kategori" role="list">
+            {KATEGORI.map(k => {
+              const Ikon = IKON_KATEGORI[k]
+              return (
+                <li key={k}>
+                  <Link href={`/produk?kategori=${encodeURIComponent(k)}`} className="b-kategori-kartu">
+                    <span className="b-kategori-ikon"><Ikon size={28} /></span>
+                    <span className="b-kategori-nama">{k}</span>
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
         </div>
-      </div>
+      </section>
 
-      {/* ── Official Merchandise INILIMA ── */}
+      {/* ── Official Merchandise IniLima ── */}
       <SectionOfficial />
 
-      <div style={{ padding: '20px 16px', maxWidth: '700px', margin: '0 auto' }}>
-
-        {/* ── CTA navigasi ── */}
-        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-          <Link href="/produk" style={{
-            flex: 1, background: '#0C447C', color: '#fff',
-            padding: '12px', borderRadius: '9px', textAlign: 'center',
-            fontSize: '13px', fontWeight: '700', textDecoration: 'none',
-            textTransform: 'uppercase', letterSpacing: '0.5px',
-          }}>
-            JELAJAHI PRODUK
-          </Link>
-          <button onClick={handleJualClick} style={{
-            flex: 1, background: '#fff', color: '#0C447C',
-            border: '1.5px solid #0C447C',
-            padding: '12px', borderRadius: '9px', textAlign: 'center',
-            fontSize: '13px', fontWeight: '700', cursor: 'pointer',
-            minHeight: '44px',
-            textTransform: 'uppercase', letterSpacing: '0.5px',
-          }}>
-            MULAI BERJUALAN
-          </button>
-        </div>
-
-        {/* ── Kategori Shortcuts ── */}
-        <div style={{ marginBottom: '26px' }}>
-          <div style={{ fontSize: '13px', fontWeight: '700', color: '#1a1a1a', marginBottom: '12px' }}>
-            Belanja per Kategori
+      {/* ── Produk Terbaru ── khusus lapak alumni */}
+      <section className="b-seksi" aria-labelledby="judul-terbaru">
+        <div className="b-wadah">
+          <div className="b-kepala">
+            <div>
+              <h2 id="judul-terbaru" className="b-judul">Produk Terbaru</h2>
+              <p className="b-sub">Produk dan layanan terbaru dari alumni Superfive.</p>
+            </div>
+            <Link href="/produk" className="b-tautan">Lihat Semua Produk <IkonPanah size={16} tebal={2} /></Link>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
-            {KATEGORI.map((k, i) => (
-              <Link
-                key={k}
-                href={`/produk?kategori=${encodeURIComponent(k)}`}
-                className="prod-card"
-                style={{
-                  background: '#fff', border: '0.5px solid #e8f0f8', borderRadius: '12px',
-                  padding: '14px 8px', textAlign: 'center', textDecoration: 'none',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px',
-                  animation: 'fadeInUp 0.28s ease both',
-                  animationDelay: `${i * 40}ms`,
-                }}
-              >
-                <span style={{ fontSize: '26px', lineHeight: 1 }}>{EMOJI_KATEGORI[k]}</span>
-                <span style={{ fontSize: '11px', fontWeight: '600', color: '#444' }}>{k}</span>
-              </Link>
-            ))}
+
+          {loading ? (
+            <div className="b-produk-grid">
+              {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
+            </div>
+          ) : latest.length === 0 ? (
+            // Ajakannya mengikuti siapa yang melihat — penjual aktif ditawari
+            // menambah produk, sisanya diberi dua jalan keluar. Teksnya
+            // dibagi dengan /produk, jadi ada di komponennya.
+            <LapakSegeraDibuka penjualAktif={penjualAktif} />
+          ) : (
+            <div className="b-produk-grid">
+              {latest.map(p => <KartuProduk key={p.id} p={p} />)}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* ── Kenapa Superfive ── */}
+      <section className="b-seksi" aria-labelledby="judul-kenapa">
+        <div className="b-wadah">
+          <div className="b-kenapa">
+            <div>
+              <h2 id="judul-kenapa" className="b-judul">Kenapa Superfive Market?</h2>
+              <p className="b-sub">Lebih dari transaksi, ini tentang kebersamaan.</p>
+            </div>
+            <ul className="b-kenapa-daftar" role="list">
+              <AlasanItem ikon={<IkonOrang size={24} />} judul="Komunitas Terpercaya" isi="Penjual berasal dari komunitas alumni." />
+              <AlasanItem ikon={<IkonPerisai size={24} />} judul="Dukung Sesama Alumni" isi="Setiap transaksi memperkuat jaringan dan peluang." />
+              <AlasanItem ikon={<IkonPetak size={24} />} judul="Kategori Lengkap" isi="Produk, jasa, dan bisnis dalam satu platform." />
+              <AlasanItem ikon={<IkonGrafik size={24} />} judul="Peluang Lebih Luas" isi="Bisnis alumni dapat ditemukan lebih banyak orang." />
+            </ul>
           </div>
         </div>
+      </section>
 
-        {/* ── Produk Terbaru ── */}
-        <div style={{ marginBottom: '28px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <div style={{ fontSize: '13px', fontWeight: '700', color: '#1a1a1a' }}>Produk Terbaru</div>
-            <Link href="/produk" style={{ fontSize: '12px', color: '#0C447C', textDecoration: 'none', fontWeight: '600', minHeight: '44px', display: 'inline-flex', alignItems: 'center', padding: '0 4px' }}>
-              Lihat Semua →
-            </Link>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '10px' }}>
-            {loading
-              ? Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
-              : latest.length === 0
-                ? (
-                  // Ajakannya mengikuti siapa yang melihat — penjual aktif
-                  // ditawari menambah produk, sisanya diberi dua jalan keluar.
-                  // Teksnya dibagi dengan /produk, jadi ada di komponennya.
-                  <div style={{ gridColumn: '1 / -1' }}>
-                    <LapakSegeraDibuka penjualAktif={penjualAktif} />
-                  </div>
-                )
-                : latest.map((p, i) => (
-                  <Link
-                    key={p.id}
-                    href={`/produk/${p.id}`}
-                    className="prod-card"
-                    style={{
-                      background: '#fff', borderRadius: '10px', border: '0.5px solid #e8f0f8',
-                      overflow: 'hidden', textDecoration: 'none', display: 'block',
-                      animation: 'fadeInUp 0.28s ease both',
-                      animationDelay: `${Math.min(i * 50, 250)}ms`,
-                    }}
-                  >
-                    <div style={{ position: 'relative' }}>
-                      <BadgePreorder aktif={p.is_preorder} bentuk="pita" />
-                      <FotoProduk src={p.foto_url} kategori={p.kategori} height={120} fontSize={40} />
-                    </div>
-                    <div style={{ padding: '10px' }}>
-                      <div style={{ fontSize: '12px', fontWeight: '500', color: '#333', marginBottom: '4px', height: '32px', overflow: 'hidden' }}>
-                        {p.nama}
-                      </div>
-                      <div style={{ fontSize: '13px', fontWeight: '700', color: '#0C447C', marginBottom: '4px' }}>
-                        {fmt(p.harga)}
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#5a7da0', marginBottom: '6px' }}>
-                        <span>⭐ {p.rating || '5.0'}</span>
-                        {/* Stok produk PO selalu 0 karena trg_kurangi_stok
-                            sengaja melewatinya — kalau ditampilkan akan
-                            terbaca habis padahal PO-nya sedang buka */}
-                        <span>{p.is_preorder ? 'Pre-Order' : `${p.terjual || 0} terjual`}</span>
-                      </div>
-                      {!p.is_preorder && (
-                        <div style={{ marginBottom: '6px' }}>
-                          <BadgeTersedia tersedia={p.is_tersedia} kecil />
-                        </div>
-                      )}
-                      {p.is_preorder && p.po_janji_kirim && (
-                        <div style={{ fontSize: '10px', color: WARNA_PO_TUA, marginBottom: '6px', lineHeight: 1.5 }}>
-                          🚚 {janjiKirim(p.po_janji_kirim)}
-                        </div>
-                      )}
-                      <div style={{ fontSize: '10px', background: '#E6F1FB', color: '#0C447C', padding: '2px 6px', borderRadius: '4px', display: 'inline-block' }}>
-                        {p.kategori}
-                      </div>
-                      {/* Nama · Superfive 92. Tidak ada cabang OFFICIAL di
-                          sini: rak ini menyaring toko resmi, jadi semua
-                          penjualnya alumni perorangan */}
-                      {p.penjual && (
-                        <div style={{ marginTop: '6px' }}>
-                          <NamaPenjual nama={p.penjual.nama} label={p.penjual.label_angkatan} angkatan={p.penjual.angkatan} institusi={p.penjual.is_institusi} kecil />
-                        </div>
-                      )}
-                    </div>
-                    <div className="prod-card-btn" style={{ background: '#0C447C', color: '#fff', padding: '8px', fontSize: '11px', textAlign: 'center' }}>
-                      Lihat Detail
-                    </div>
-                  </Link>
-                ))
-            }
+      {/* ── Ajakan berjualan ── */}
+      <section className="b-seksi" aria-labelledby="judul-jual" style={{ paddingBottom: '64px' }}>
+        <div className="b-wadah">
+          <div className="b-cta">
+            <div style={{ position: 'relative', zIndex: 1 }}>
+              <p style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#C4DCF2' }}>Punya usaha atau jasa?</p>
+              <h2 id="judul-jual" className="b-cta-judul">Bawa ke keluarga besar SUPERFIVE.</h2>
+              <p style={{ margin: 0, fontSize: '16px', lineHeight: 1.65, color: '#C4DCF2', maxWidth: '520px' }}>
+                Jual produk, tawarkan jasa, perluas jaringan, dan tumbuh bersama alumni SMPN 5 Bandung.
+              </p>
+            </div>
+            <div className="b-cta-aksi">
+              {/* Aturan yang sama dengan hero: "Tambah Produk" hanya untuk
+                  penjual aktif. Yang lain diajak ke pintu berjualan, bukan
+                  ke halaman yang akan menolaknya. */}
+              <button type="button" onClick={handleJualClick} className="b-tombol b-tombol-emas">
+                {labelJual} <IkonPanah size={18} tebal={2} />
+              </button>
+              <ul className="b-cta-label" role="list">
+                <li><IkonCentang size={14} tebal={2.4} /> Mudah</li>
+                <li><IkonCentang size={14} tebal={2.4} /> Gratis</li>
+                <li><IkonCentang size={14} tebal={2.4} /> Untuk Alumni</li>
+              </ul>
+            </div>
           </div>
         </div>
+      </section>
 
-        {/* ── Bottom CTA banner ── */}
-        <div style={{
-          background: 'linear-gradient(135deg, #0C447C 0%, #185FA5 100%)',
-          borderRadius: '16px', padding: '26px 20px',
-          textAlign: 'center', position: 'relative', overflow: 'hidden',
-          marginBottom: '8px',
-        }}>
-          <div aria-hidden style={{ position: 'absolute', top: '-30px', right: '-30px', width: '120px', height: '120px', borderRadius: '50%', background: 'rgba(255,255,255,0.07)', pointerEvents: 'none' }} />
-          <div aria-hidden style={{ position: 'absolute', bottom: '-20px', left: '20px', width: '70px', height: '70px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', pointerEvents: 'none' }} />
-          <div style={{ fontSize: '28px', marginBottom: '10px' }}>🚀</div>
-          <div style={{ fontSize: '16px', fontWeight: '700', color: '#fff', marginBottom: '8px' }}>
-            Punya produk atau jasa?
-          </div>
-          <p style={{ fontSize: '13px', color: '#B5D4F4', margin: '0 0 18px', lineHeight: '1.6' }}>
-            Bergabung dan mulai berjualan ke sesama alumni Superfive secara gratis.
-          </p>
-          <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            {/* Aturan yang sama dengan /produk dan state kosong: "+ Tambah
-                Produk" hanya untuk penjual aktif. Yang lain diajak ke pintu
-                berjualan, bukan ke halaman yang akan menolaknya. */}
-            <button onClick={handleJualClick} style={{
-              background: '#fff', color: '#0C447C', fontWeight: '700', border: 'none',
-              padding: '0 22px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', borderRadius: '8px', fontSize: '13px', cursor: 'pointer',
-            }}>
-              {penjualAktif ? '+ Tambah Produk' : 'Mulai Berjualan'}
-            </button>
-            {/* Ajakan mendaftar tidak ada artinya untuk yang sudah punya akun */}
-            {!loggedIn && (
-              <Link href="/auth?mode=daftar" style={{
-                background: 'rgba(255,255,255,0.15)', color: '#fff',
-                border: '1px solid rgba(255,255,255,0.3)',
-                padding: '0 22px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', borderRadius: '8px', fontSize: '13px', textDecoration: 'none',
-              }}>
-                Daftar Sekarang
-              </Link>
-            )}
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div style={{ textAlign: 'center', padding: '16px 0 8px', fontSize: '11px', color: '#9ab4cc' }}>
-          Superfive Market · Alumni SMPN 5 Bandung · Angkatan 1988
-        </div>
-      </div>
-
-      <style>{`
-        @media (max-width: 640px) {
-          .hero-building { display: none !important; }
-        }
-      `}</style>
+      <SiteFooter />
     </main>
+  )
+}
+
+function AlasanItem({ ikon, judul, isi }: { ikon: React.ReactNode; judul: string; isi: string }) {
+  return (
+    <li className="b-alasan">
+      <span className="b-alasan-ikon">{ikon}</span>
+      <span>
+        <strong>{judul}</strong>
+        <span>{isi}</span>
+      </span>
+    </li>
+  )
+}
+
+// Kartu produk lapak alumni. Tidak ada tombol keranjang maupun wishlist:
+// keranjang dibekukan mode katalog, dan wishlist tidak pernah ada. Satu-satunya
+// aksi adalah membuka detailnya, tempat tombol Hubungi Penjual berada.
+function KartuProduk({ p }: { p: Produk }) {
+  return (
+    <Link href={`/produk/${p.id}`} className="prod-card b-produk-kartu">
+      <div style={{ position: 'relative' }}>
+        <BadgePreorder aktif={p.is_preorder} bentuk="pita" />
+        <FotoProduk src={p.foto_url} kategori={p.kategori} height={160} fontSize={44} />
+      </div>
+      <div style={{ padding: '12px 12px 14px', display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
+        <span style={{ fontSize: '12px', color: '#617B95', fontWeight: 500 }}>{p.kategori}</span>
+        <span className="b-produk-nama">{p.nama}</span>
+        <span style={{ fontSize: '16px', fontWeight: 800, color: '#07589F' }}>{fmt(p.harga)}</span>
+        {/* Stok produk PO selalu 0 karena trg_kurangi_stok sengaja
+            melewatinya — produk PO memakai janji kirim, bukan lencana stok */}
+        {p.is_preorder ? (
+          p.po_janji_kirim && (
+            <span style={{ fontSize: '12px', color: WARNA_PO_TUA, lineHeight: 1.5 }}>{janjiKirim(p.po_janji_kirim)}</span>
+          )
+        ) : (
+          <div><BadgeTersedia tersedia={p.is_tersedia} kecil /></div>
+        )}
+        {/* Nama · Superfive 92. Tidak ada cabang OFFICIAL di sini: rak ini
+            menyaring toko resmi, jadi semua penjualnya alumni perorangan */}
+        {p.penjual && (
+          <div style={{ marginTop: 'auto', paddingTop: '8px', borderTop: '1px solid #EAF4FC' }}>
+            <NamaPenjual nama={p.penjual.nama} label={p.penjual.label_angkatan} angkatan={p.penjual.angkatan} institusi={p.penjual.is_institusi} kecil />
+          </div>
+        )}
+      </div>
+    </Link>
   )
 }
