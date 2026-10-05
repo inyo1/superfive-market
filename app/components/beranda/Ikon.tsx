@@ -98,3 +98,11 @@ export function IkonCentang(p: Props) {
 export function IkonTruk(p: Props) {
   return <Svg {...p}><path d="M2.5 6.5h11v10h-11z" /><path d="M13.5 10h4l3 3v3.5h-7" /><circle cx="6.5" cy="17.5" r="1.8" /><circle cx="17" cy="17.5" r="1.8" /></Svg>
 }
+
+export function IkonSaring(p: Props) {
+  return <Svg {...p}><path d="M4 6h10" /><path d="M18 6h2" /><circle cx="16" cy="6" r="2" /><path d="M4 12h4" /><path d="M12 12h8" /><circle cx="10" cy="12" r="2" /><path d="M4 18h12" /><path d="M20 18h0" /><circle cx="18" cy="18" r="2" /></Svg>
+}
+
+export function IkonTutup(p: Props) {
+  return <Svg {...p}><path d="M6 6l12 12" /><path d="M18 6 6 18" /></Svg>
+}

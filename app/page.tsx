@@ -13,9 +13,10 @@ import BadgeTersedia from './components/BadgeTersedia'
 import LapakSegeraDibuka from './components/LapakSegeraDibuka'
 import { IkonProduk, IkonToko, IkonAlumni } from './components/IkonStatistik'
 import {
-  IKON_KATEGORI, IkonPanah, IkonCari, IkonOrang, IkonPerisai, IkonPetak, IkonGrafik, IkonCentang,
+  IKON_KATEGORI, IkonPanah, IkonCari, IkonOrang, IkonPerisai, IkonPetak, IkonGrafik,
 } from './components/beranda/Ikon'
 import SiteFooter from './components/beranda/SiteFooter'
+import AjakanJual, { tujuanJual, labelJual } from './components/beranda/AjakanJual'
 import { janjiKirim } from '../lib/preorder'
 import { KATEGORI } from '../lib/kategori'
 import { ambilPenjualPublik, type PenjualPublik } from '../lib/penjualPublik'
@@ -116,11 +117,7 @@ export default function Home() {
   // pasti berujung penolakan. Yang belum jadi penjual dibawa ke pintunya
   // dulu (/jual), yang belum punya akun ke pendaftaran.
   function handleJualClick() {
-    if (penjualAktif) router.push('/produk/tambah')
-    else if (loggedIn) router.push('/jual')
-    // msg diisi eksplisit: tanpa itu /auth memakai kalimat bawaannya,
-    // "Login dulu untuk melanjutkan pembelian" — alur ini soal berjualan
-    else router.push('/auth?mode=daftar&redirect=/jual&msg=' + encodeURIComponent('Daftar dulu untuk mulai berjualan'))
+    router.push(tujuanJual(penjualAktif, loggedIn))
   }
 
   // Kolom cari hero memakai pencarian yang sudah dilayani /produk lewat ?q=
@@ -193,7 +190,7 @@ export default function Home() {
   }, [])
 
   // Label tombol jualan mengikuti peran yang sama dengan tujuannya
-  const labelJual = penjualAktif ? 'Tambah Produk' : 'Buka Toko Gratis'
+  const labelTombolJual = labelJual(penjualAktif)
 
   return (
     <main className="beranda">
@@ -244,7 +241,7 @@ export default function Home() {
                 Jelajahi Marketplace <IkonPanah size={18} tebal={2} />
               </Link>
               <button type="button" onClick={handleJualClick} className="b-tombol b-tombol-garis">
-                {labelJual}
+                {labelTombolJual}
               </button>
             </div>
           </div>
@@ -343,35 +340,7 @@ export default function Home() {
       </section>
 
       {/* ── Ajakan berjualan ── */}
-      <section className="b-seksi" aria-labelledby="judul-jual" style={{ paddingBottom: '64px' }}>
-        <div className="b-wadah">
-          <div className="b-cta">
-            <div className="b-cta-foto" aria-hidden>
-              <Image src="/smpn5-hero.png" alt="" fill sizes="(max-width: 899px) 100vw, 800px" style={{ objectFit: 'cover', objectPosition: 'center 35%' }} />
-            </div>
-            <div style={{ position: 'relative', zIndex: 1 }}>
-              <p style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#C4DCF2' }}>Punya usaha atau jasa?</p>
-              <h2 id="judul-jual" className="b-cta-judul">Bawa ke keluarga besar SUPERFIVE.</h2>
-              <p style={{ margin: 0, fontSize: '16px', lineHeight: 1.65, color: '#C4DCF2', maxWidth: '520px' }}>
-                Jual produk, tawarkan jasa, perluas jaringan, dan tumbuh bersama alumni SMPN 5 Bandung.
-              </p>
-            </div>
-            <div className="b-cta-aksi">
-              {/* Aturan yang sama dengan hero: "Tambah Produk" hanya untuk
-                  penjual aktif. Yang lain diajak ke pintu berjualan, bukan
-                  ke halaman yang akan menolaknya. */}
-              <button type="button" onClick={handleJualClick} className="b-tombol b-tombol-emas">
-                {labelJual} <IkonPanah size={18} tebal={2} />
-              </button>
-              <ul className="b-cta-label" role="list">
-                <li><IkonCentang size={14} tebal={2.4} /> Mudah</li>
-                <li><IkonCentang size={14} tebal={2.4} /> Gratis</li>
-                <li><IkonCentang size={14} tebal={2.4} /> Untuk Alumni</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
+      <AjakanJual label={labelTombolJual} onClick={handleJualClick} />
 
       <SiteFooter />
     </main>
