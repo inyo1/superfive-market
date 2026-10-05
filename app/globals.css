@@ -1665,5 +1665,28 @@ main {
   .m-lembar-latar { align-items: center; }
   .m-lembar { border-radius: 20px; }
 }
+/* UJI VISUAL (sementara, QA fase 2) — banner selama fixture /produk aktif.
+   Hapus bersama app/produk/fixtureUjiVisual.ts. */
+.m-uji {
+  margin-top: 16px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px dashed #c98a00;
+  background: #FFF7E0;
+  color: #5c4100;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.m-uji-keluar {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 700;
+  color: #07589F;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 /* Etalase kosong: tanpa kolom saringan */
 @media (min-width: 1024px) { .m-tata.tanpa-samping { grid-template-columns: 1fr; } }
