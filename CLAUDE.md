@@ -205,7 +205,8 @@ app/
     TombolHubungi    Hubungi Penjual → buka_kontak_toko → wa.me
     TombolLapor      lapor keabsahan angkatan; null selama env kosong
     Editor*          EditorVarian, EditorPreorder — dipakai form tambah & edit
-    SectionOfficial  karosel merchandise resmi di beranda
+    SectionOfficial  panel merchandise IniLima di beranda (logo, ajakan, karosel)
+    beranda/         Ikon (ikon garis, termasuk IKON_KATEGORI) dan SiteFooter
     RekapPO          ringkasan PO satu produk untuk penjual
     PeringatanCampuranPO   peringatan keranjang campur PO + siap kirim
     lainnya          Navbar, BottomNav, FotoProduk, ReviewSection,
@@ -654,8 +655,8 @@ Superfive tidak menjual apa pun, padahal merchandise tayang beberapa piksel
 di atasnya.
 
 Gantinya [LapakSegeraDibuka](app/components/LapakSegeraDibuka.tsx) —
-"Lapak alumni segera dibuka", dengan dua jalan keluar (Lihat Merchandise
-Resmi, Jadi Penjual Pertama). Dipakai beranda **dan** `/produk`; teksnya ada
+"Marketplace Alumni Sedang Bertumbuh", dengan dua jalan keluar (Lihat
+Merchandise IniLima, Jadi Penjual Pertama). Dipakai beranda **dan** `/produk`; teksnya ada
 di komponennya, bukan disalin ke dua halaman. Penjual aktif dapat varian lain:
 ajakan menambah produknya sendiri.
 
@@ -2272,6 +2273,13 @@ Palet warna:
 | Sukses / error | `#2e7d32` / `#c62828` | Status |
 | Emas | `#EF9F27` | Aksen identitas, lencana OFFICIAL |
 | Ungu PO | `#7c4dff` / `#4527a0` | Pre-order — jangan dipakai untuk hal lain, ekspor `WARNA_PO` dan `WARNA_PO_TUA` dari [BadgePreorder](app/components/BadgePreorder.tsx) |
+
+**Navbar dan beranda (redesain Oktober 2026)** memakai token `--sf-*` di
+`:root` [app/globals.css](app/globals.css) — navy `#062F59`, biru `#07589F`,
+aksi `#087EF5`, emas `#FFB51B` — dan kelas berawalan `b-` / `nav-`. Halaman
+lain masih memakai palet di atas sampai giliran redesainnya. Navbar kini satu
+baris; Dashboard, Toko Saya, tautan pengurus, dan Keluar ada di menu akun
+(dropdown avatar) di >= 1024px.
 
 ### Dua logo, dan jangan tertukar
 

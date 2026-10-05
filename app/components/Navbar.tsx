@@ -15,8 +15,6 @@ const links = [
   { href: '/about', label: 'Tentang Kami' },
 ]
 
-const EMAS = '#EF9F27'
-
 // Ikon utilitas digambar inline. Emoji tampil beda-beda antar perangkat dan
 // tinggi barisnya ikut berubah, yang bikin baris navbar tidak rata.
 function IkonCari() {
@@ -30,8 +28,16 @@ function IkonCari() {
 
 function IkonChat() {
   return (
-    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M21 12a8 8 0 01-8 8H4l2-3a8 8 0 1115-5z" />
+    </svg>
+  )
+}
+
+function IkonPanahBawah() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="m6 9 6 6 6-6" />
     </svg>
   )
 }
@@ -45,7 +51,9 @@ export default function Navbar() {
   // Admin angkatan hanya dapat pintu verifikasi alumni, bukan panel admin
   const [adminAngkatan, setAdminAngkatan] = useState(false)
   const [menungguPenjual, setMenungguPenjual] = useState(0)
+  const [menuAkun, setMenuAkun] = useState(false)
   const navRef = useRef<HTMLElement>(null)
+  const akunRef = useRef<HTMLDivElement>(null)
   const pathname = usePathname()
   const router = useRouter()
   const { unreadCount } = useChatContext()
@@ -88,9 +96,8 @@ export default function Navbar() {
     return () => listener.subscription.unsubscribe()
   }, [])
 
-  // Tinggi navbar berubah-ubah: satu baris di bawah 1024px, dua baris di atasnya,
-  // dan barisnya bisa berganti isi saat login. Diukur lalu diumumkan sebagai
-  // --tinggi-navbar supaya elemen sticky lain menempel pas, tanpa angka tetap.
+  // Tinggi navbar diukur lalu diumumkan sebagai --tinggi-navbar supaya
+  // elemen sticky lain (header chat) menempel pas, tanpa angka tetap.
   useEffect(() => {
     const el = navRef.current
     if (!el) return
@@ -106,7 +113,30 @@ export default function Navbar() {
     return () => ro.disconnect()
   }, [user, isAdmin])
 
+  // Menu akun: tutup saat klik di luar atau Escape. Memilih tautannya
+  // menutup lewat onClick di panelnya.
+  useEffect(() => {
+    if (!menuAkun) return
+    function luar(e: MouseEvent) {
+      if (akunRef.current && !akunRef.current.contains(e.target as Node)) setMenuAkun(false)
+    }
+    function esc(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setMenuAkun(false)
+        akunRef.current?.querySelector('button')?.focus()
+      }
+    }
+    document.addEventListener('mousedown', luar)
+    document.addEventListener('keydown', esc)
+    return () => {
+      document.removeEventListener('mousedown', luar)
+      document.removeEventListener('keydown', esc)
+    }
+  }, [menuAkun])
+
+
   async function handleLogout() {
+    setMenuAkun(false)
     await supabase.auth.signOut()
     router.push('/')
   }
@@ -115,126 +145,152 @@ export default function Navbar() {
     return href === '/' ? pathname === '/' : pathname.startsWith(href)
   }
 
-  // Menu baris bawah. Item khusus pengguna login ikut menyusul di belakang.
-  const menuNavigasi = user
-    ? [
-        ...links,
-        { href: '/dashboard', label: 'Dashboard' },
-        { href: '/toko/saya', label: 'Toko Saya' },
-      ]
-    : links
-
   const initials = userName
     ? userName.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase()
     : (user?.email?.charAt(0).toUpperCase() ?? '?')
 
-  const AvatarCircle = ({ size = 32 }: { size?: number }) => (
-    <Link
-      href="/profil"
-      style={{
-        width: `${size}px`, height: `${size}px`, borderRadius: '50%',
-        overflow: 'hidden', background: 'linear-gradient(135deg, #185FA5, #0C447C)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        border: '2px solid rgba(255,255,255,0.35)', flexShrink: 0,
-        textDecoration: 'none',
-      }}
-      aria-label="Profil"
-    >
-      {avatarUrl ? (
-        <Image src={avatarUrl} alt="Profil" width={size} height={size} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-      ) : (
-        <span style={{ fontSize: `${Math.round(size * 0.4)}px`, fontWeight: '700', color: '#fff', lineHeight: 1 }}>
-          {initials}
-        </span>
-      )}
-    </Link>
-  )
 
-  const ChatBadge = () => (
-    <Link
-      href="/chat"
-      style={{ position: 'relative', color: '#fff', textDecoration: 'none', lineHeight: 1, minWidth: '40px', minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-      aria-label="Chat"
-    >
-      <IkonChat />
-      {unreadCount > 0 && (
-        <span style={{
-          position: 'absolute', top: '-2px', right: '-6px',
-          background: '#e53935', color: '#fff',
-          fontSize: '10px', fontWeight: '700',
-          borderRadius: '50%', width: '16px', height: '16px',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
-        }}>
-          {unreadCount > 99 ? '99+' : unreadCount}
-        </span>
-      )}
-    </Link>
-  )
+  // Isi menu akun. Dashboard dan Toko Saya dulu duduk di baris menu kedua;
+  // sejak navbar jadi satu baris, keduanya pindah ke sini bersama tautan
+  // pengurus — tujuannya sama, hanya pintunya yang berpindah.
+  const menuSaya = [
+    { href: '/profil', label: 'Profil Saya' },
+    { href: '/dashboard', label: 'Dashboard' },
+    { href: '/toko/saya', label: 'Toko Saya' },
+  ]
 
   return (
     <>
       <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
 
-      <nav ref={navRef} style={{ background: '#0C447C', fontFamily: 'sans-serif', position: 'sticky', top: 0, zIndex: 100 }}>
-
-        {/* ── Baris atas: identitas + utilitas ── */}
-        <div style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+      <nav ref={navRef} className="nav-utama" aria-label="Navigasi utama">
+        <div className="nav-dalam">
 
           {/* Brand tidak pernah menyusut, jadi namanya tidak mungkin terpotong */}
-          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', flexShrink: 0 }}>
-            <Image src="/LOGO-512.png" alt="Logo" width={56} height={56} priority style={{ objectFit: 'contain', flexShrink: 0 }} />
-            <div>
-              <div style={{ color: '#fff', fontSize: '15px', fontWeight: '600', whiteSpace: 'nowrap', lineHeight: 1.3 }}>
+          <Link href="/" className="nav-brand" aria-label="Superfive Market — Beranda">
+            <Image src="/LOGO-512.png" alt="" width={48} height={48} priority style={{ objectFit: 'contain', flexShrink: 0 }} />
+            <span className="nav-brand-teks">
+              <span style={{ display: 'block', color: '#fff', fontSize: '16px', fontWeight: 700, whiteSpace: 'nowrap', lineHeight: 1.2, letterSpacing: '-0.2px' }}>
                 Superfive Market
-              </div>
-              <div style={{ color: '#B5D4F4', fontSize: '10px', letterSpacing: '1px', whiteSpace: 'nowrap' }}>
+              </span>
+              <span style={{ display: 'block', color: '#A9CBEB', fontSize: '10px', letterSpacing: '1.2px', whiteSpace: 'nowrap', marginTop: '2px' }}>
                 ALUMNI SMPN 5 BANDUNG
-              </div>
-            </div>
+              </span>
+            </span>
           </Link>
 
-          <div style={{ flex: 1, minWidth: '8px' }} />
+          {/* Menu utama — hanya >= 1024px; di bawahnya ditangani bottom nav */}
+          <ul className="nav-menu" role="list">
+            {links.map(m => {
+              const aktif = isActive(m.href)
+              return (
+                <li key={m.href}>
+                  <Link href={m.href} aria-current={aktif ? 'page' : undefined} className={`nav-tautan${aktif ? ' aktif' : ''}`}>
+                    {m.label}
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
+
+          {/* Kolom cari. Bentuknya kolom, tapi isinya membuka SearchOverlay
+              yang sudah ada — hasil produk dan toko sekaligus, dengan
+              penyaring merchandise yang sama. Tidak ada logika cari kedua. */}
+          <button type="button" className="nav-cari" onClick={() => setSearchOpen(true)} aria-label="Cari produk, jasa, atau usaha alumni">
+            <span className="nav-cari-teks">Cari produk, jasa, atau usaha alumni...</span>
+            <span className="nav-cari-ikon"><IkonCari /></span>
+          </button>
+
+          <div style={{ flex: 1 }} className="nav-pengisi" />
 
           {/* Utilitas desktop */}
-          <div className="nav-utilitas" style={{ alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-            <button
-              onClick={() => setSearchOpen(true)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '7px',
-                background: 'rgba(255,255,255,0.12)', border: 'none',
-                color: '#fff', padding: '0 14px', minHeight: '40px', borderRadius: '8px',
-                fontSize: '13px', cursor: 'pointer', transition: 'background 0.15s',
-              }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.2)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.12)')}
-              aria-label="Cari"
-            >
-              <IkonCari /> <span>Cari</span>
-            </button>
-
+          <div className="nav-utilitas" style={{ alignItems: 'center', gap: '8px', flexShrink: 0 }}>
             {/* Ikon keranjang dihapus di mode katalog — lihat lib/config.ts */}
-            {user && <ChatBadge />}
+            {user && (
+              <Link href="/chat" className="nav-ikon" aria-label={unreadCount > 0 ? `Chat, ${unreadCount} pesan belum dibaca` : 'Chat'}>
+                <IkonChat />
+                {unreadCount > 0 && (
+                  <span className="nav-lencana">{unreadCount > 99 ? '99+' : unreadCount}</span>
+                )}
+              </Link>
+            )}
 
             {user ? (
-              <>
-                <AvatarCircle size={34} />
+              <div ref={akunRef} style={{ position: 'relative' }}>
                 <button
-                  onClick={handleLogout}
-                  style={{ color: '#fff', fontSize: '12px', background: '#a53018', border: 'none', padding: '0 16px', minHeight: '40px', borderRadius: '8px', cursor: 'pointer' }}
+                  type="button"
+                  className="nav-akun"
+                  onClick={() => setMenuAkun(v => !v)}
+                  aria-haspopup="menu"
+                  aria-expanded={menuAkun}
+                  aria-label="Menu akun"
                 >
-                  Keluar
+                  <span style={{ position: 'relative', display: 'flex' }}>
+                    <Avatar size={36} url={avatarUrl} inisial={initials} />
+                    {isAdmin && menungguPenjual > 0 && <span className="nav-titik" aria-hidden />}
+                  </span>
+                  <IkonPanahBawah />
                 </button>
-              </>
+
+                {menuAkun && (
+                  <div
+                    className="nav-dropdown" role="menu" aria-label="Menu akun"
+                    onClick={e => { if ((e.target as HTMLElement).closest('a')) setMenuAkun(false) }}
+                  >
+                    <div style={{ padding: '12px 14px 10px', borderBottom: '1px solid #EAF4FC' }}>
+                      <div style={{ fontSize: '14px', fontWeight: 700, color: '#092D52', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {userName || 'Akun Saya'}
+                      </div>
+                      {user?.email && (
+                        <div style={{ fontSize: '12px', color: '#617B95', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: '2px' }}>
+                          {user.email}
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ padding: '6px' }}>
+                      {menuSaya.map(m => (
+                        <Link key={m.href} href={m.href} role="menuitem" className="nav-dropdown-item">{m.label}</Link>
+                      ))}
+                    </div>
+
+                    {(isAdmin || adminAngkatan) && (
+                      <div style={{ padding: '6px', borderTop: '1px solid #EAF4FC' }}>
+                        <div style={{ fontSize: '10.5px', fontWeight: 700, letterSpacing: '0.8px', color: '#9a6b00', padding: '6px 10px 4px' }}>
+                          PENGURUS
+                        </div>
+                        {isAdmin && <Link href="/admin" role="menuitem" className="nav-dropdown-item">Admin</Link>}
+                        <Link href="/admin/verifikasi" role="menuitem" className="nav-dropdown-item">Alumni Terbaru</Link>
+                        {isAdmin && (
+                          <Link href="/admin/penjual" role="menuitem" className="nav-dropdown-item">
+                            Pengajuan Penjual
+                            {menungguPenjual > 0 && (
+                              <span className="nav-lencana" style={{ position: 'static', marginLeft: 'auto' }}>
+                                {menungguPenjual > 99 ? '99+' : menungguPenjual}
+                              </span>
+                            )}
+                          </Link>
+                        )}
+                      </div>
+                    )}
+
+                    <div style={{ padding: '6px', borderTop: '1px solid #EAF4FC' }}>
+                      <button type="button" role="menuitem" onClick={handleLogout} className="nav-dropdown-item" style={{ color: '#b3261e' }}>
+                        Keluar
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             ) : (
-              <Link href="/auth" style={{ color: '#fff', fontSize: '12px', textDecoration: 'none', background: '#185FA5', padding: '0 18px', minHeight: '40px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center' }}>
-                Masuk
-              </Link>
+              <Link href="/auth" className="nav-masuk">Masuk</Link>
             )}
           </div>
 
           {/* Kontrol ringkas di bawah 1024px — sisanya ditangani bottom nav */}
           <div className="nav-ringkas" style={{ alignItems: 'center', gap: '4px', flexShrink: 0 }}>
             <button
+              type="button"
               onClick={() => setSearchOpen(true)}
               style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#fff', borderRadius: '8px', minWidth: '44px', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               aria-label="Cari"
@@ -263,93 +319,26 @@ export default function Navbar() {
             )}
           </div>
         </div>
-
-        {/* ── Baris bawah: menu navigasi, hanya >= 1024px ── */}
-        <div className="nav-baris-menu">
-          <div className="nav-menu-geser" style={{ padding: '0 16px' }}>
-            {menuNavigasi.map(m => {
-              const aktif = isActive(m.href)
-              return (
-                <Link
-                  key={m.href}
-                  href={m.href}
-                  aria-current={aktif ? 'page' : undefined}
-                  style={{
-                    display: 'inline-flex', alignItems: 'center',
-                    height: '44px', padding: '0 14px', flexShrink: 0,
-                    fontSize: '13px', textDecoration: 'none', whiteSpace: 'nowrap',
-                    color: aktif ? '#fff' : '#B5D4F4',
-                    fontWeight: aktif ? '600' : '400',
-                    // Garis bawah emas, bukan kotak berisi — lebih tenang
-                    // untuk deretan menu yang panjang
-                    borderBottom: `3px solid ${aktif ? EMAS : 'transparent'}`,
-                  }}
-                >
-                  {m.label}
-                </Link>
-              )
-            })}
-
-            {(isAdmin || adminAngkatan) && (
-              <>
-                <span aria-hidden style={{ alignSelf: 'center', width: '1px', height: '20px', background: 'rgba(255,255,255,0.18)', margin: '0 6px', flexShrink: 0 }} />
-                {isAdmin && (
-                <Link
-                  href="/admin"
-                  aria-current={pathname === '/admin' ? 'page' : undefined}
-                  style={{
-                    display: 'inline-flex', alignItems: 'center',
-                    height: '44px', padding: '0 14px', flexShrink: 0,
-                    fontSize: '13px', textDecoration: 'none', whiteSpace: 'nowrap',
-                    color: '#ffb74d', fontWeight: '600',
-                    borderBottom: `3px solid ${pathname === '/admin' ? EMAS : 'transparent'}`,
-                  }}
-                >
-                  Admin
-                </Link>
-                )}
-                <Link
-                  href="/admin/verifikasi"
-                  aria-current={pathname.startsWith('/admin/verifikasi') ? 'page' : undefined}
-                  style={{
-                    display: 'inline-flex', alignItems: 'center', gap: '7px',
-                    height: '44px', padding: '0 14px', flexShrink: 0,
-                    fontSize: '13px', textDecoration: 'none', whiteSpace: 'nowrap',
-                    color: '#ffb74d', fontWeight: '600',
-                    borderBottom: `3px solid ${pathname.startsWith('/admin/verifikasi') ? EMAS : 'transparent'}`,
-                  }}
-                >
-                  Alumni Terbaru
-                </Link>
-                {isAdmin && (
-                <Link
-                  href="/admin/penjual"
-                  aria-current={pathname.startsWith('/admin/penjual') ? 'page' : undefined}
-                  style={{
-                    display: 'inline-flex', alignItems: 'center', gap: '7px',
-                    height: '44px', padding: '0 14px', flexShrink: 0,
-                    fontSize: '13px', textDecoration: 'none', whiteSpace: 'nowrap',
-                    color: '#ffb74d', fontWeight: '600',
-                    borderBottom: `3px solid ${pathname.startsWith('/admin/penjual') ? EMAS : 'transparent'}`,
-                  }}
-                >
-                  Pengajuan Penjual
-                  {menungguPenjual > 0 && (
-                    <span style={{
-                      background: '#e53935', color: '#fff', fontSize: '10px', fontWeight: '700',
-                      borderRadius: '10px', minWidth: '18px', height: '18px', padding: '0 5px',
-                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
-                    }}>
-                      {menungguPenjual > 99 ? '99+' : menungguPenjual}
-                    </span>
-                  )}
-                </Link>
-                )}
-              </>
-            )}
-          </div>
-        </div>
       </nav>
     </>
+  )
+}
+
+function Avatar({ size, url, inisial }: { size: number; url: string | null; inisial: string }) {
+  return (
+    <span style={{
+      width: `${size}px`, height: `${size}px`, borderRadius: '50%',
+      overflow: 'hidden', background: 'linear-gradient(135deg, #087EF5, #07589F)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      border: '2px solid rgba(255,255,255,0.4)', flexShrink: 0,
+    }}>
+      {url ? (
+        <Image src={url} alt="" width={size} height={size} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      ) : (
+        <span style={{ fontSize: `${Math.round(size * 0.38)}px`, fontWeight: 700, color: '#fff', lineHeight: 1 }}>
+          {inisial}
+        </span>
+      )}
+    </span>
   )
 }
