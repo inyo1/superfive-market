@@ -2333,6 +2333,16 @@ lain masih memakai palet di atas sampai giliran redesainnya. Navbar kini satu
 baris; Dashboard, Toko Saya, tautan pengurus, dan Keluar ada di menu akun
 (dropdown avatar) di >= 1024px.
 
+**`/produk` (redesain fase 2)** memakai kelas `m-`. Cari, saring (kategori,
+status barang, hanya tersedia, rentang harga), dan urut semuanya di klien atas
+satu query yang sama; `q` dan `kategori` ditulis balik ke URL dengan
+`replaceState`. Kartunya sengaja **tanpa rating, jumlah terjual, dan centang
+verifikasi**: belum ada ulasan, `terjual` berhenti sejak mode katalog, dan
+`label_angkatan` di `penjual_publik` dihitung dari `angkatan` saja, bukan dari
+`status_alumni`. Banner "Punya usaha atau jasa?" ada di
+[AjakanJual](app/components/beranda/AjakanJual.tsx), dipakai beranda dan
+`/produk`, beserta `tujuanJual()` untuk tujuan tombolnya.
+
 ### Dua logo, dan jangan tertukar
 
 **Logo Superfive mewakili PLATFORM. Logo IniLima mewakili KOMUNITAS dan toko
