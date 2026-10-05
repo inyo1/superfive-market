@@ -327,18 +327,18 @@ export default function Home() {
       {/* ── Kenapa Superfive ── */}
       <section className="b-seksi" aria-labelledby="judul-kenapa">
         <div className="b-wadah">
-          <div className="b-kenapa">
+          <div className="b-kepala">
             <div>
               <h2 id="judul-kenapa" className="b-judul">Kenapa Superfive Market?</h2>
               <p className="b-sub">Lebih dari transaksi, ini tentang kebersamaan.</p>
             </div>
-            <ul className="b-kenapa-daftar" role="list">
-              <AlasanItem ikon={<IkonOrang size={24} />} judul="Komunitas Terpercaya" isi="Penjual berasal dari komunitas alumni." />
-              <AlasanItem ikon={<IkonPerisai size={24} />} judul="Dukung Sesama Alumni" isi="Setiap transaksi memperkuat jaringan dan peluang." />
-              <AlasanItem ikon={<IkonPetak size={24} />} judul="Kategori Lengkap" isi="Produk, jasa, dan bisnis dalam satu platform." />
-              <AlasanItem ikon={<IkonGrafik size={24} />} judul="Peluang Lebih Luas" isi="Bisnis alumni dapat ditemukan lebih banyak orang." />
-            </ul>
           </div>
+          <ul className="b-kenapa-daftar" role="list">
+            <AlasanItem ikon={<IkonOrang size={24} />} judul="Komunitas Terpercaya" isi="Penjual berasal dari komunitas alumni." />
+            <AlasanItem ikon={<IkonPerisai size={24} />} judul="Dukung Sesama Alumni" isi="Setiap transaksi memperkuat jaringan dan peluang." />
+            <AlasanItem ikon={<IkonPetak size={24} />} judul="Kategori Lengkap" isi="Produk, jasa, dan bisnis dalam satu platform." />
+            <AlasanItem ikon={<IkonGrafik size={24} />} judul="Peluang Lebih Luas" isi="Bisnis alumni dapat ditemukan lebih banyak orang." />
+          </ul>
         </div>
       </section>
 
@@ -346,6 +346,9 @@ export default function Home() {
       <section className="b-seksi" aria-labelledby="judul-jual" style={{ paddingBottom: '64px' }}>
         <div className="b-wadah">
           <div className="b-cta">
+            <div className="b-cta-foto" aria-hidden>
+              <Image src="/smpn5-hero.png" alt="" fill sizes="(max-width: 899px) 100vw, 800px" style={{ objectFit: 'cover', objectPosition: 'center 35%' }} />
+            </div>
             <div style={{ position: 'relative', zIndex: 1 }}>
               <p style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#C4DCF2' }}>Punya usaha atau jasa?</p>
               <h2 id="judul-jual" className="b-cta-judul">Bawa ke keluarga besar SUPERFIVE.</h2>

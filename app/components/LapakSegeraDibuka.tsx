@@ -24,12 +24,12 @@ type Props = {
 }
 
 const KOTAK: React.CSSProperties = {
-  background: '#fff', borderRadius: '20px', padding: '48px 24px',
+  background: '#fff', borderRadius: '20px', padding: '36px 24px',
   textAlign: 'center', border: '1px solid #DCE8F4',
 }
 
 const LINGKAR_IKON: React.CSSProperties = {
-  width: '64px', height: '64px', borderRadius: '50%', margin: '0 auto 16px',
+  width: '56px', height: '56px', borderRadius: '50%', margin: '0 auto 12px',
   background: '#EAF4FC', color: '#07589F',
   display: 'flex', alignItems: 'center', justifyContent: 'center',
 }
@@ -63,7 +63,7 @@ export default function LapakSegeraDibuka({ penjualAktif = false }: Props) {
   if (penjualAktif) {
     return (
       <div style={KOTAK}>
-        <div style={LINGKAR_IKON}><IkonProduk size={28} /></div>
+        <div style={LINGKAR_IKON}><IkonProduk size={26} /></div>
         <div style={{ fontSize: '15px', color: '#617B95', marginBottom: '18px' }}>
           Belum ada produk di lapakmu
         </div>
@@ -74,13 +74,16 @@ export default function LapakSegeraDibuka({ penjualAktif = false }: Props) {
 
   return (
     <div style={KOTAK}>
-      <div style={LINGKAR_IKON}><IkonToko size={28} /></div>
+      <div style={LINGKAR_IKON}><IkonToko size={26} /></div>
       <h3 style={{ fontSize: '20px', fontWeight: 800, color: '#092D52', margin: '0 0 8px', letterSpacing: '-0.2px' }}>
         Marketplace Alumni Sedang Bertumbuh
       </h3>
-      <p style={{ fontSize: '15px', color: '#617B95', lineHeight: 1.7, margin: '0 auto 24px', maxWidth: '440px' }}>
-        Usaha dan jasa alumni akan tampil di sini. Alumni Superfive sedang
-        bersiap membuka lapaknya masing-masing menjelang Reuni Akbar 17 Oktober.
+      <p style={{ fontSize: '15px', color: '#617B95', lineHeight: 1.65, margin: '0 auto 20px', maxWidth: '460px' }}>
+        {/* Sengaja tanpa tanggal acara: kalimat yang menyebut momen tertentu
+            basi begitu momennya lewat, dan tidak ada data admin yang
+            mengisinya. */}
+        Jadilah bagian dari gelombang pertama yang mengisi Superfive Market
+        dengan produk, jasa, dan bisnis terbaik.
       </p>
       <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
         {/* Tombolnya hilang sendiri kalau toko resmi belum ada di database,
