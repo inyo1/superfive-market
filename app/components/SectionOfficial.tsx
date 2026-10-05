@@ -207,30 +207,22 @@ export default function SectionOfficial() {
           onMouseLeave={() => setHover(false)}
         >
           <div className="inilima-info">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
-              <div style={{ width: '84px', flexShrink: 0 }}>
+            {/* Hierarki: logo dan nama IniLima memimpin, "Official
+                Merchandise" hanya eyebrow kecil di atas namanya */}
+            <div className="inilima-identitas">
+              <div className="inilima-logo">
                 <LogoInilima lebar="100%" />
               </div>
-              <div style={{ borderLeft: '1px solid rgba(255,255,255,0.2)', paddingLeft: '18px', minWidth: 0 }}>
-                <h2 id="judul-inilima" style={{ margin: 0, color: '#fff', lineHeight: 1.15 }}>
-                  <span style={{ display: 'block', fontSize: '15px', fontWeight: 600, color: '#C4DCF2', letterSpacing: '0.2px' }}>
-                    Official Merchandise
-                  </span>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', fontSize: 'clamp(28px, 3.2vw, 36px)', fontWeight: 800, letterSpacing: '-0.5px' }}>
-                    IniLima
-                    <span style={{
-                      background: EMAS, color: '#3d2600',
-                      fontSize: '11px', fontWeight: 800, letterSpacing: '1px',
-                      padding: '4px 8px', borderRadius: '6px', lineHeight: 1.2,
-                    }}>
-                      RESMI
-                    </span>
-                  </span>
-                </h2>
-              </div>
+              <h2 id="judul-inilima" style={{ margin: 0, color: '#fff', minWidth: 0 }}>
+                <span className="inilima-eyebrow">Official Merchandise</span>
+                <span className="inilima-merek">
+                  IniLima
+                  <span className="inilima-resmi">RESMI</span>
+                </span>
+              </h2>
             </div>
 
-            <p style={{ fontSize: '16px', color: '#C4DCF2', lineHeight: 1.65, margin: '20px 0 24px', maxWidth: '380px' }}>
+            <p style={{ fontSize: '17px', color: '#C4DCF2', lineHeight: 1.65, margin: '20px 0 28px', maxWidth: '380px' }}>
               Merchandise original untuk kebanggaan alumni SMPN 5 Bandung.
             </p>
 
@@ -274,7 +266,7 @@ export default function SectionOfficial() {
             ) : (
               /* ── Desktop & tablet: satu baris, digeser lewat transform ── */
               <div style={{ position: 'relative' }}>
-                <div style={{ overflow: 'hidden', margin: '-12px -8px', padding: '12px 0' }}>
+                <div style={{ overflow: 'hidden', margin: '-16px -8px -28px', padding: '16px 0 28px' }}>
                   <div
                     style={{
                       display: 'flex',
@@ -367,22 +359,22 @@ function KartuMerch({ produk: p, tersembunyi = false }: { produk: ProdukResmi; t
       style={{
         background: '#fff', borderRadius: '16px',
         overflow: 'hidden', textDecoration: 'none', display: 'block',
-        boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
+        boxShadow: '0 14px 36px rgba(0,0,0,0.28)',
       }}
     >
       <div style={{ position: 'relative' }}>
         <BadgeOfficial aktif bentuk="pita" />
-        <FotoProduk src={p.foto_url} kategori={p.kategori ?? ''} height={190} fontSize={44} />
+        <FotoProduk src={p.foto_url} kategori={p.kategori ?? ''} height={230} fontSize={48} />
       </div>
-      <div style={{ padding: '14px 14px 16px' }}>
+      <div style={{ padding: '16px 16px 18px' }}>
         <div style={{
-          fontSize: '14px', fontWeight: 600, color: '#092D52',
+          fontSize: '15px', fontWeight: 600, color: '#092D52',
           marginBottom: '6px', lineHeight: 1.35,
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>
           {p.nama}
         </div>
-        <div style={{ fontSize: '16px', fontWeight: 800, color: '#07589F' }}>
+        <div style={{ fontSize: '17px', fontWeight: 800, color: '#07589F' }}>
           {fmt(p.harga)}
         </div>
       </div>

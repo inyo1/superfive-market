@@ -52,11 +52,13 @@ export default function SiteFooter() {
           </nav>
 
           <div className="b-footer-pesan">
-            <span style={{ display: 'block', fontSize: '13px', letterSpacing: '1.4px', color: '#A9CBEB', fontWeight: 600 }}>SUPERFIVE</span>
-            <span style={{ display: 'block', fontSize: '24px', fontWeight: 800, color: '#fff', lineHeight: 1.25, marginTop: '6px' }}>
+            {/* Label dengan gaya judul kolom, supaya baris pertama keempat
+                kolom sejajar */}
+            <p className="b-footer-judul" style={{ color: '#A9CBEB' }}>Superfive</p>
+            <p style={{ margin: '4px 0 0', fontSize: '22px', fontWeight: 800, color: '#fff', lineHeight: 1.25 }}>
               Satu Keluarga<br />Selamanya
-            </span>
-            <span aria-hidden style={{ display: 'block', width: '48px', height: '3px', borderRadius: '2px', background: 'var(--sf-emas)', marginTop: '14px' }} />
+            </p>
+            <i aria-hidden style={{ display: 'block', width: '48px', height: '3px', borderRadius: '2px', background: 'var(--sf-emas)', marginTop: '12px' }} />
           </div>
         </div>
 

@@ -168,9 +168,9 @@ export default function Navbar() {
 
           {/* Brand tidak pernah menyusut, jadi namanya tidak mungkin terpotong */}
           <Link href="/" className="nav-brand" aria-label="Superfive Market — Beranda">
-            <Image src="/LOGO-512.png" alt="" width={48} height={48} priority style={{ objectFit: 'contain', flexShrink: 0 }} />
+            <Image src="/LOGO-512.png" alt="" width={54} height={54} priority style={{ objectFit: 'contain', flexShrink: 0 }} />
             <span className="nav-brand-teks">
-              <span style={{ display: 'block', color: '#fff', fontSize: '16px', fontWeight: 700, whiteSpace: 'nowrap', lineHeight: 1.2, letterSpacing: '-0.2px' }}>
+              <span style={{ display: 'block', color: '#fff', fontSize: '17px', fontWeight: 700, whiteSpace: 'nowrap', lineHeight: 1.2, letterSpacing: '-0.2px' }}>
                 Superfive Market
               </span>
               <span style={{ display: 'block', color: '#A9CBEB', fontSize: '10px', letterSpacing: '1.2px', whiteSpace: 'nowrap', marginTop: '2px' }}>
