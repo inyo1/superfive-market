@@ -1982,6 +1982,72 @@ main {
   .d-rak .m-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
 }
 
+/* Ulasan kini anak ketiga grid detail. Di tablet tetap selebar penuh di
+   bawah Deskripsi + Informasi; di HP grid-nya satu kolom, urutannya sama. */
+.d-ulasan { margin-top: 0; }
+@media (min-width: 768px) and (max-width: 1099px) {
+  .d-ulasan { grid-column: 1 / -1; }
+}
+
+/* ── Kalibrasi kepadatan desktop (fase 3.2) ──
+   Tujuannya: zoom 100% terasa seperti zoom 90% versi 3.1 — lewat lebar
+   wadah, ukuran media, jarak, dan tipografi, BUKAN zoom/transform. Hanya
+   >=1100px dan hanya di halaman detail (.detail / kelas d-); beranda,
+   etalase, tablet, dan HP tidak tersentuh. */
+@media (min-width: 1100px) {
+  /* Wadah selebar etalase /produk; navbar dan footer di halaman ini ikut
+     supaya tepinya sejajar */
+  .detail .b-wadah, .detail .nav-dalam { max-width: 1360px; }
+
+  .d-remah { padding: 12px 0; }
+  .d-utama { gap: 18px; }
+  .d-panel { padding: 18px; }
+
+  /* Foto: 3:2 — tetap paling dominan, ±9% lebih pendek dari 6:5 */
+  .d-galeri { aspect-ratio: 3 / 2; }
+
+  .d-info .d-judul { font-size: 22px; }
+  .d-info .d-harga { font-size: 24px; margin-top: 6px; }
+  .d-info .d-status { margin-top: 8px; padding-bottom: 12px; }
+  .d-varian { margin-top: 12px; }
+  .d-varian-item { min-height: 38px; }
+  .d-aksi-lebar { margin-top: 14px; }
+  .d-po { margin-top: 12px; padding: 14px; gap: 10px; }
+
+  .d-avatar { width: 64px; height: 64px; font-size: 20px; }
+  .d-eyebrow { margin-bottom: 10px; }
+  .d-penjual-aksi { margin-top: 14px; }
+
+  /* Deskripsi kiri atas, ulasan kiri bawah, Informasi Produk di kanan —
+     ulasan kosong tidak lagi jadi pita selebar layar, dan halaman memendek */
+  .d-detail {
+    margin-top: 14px;
+    gap: 14px 18px;
+    grid-template-areas: "desk info" "ulasan info";
+    grid-template-rows: auto 1fr;
+  }
+  .d-area-desk { grid-area: desk; }
+  .d-area-info { grid-area: info; }
+  .d-ulasan { grid-area: ulasan; }
+  .d-h2 { font-size: 18px; margin-bottom: 10px; }
+  .d-deskripsi { font-size: 15px; line-height: 1.7; }
+  .d-info-daftar > div { padding: 8px 0; }
+
+  /* ReviewSection bergaya inline — dirapatkan lewat !important tanpa
+     mengubah komponennya */
+  .d-ulasan > div { margin-bottom: 0 !important; border-radius: 16px !important; }
+  .d-ulasan > div > div { padding: 12px 16px !important; }
+
+  /* Rak: kartu ±200–210px seperti etalase — di wadah 1360px itu 6 per
+     baris di 1440 dan 5 di 1280/1366. Memaksa 5 kolom di 1440 justru
+     membuat kartu ±250px, lebih besar dari kepadatan yang dituju. */
+  .d-rak { margin-top: 26px; }
+  .d-rak .b-kepala { margin-bottom: 12px; }
+  .d-rak .m-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+  .d-rak .m-foto > div { height: 156px !important; }
+  .d-ruang-bawah { height: 24px; }
+}
+
 /* ── Kepadatan etalase (fase 2.1) ──
    /produk adalah halaman penjelajahan, bukan katalog: kartu lebih rapat,
    hero lebih pendek, dan baris produk pertama tampil lebih cepat.
