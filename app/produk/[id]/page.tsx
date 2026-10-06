@@ -337,7 +337,7 @@ export default function DetailProduk() {
   )
 
   return (
-    <main className="beranda">
+    <main className="beranda detail">
       <Navbar />
 
       <div className="b-wadah">
@@ -566,7 +566,7 @@ export default function DetailProduk() {
 
         {/* ── Detail produk ── */}
         <section className="d-detail" aria-labelledby="judul-detail">
-          <div className="d-panel">
+          <div className="d-panel d-area-desk">
             <h2 id="judul-detail" className="d-h2">Deskripsi</h2>
             {produk.deskripsi?.trim()
               ? <p className="d-deskripsi">{produk.deskripsi}</p>
@@ -575,7 +575,7 @@ export default function DetailProduk() {
 
           {/* Hanya kolom yang memang ada di data — bukan spesifikasi yang
               diurai dari teks deskripsi */}
-          <div className="d-panel">
+          <div className="d-panel d-area-info">
             <h2 className="d-h2">Informasi Produk</h2>
             <dl className="d-info-daftar">
               <div><dt>Kategori</dt><dd>{produk.kategori}</dd></div>
@@ -591,11 +591,13 @@ export default function DetailProduk() {
               )}
             </dl>
           </div>
-        </section>
 
-        {/* ── Ulasan — fungsi yang sudah ada, tidak diubah ── */}
-        <section className="d-ulasan" aria-label="Ulasan">
-          <ReviewSection produkId={produk.id} />
+          {/* ── Ulasan — fungsi yang sudah ada, tidak diubah. Anak ketiga grid
+              detail: di desktop mengisi ruang di bawah Deskripsi (samping
+              Informasi Produk), di tablet/HP tetap selebar penuh di bawahnya ── */}
+          <div className="d-ulasan" role="region" aria-label="Ulasan">
+            <ReviewSection produkId={produk.id} />
+          </div>
         </section>
 
         {/* ── Rak penjelajahan — hilang sendiri kalau kosong ── */}
