@@ -69,6 +69,18 @@ type Varian = {
 
 const KOLOM_KARTU = 'id, nama, harga, kategori, foto_url, is_tersedia, is_preorder, po_janji_kirim, toko!inner(id, nama_toko, seller_id, is_official)'
 
+// ⚠ FIXTURE UJI VISUAL (sementara, QA fase 3) ─────────────────────────────
+// Halaman diisi produk rekaan dari ./fixtureUjiVisual alih-alih database,
+// HANYA kalau lingkungannya development atau preview Vercel, URL memuat
+// ?uji=detail, DAN id-nya uji-ready / uji-po. Di production syarat pertama
+// konstanta false. Selama mode uji, Hubungi Penjual dan Chat dimatikan supaya
+// tidak ada RPC maupun insert dengan id rekaan.
+//
+// MENCABUT: git revert commit fixture-nya, atau hapus ./fixtureUjiVisual.ts
+// dan semua bagian bertanda "UJI VISUAL" di file ini dan globals.css.
+const FIXTURE_DIIZINKAN =
+  process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_VERCEL_ENV === 'preview'
+
 function fmt(n: number) {
   if (!n) return 'Rp 0'
   return 'Rp ' + n.toLocaleString('id-ID')
@@ -89,6 +101,8 @@ export default function DetailProduk() {
   const [progresPo, setProgresPo] = useState<ProgresPO | null>(null)
   const [produkToko, setProdukToko] = useState<ProdukKartu[]>([])
   const [produkSerupa, setProdukSerupa] = useState<ProdukKartu[]>([])
+  // UJI VISUAL: true selama halaman berisi fixture rekaan
+  const [modeUji, setModeUji] = useState(false)
 
   // Satu hitung mundur saja, dipasang ke penutupan PO. Yang dipakai dari sini
   // bukan cuma teksnya tapi juga `sekarang` — supaya status PO dan angka yang
@@ -101,6 +115,21 @@ export default function DetailProduk() {
 
   useEffect(() => {
     async function fetchProduk() {
+      // UJI VISUAL — lihat FIXTURE_DIIZINKAN. Tidak menyentuh database.
+      if (FIXTURE_DIIZINKAN && new URLSearchParams(window.location.search).get('uji') === 'detail') {
+        const { ambilFixtureDetail } = await import('./fixtureUjiVisual')
+        const f = ambilFixtureDetail(id)
+        if (f) {
+          setProduk(f.produk as unknown as Produk)
+          setVarian(f.varian as unknown as Varian[])
+          setProgresPo(f.progres as ProgresPO | null)
+          setProdukToko(f.produkToko as unknown as ProdukKartu[])
+          setProdukSerupa(f.produkSerupa as unknown as ProdukKartu[])
+          setModeUji(true)
+          setLoading(false)
+          return
+        }
+      }
       const { data, error } = await supabase
         .from('produk')
         .select('*, toko(id, nama_toko, seller_id, is_official)')
@@ -264,7 +293,8 @@ export default function DetailProduk() {
   const penjual = ((produk.toko as any)?.users ?? null) as PenjualPublik | null
   const resmi = Boolean((produk.toko as any)?.is_official)
   const tokoId = (produk.toko as any)?.id as string | undefined
-  const bisaChat = Boolean(currentUserId && currentUserId !== (produk.toko as any)?.seller_id)
+  // UJI VISUAL: chat dimatikan selama fixture aktif (seller_id rekaan)
+  const bisaChat = !modeUji && Boolean(currentUserId && currentUserId !== (produk.toko as any)?.seller_id)
 
   const punyaVarian = varian.length > 0
   const varianTerpilih = varian.find(v => v.id === varianId) ?? null
@@ -301,7 +331,8 @@ export default function DetailProduk() {
       tersedia={tersedia}
       // Periode PO yang belum dibuka atau sudah ditutup tetap menutup
       // tombolnya — alasannya sudah berbahasa Indonesia dari lib/preorder
-      matiKarena={alasanTidakBisa(statusPo, produk.po_mulai) ?? null}
+      // UJI VISUAL: tombol mati selama fixture aktif — tidak ada RPC dengan id rekaan
+      matiKarena={modeUji ? 'Mode uji visual' : alasanTidakBisa(statusPo, produk.po_mulai) ?? null}
     />
   )
 
@@ -310,6 +341,16 @@ export default function DetailProduk() {
       <Navbar />
 
       <div className="b-wadah">
+        {/* UJI VISUAL — peringatan selama fixture aktif */}
+        {modeUji && (
+          <div className="d-uji" role="status">
+            <strong>Mode uji visual.</strong> Produk, penjual, dan rak di halaman
+            ini data rekaan di peramban untuk QA tampilan — bukan produk nyata
+            dan tidak tersimpan di database. Tombol Hubungi Penjual dan Chat
+            dimatikan, dan tautan toko/kartunya tidak menuju halaman sungguhan.
+          </div>
+        )}
+
         {/* ── Remah roti ── semua tautannya rute yang ada */}
         <nav className="d-remah" aria-label="Remah roti">
           <ol>
