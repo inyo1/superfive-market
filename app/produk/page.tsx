@@ -6,19 +6,15 @@ import { useRouter } from 'next/navigation'
 import { createPortal } from 'react-dom'
 import { supabase } from '../../lib/supabase'
 import Navbar from '../components/Navbar'
-import FotoProduk from '../components/FotoProduk'
 import SkeletonCard from '../components/SkeletonCard'
 import LapakSegeraDibuka from '../components/LapakSegeraDibuka'
-import NamaPenjual from '../components/NamaPenjual'
-import BadgePreorder, { WARNA_PO_TUA } from '../components/BadgePreorder'
-import BadgeTersedia from '../components/BadgeTersedia'
 import SiteFooter from '../components/beranda/SiteFooter'
 import AjakanJual, { tujuanJual, labelJual } from '../components/beranda/AjakanJual'
-import { IKON_KATEGORI, IkonCari, IkonPetak, IkonSaring, IkonTutup, IkonPanah } from '../components/beranda/Ikon'
-import { janjiKirim } from '../../lib/preorder'
+import { IKON_KATEGORI, IkonCari, IkonPetak, IkonSaring, IkonTutup } from '../components/beranda/Ikon'
+import KartuPasar, { type ProdukKartu } from '../components/KartuPasar'
 import { useTampilSkeleton } from '../hooks/useSkeleton'
 import { KATEGORI } from '../../lib/kategori'
-import { ambilPenjualPublik, type PenjualPublik } from '../../lib/penjualPublik'
+import { ambilPenjualPublik } from '../../lib/penjualPublik'
 
 // Etalase "Produk & Jasa Alumni" — redesain Oktober 2026 (fase 2).
 //
@@ -36,17 +32,7 @@ import { ambilPenjualPublik, type PenjualPublik } from '../../lib/penjualPublik'
 // Jasa saat ini hanya ada sebagai kategori, jadi ia dijelajahi lewat petak
 // kategori, bukan lewat sakelar tipe yang akan menyaring hal yang sama dua kali.
 
-type Produk = {
-  id: string
-  nama: string
-  harga: number
-  kategori: string
-  is_tersedia: boolean
-  is_preorder: boolean
-  po_janji_kirim: string | null
-  foto_url?: string | null
-  toko: { nama_toko: string; is_official: boolean; seller_id: string | null; penjual: PenjualPublik | null } | null
-}
+type Produk = ProdukKartu
 
 type StatusBarang = 'semua' | 'ready' | 'po'
 type Urutan = 'terbaru' | 'termurah' | 'termahal'
@@ -54,16 +40,6 @@ type Urutan = 'terbaru' | 'termurah' | 'termahal'
 // 'semua' bukan kategori, hanya keadaan penyaring — karena itu ditambahkan
 // di sini, bukan ikut masuk ke KATEGORI yang harus cocok dengan CHECK
 const kategoris = ['semua', ...KATEGORI] as const
-
-// Avatar penjual hanya dirender lewat next/image kalau host-nya memang
-// terdaftar di next.config (Supabase Storage). Host lain akan membuat
-// next/image melempar error, jadi jatuh ke inisial.
-const HOST_FOTO = 'https://cbepplpvlizwyaalndas.supabase.co/storage/v1/object/public/'
-
-function fmt(n: number | null | undefined) {
-  if (!n) return 'Rp 0'
-  return 'Rp ' + n.toLocaleString('id-ID')
-}
 
 function angka(s: string): number | null {
   const n = parseInt(s.replace(/\D/g, ''), 10)
@@ -451,61 +427,3 @@ function PanelSaring(props: {
   )
 }
 
-// Kartu etalase. Tidak ada rating, jumlah terjual, wishlist, keranjang, atau
-// lencana "verified": rating belum punya ulasan (angka lama "5.0" adalah
-// cadangan karangan), jumlah terjual berhenti bergerak sejak mode katalog,
-// dan label angkatan dari penjual_publik dihitung dari kolom angkatan saja —
-// bukan dari status alumni — jadi tidak sah dijadikan lencana verifikasi.
-// Yang tampil "Nama · Superfive 92", mekanisme koreksi sosial yang sama
-// dengan halaman lain.
-function KartuPasar({ p }: { p: Produk }) {
-  const penjual = p.toko?.penjual ?? null
-  const jasa = p.kategori === 'Jasa'
-  const foto = penjual?.avatar_url || penjual?.foto_url || null
-  const inisial = (penjual?.nama ?? p.toko?.nama_toko ?? '?').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase()
-
-  return (
-    <Link href={`/produk/${p.id}`} className="prod-card m-kartu">
-      <div style={{ position: 'relative' }}>
-        <BadgePreorder aktif={p.is_preorder} bentuk="pita" />
-        {/* Tinggi foto diatur CSS per lebar layar (.m-foto) — lebih pendek di
-            grid desktop yang padat */}
-        <div className="m-foto"><FotoProduk src={p.foto_url} kategori={p.kategori} height={180} fontSize={44} /></div>
-      </div>
-      <div className="m-kartu-isi">
-        <span className="m-kartu-kategori">{p.kategori}</span>
-        <span className="m-kartu-nama">{p.nama}</span>
-        <span className="m-kartu-harga">{fmt(p.harga)}</span>
-        {/* Stok produk PO selalu 0 karena trg_kurangi_stok sengaja
-            melewatinya — produk PO memakai janji kirim, bukan lencana stok */}
-        {p.is_preorder ? (
-          p.po_janji_kirim && <span style={{ fontSize: '12px', color: WARNA_PO_TUA }}>{janjiKirim(p.po_janji_kirim)}</span>
-        ) : (
-          <div><BadgeTersedia tersedia={p.is_tersedia} kecil /></div>
-        )}
-
-        <div className="m-kartu-penjual">
-          <span className="m-avatar" aria-hidden>
-            {foto && foto.startsWith(HOST_FOTO)
-              ? <Image src={foto} alt="" width={32} height={32} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              : inisial}
-          </span>
-          <span style={{ minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-            {p.toko?.nama_toko && <span className="m-kartu-toko">{p.toko.nama_toko}</span>}
-            {penjual && (
-              // Boleh membungkus, tidak dipotong: angkatan adalah mekanisme
-              // koreksi sosial dan tidak boleh hilang demi menghemat ruang
-              <NamaPenjual nama={penjual.nama} label={penjual.label_angkatan} angkatan={penjual.angkatan} institusi={penjual.is_institusi} kecil style={{ fontSize: '12px', whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', lineHeight: 1.4 }} />
-            )}
-          </span>
-        </div>
-
-        {/* Jasa dan produk sama-sama menuju halaman detail — di sanalah tombol
-            Hubungi Penjual berada. Bedanya hanya kata ajakannya. */}
-        <span className="m-kartu-aksi">
-          {jasa ? 'Lihat Jasa' : 'Lihat Detail'} <IkonPanah size={14} tebal={2.2} />
-        </span>
-      </div>
-    </Link>
-  )
-}

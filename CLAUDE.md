@@ -2291,6 +2291,18 @@ verifikasi**: belum ada ulasan, `terjual` berhenti sejak mode katalog, dan
 [AjakanJual](app/components/beranda/AjakanJual.tsx), dipakai beranda dan
 `/produk`, beserta `tujuanJual()` untuk tujuan tombolnya.
 
+**`/produk/[id]` (redesain fase 3)** memakai kelas `d-`: remah roti, foto ·
+info · kartu penjual, Deskripsi + Informasi Produk (hanya kolom yang ada),
+ulasan, lalu rak "Produk Lain dari Toko Ini" dan "Produk Serupa" (khusus
+lapak alumni) memakai [KartuPasar](app/components/KartuPasar.tsx) — kartu
+yang sama dengan `/produk`. Satu foto saja (`foto_url` memang satu gambar).
+
+**`position: sticky` di bagian bawah tidak bekerja di project ini.** `html`
+dan `body` sama-sama `overflow-x: hidden`, sehingga `body` mendapat
+`overflow-y: auto` dan menjadi wadah gulir sticky — padahal yang menggulir
+`html`. Bilah aksi HP di detail produk karena itu `position: fixed` lewat
+portal. `.cta-bottom-bar` lama terdampak hal yang sama dan belum dibetulkan.
+
 ### Dua logo, dan jangan tertukar
 
 **Logo Superfive mewakili PLATFORM. Logo IniLima mewakili KOMUNITAS dan toko
