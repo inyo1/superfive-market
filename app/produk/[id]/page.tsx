@@ -511,7 +511,7 @@ export default function DetailProduk() {
                 {resmi
                   ? <LogoInilima lebar="100%" />
                   : fotoPenjual && fotoPenjual.startsWith(HOST_FOTO)
-                    ? <Image src={fotoPenjual} alt="" width={56} height={56} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ? <Image src={fotoPenjual} alt="" width={72} height={72} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     : inisial}
               </span>
               <div style={{ minWidth: 0 }}>
@@ -523,10 +523,15 @@ export default function DetailProduk() {
                     mana pun nama penjual muncul, dan boleh membungkus alih-alih
                     terpotong. Toko resmi itu akun institusi, jadi tanpa angkatan. */}
                 {!resmi && penjual && (
-                  <NamaPenjual
-                    nama={penjual.nama} label={penjual.label_angkatan} angkatan={penjual.angkatan} institusi={penjual.is_institusi}
-                    style={{ fontSize: '14px', whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', lineHeight: 1.45, marginTop: '2px' }}
-                  />
+                  // Tiga tingkat: toko (di atas) · nama · Superfive NN. Label
+                  // angkatannya baris sendiri, berbentuk pil (lihat .d-penjual-nama)
+                  <span className="d-penjual-nama">
+                    <NamaPenjual
+                      nama={penjual.nama} label={penjual.label_angkatan} angkatan={penjual.angkatan} institusi={penjual.is_institusi}
+                      bertumpuk
+                      style={{ fontSize: '15px', whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', lineHeight: 1.45, marginTop: '2px', color: '#33465a' }}
+                    />
+                  </span>
                 )}
               </div>
             </div>

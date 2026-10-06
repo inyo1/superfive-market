@@ -1797,8 +1797,8 @@ main {
 }
 .d-penjual-kepala { display: flex; align-items: center; gap: 14px; }
 .d-avatar {
-  width: 56px;
-  height: 56px;
+  width: 64px;
+  height: 64px;
   flex-shrink: 0;
   border-radius: 50%;
   overflow: hidden;
@@ -1817,7 +1817,7 @@ main {
   align-items: center;
   flex-wrap: wrap;
   gap: 6px;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 800;
   color: var(--sf-teks);
   line-height: 1.3;
@@ -1873,7 +1873,8 @@ main {
 .d-info-daftar a { color: var(--sf-biru); }
 
 .d-ulasan { margin-top: 16px; }
-.d-rak { margin-top: 40px; }
+.d-rak { margin-top: 32px; }
+.d-rak .b-kepala { margin-bottom: 16px; }
 
 .d-tidak-ada {
   margin: 48px auto;
@@ -1900,7 +1901,7 @@ main {
 
 /* Bilah aksi menempel di HP; di layar lebar tombolnya ada di panel info */
 .d-cta-hp { display: none; }
-.d-ruang-bawah { height: 48px; }
+.d-ruang-bawah { height: 32px; }
 
 /* UJI VISUAL (sementara, QA fase 3) — banner selama fixture detail aktif.
    Hapus bersama app/produk/[id]/fixtureUjiVisual.ts. */
@@ -1945,11 +1946,40 @@ main {
   .d-panel { padding: 24px; }
   .d-detail { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 20px; align-items: start; }
 }
-/* Desktop: foto · info · penjual */
-@media (min-width: 1200px) {
-  .d-utama { grid-template-columns: minmax(0, 5fr) minmax(0, 5.5fr) 280px; gap: 24px; }
+/* Desktop (fase 3.1): tiga kolom sejati — foto ±45% · info ±31% · penjual
+   ±24%. Mulai 1100px, bukan 1200px: laptop 1280–1366px dengan skala tampilan
+   125% hanya punya viewport ±1100px, dan di sana kartu penjual dulu jatuh ke
+   bawah. Di bawahnya tata letak tablet (2 kolom) tetap. */
+@media (min-width: 1100px) {
+  .d-utama { grid-template-columns: minmax(0, 45fr) minmax(0, 31fr) minmax(0, 24fr); gap: 20px; }
+  /* Foto tetap dominan tapi tidak menenggelamkan info: 6:5, bukan persegi */
+  .d-galeri { aspect-ratio: 6 / 5; }
+  .d-panel { padding: 20px; }
+  .d-info .d-judul { font-size: 24px; }
+  .d-info .d-harga { font-size: 26px; margin-top: 8px; }
+  .d-info .d-status { margin-top: 10px; padding-bottom: 14px; }
+  .d-varian { margin-top: 14px; }
+  .d-aksi-lebar { margin-top: 16px; }
   .d-penjual { grid-column: auto; position: sticky; top: calc(var(--tinggi-navbar, 78px) + 16px); }
+  .d-penjual-kepala { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .d-avatar { width: 72px; height: 72px; font-size: 22px; }
   .d-penjual-aksi { grid-template-columns: 1fr; }
+}
+
+/* Kartu penjual: toko · nama · pil "Superfive NN" (fase 3.1) */
+.d-penjual-nama > span > span:first-of-type {
+  display: table !important;
+  margin-top: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--sf-biru-muda);
+  font-size: 13px;
+}
+
+/* Rak di detail: ukuran kartu sama dengan etalase /produk (±200px), rata
+   kiri — dua produk tetap dua kartu normal, tidak direntang selebar baris */
+@media (min-width: 1024px) {
+  .d-rak .m-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
 }
 
 /* ── Kepadatan etalase (fase 2.1) ──

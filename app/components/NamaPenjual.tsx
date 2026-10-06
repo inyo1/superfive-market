@@ -20,10 +20,13 @@ type Props = {
   /** Akun institusi tidak punya angkatan — hanya namanya yang tampil */
   institusi?: boolean | null
   kecil?: boolean
+  /** Nama dan label angkatan di dua baris, tanpa pemisah " · ". Dipakai
+   *  kartu penjual di detail produk; bawaannya tetap sebaris. */
+  bertumpuk?: boolean
   style?: React.CSSProperties
 }
 
-export default function NamaPenjual({ nama, label, angkatan, institusi = false, kecil = false, style }: Props) {
+export default function NamaPenjual({ nama, label, angkatan, institusi = false, kecil = false, bertumpuk = false, style }: Props) {
   const angkatanSaya = useAngkatanSaya()
   if (!nama) return null
 
@@ -43,10 +46,10 @@ export default function NamaPenjual({ nama, label, angkatan, institusi = false, 
       {nama}
       {tampilLabel && (
         <>
-          {' · '}
+          {bertumpuk ? null : ' · '}
           <span
             title={seangkatan ? 'Seangkatan denganmu' : undefined}
-            style={{ fontWeight: 600, color: seangkatan ? '#a86a05' : '#0C447C' }}
+            style={{ fontWeight: 600, color: seangkatan ? '#a86a05' : '#0C447C', ...(bertumpuk ? { display: 'block' } : null) }}
           >
             {seangkatan && <span aria-hidden style={{ marginRight: '2px' }}>🤝</span>}
             {label}
