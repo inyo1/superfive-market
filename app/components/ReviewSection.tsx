@@ -180,7 +180,9 @@ export default function ReviewSection({ produkId }: { produkId: string }) {
       {/* Header ringkasan */}
       <div style={{ padding: '18px', borderBottom: '0.5px solid #e8f0f8' }}>
         <div style={{ fontSize: '14px', fontWeight: '600', color: '#0C447C', marginBottom: '10px' }}>
-          ⭐ Rating & Ulasan
+          {/* Bintang dan kata "Rating" hanya kalau memang ada rata-rata dari
+              ulasan; tanpa ulasan judulnya cukup "Ulasan Produk" */}
+          {reviews.length > 0 ? '⭐ Rating & Ulasan' : 'Ulasan Produk'}
         </div>
         {reviews.length > 0 ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
