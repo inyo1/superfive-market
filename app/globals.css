@@ -1860,7 +1860,8 @@ main {
 .d-info-daftar { margin: 0; display: grid; }
 .d-info-daftar > div {
   display: grid;
-  grid-template-columns: 140px 1fr;
+  /* label menyempit di panel sempit (tablet) supaya nilainya tidak terbungkus */
+  grid-template-columns: minmax(96px, 38%) 1fr;
   gap: 12px;
   padding: 10px 0;
   border-top: 1px solid #EAF1F8;
