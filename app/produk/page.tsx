@@ -60,20 +60,6 @@ const kategoris = ['semua', ...KATEGORI] as const
 // next/image melempar error, jadi jatuh ke inisial.
 const HOST_FOTO = 'https://cbepplpvlizwyaalndas.supabase.co/storage/v1/object/public/'
 
-// ⚠ FIXTURE UJI VISUAL (sementara, QA fase 2) ─────────────────────────────
-// Etalase diisi listing rekaan dari ./fixtureUjiVisual alih-alih database,
-// HANYA kalau lingkungannya development atau preview Vercel DAN URL memuat
-// ?uji=etalase. Di production NEXT_PUBLIC_VERCEL_ENV bernilai 'production',
-// jadi syaratnya konstanta false dan import()-nya terbuang dari bundel.
-// Kalau variabelnya tidak ada sama sekali, hasilnya juga false — gagal ke
-// arah "tolak", bukan "izinkan".
-//
-// MENCABUT: hapus app/produk/fixtureUjiVisual.ts, konstanta ini, cabang
-// `ujiVisual` di fetchProduk, state modeUji, dan banner .m-uji (beserta
-// CSS-nya di globals.css). Cari kata "UJI VISUAL".
-const FIXTURE_DIIZINKAN =
-  process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_VERCEL_ENV === 'preview'
-
 function fmt(n: number | null | undefined) {
   if (!n) return 'Rp 0'
   return 'Rp ' + n.toLocaleString('id-ID')
@@ -101,8 +87,6 @@ export default function ProdukPage() {
   // akan ditolak /produk/tambah setelah terlanjur menekannya
   const [penjualAktif, setPenjualAktif] = useState(false)
   const [masuk, setMasuk] = useState(false)
-  // UJI VISUAL: true selama etalase berisi fixture rekaan
-  const [modeUji, setModeUji] = useState(false)
   const siapUrl = useRef(false)
   const lembarRef = useRef<HTMLDivElement>(null)
 
@@ -120,15 +104,6 @@ export default function ProdukPage() {
   }
 
   async function fetchProduk() {
-    // UJI VISUAL — lihat FIXTURE_DIIZINKAN. Tidak menyentuh database.
-    if (FIXTURE_DIIZINKAN && new URLSearchParams(window.location.search).get('uji') === 'etalase') {
-      const { PRODUK_UJI } = await import('./fixtureUjiVisual')
-      setProduk(PRODUK_UJI as unknown as Produk[])
-      setModeUji(true)
-      setLoading(false)
-      return
-    }
-
     // Etalase ini KHUSUS LAPAK ALUMNI — merchandise resmi dikecualikan.
     // Halaman ini juga yang melayani penjelajahan per kategori (?kategori=),
     // jadi satu penyaring di sini menutup keduanya sekaligus.
@@ -322,19 +297,6 @@ export default function ProdukPage() {
       </div>
 
       {/* ── Saringan + hasil ── */}
-      {/* UJI VISUAL — peringatan selama fixture aktif */}
-      {modeUji && (
-        <div className="b-wadah">
-          <div className="m-uji" role="status">
-            <strong>Mode uji visual.</strong> Listing di bawah ini data rekaan di
-            peramban untuk QA tampilan — bukan produk nyata dan tidak tersimpan
-            di database. Tautan kartunya tidak menuju produk sungguhan.{' '}
-            {/* Muat ulang penuh: etalase hanya mengambil data saat dipasang */}
-            <button type="button" className="m-uji-keluar" onClick={() => window.location.assign('/produk')}>Keluar dari mode uji</button>
-          </div>
-        </div>
-      )}
-
       <section className={`b-wadah m-tata${etalaseKosong ? ' tanpa-samping' : ''}`} aria-label="Hasil pencarian">
         {!etalaseKosong && <aside className="m-samping" aria-label="Saring hasil">
           {panelSaring}
