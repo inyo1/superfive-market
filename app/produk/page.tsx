@@ -262,7 +262,7 @@ export default function ProdukPage() {
   )
 
   return (
-    <main className="beranda">
+    <main className="beranda pasar">
       <Navbar />
 
       {/* ── Hero ringkas ── */}
@@ -506,7 +506,9 @@ function KartuPasar({ p }: { p: Produk }) {
     <Link href={`/produk/${p.id}`} className="prod-card m-kartu">
       <div style={{ position: 'relative' }}>
         <BadgePreorder aktif={p.is_preorder} bentuk="pita" />
-        <FotoProduk src={p.foto_url} kategori={p.kategori} height={180} fontSize={44} />
+        {/* Tinggi foto diatur CSS per lebar layar (.m-foto) — lebih pendek di
+            grid desktop yang padat */}
+        <div className="m-foto"><FotoProduk src={p.foto_url} kategori={p.kategori} height={180} fontSize={44} /></div>
       </div>
       <div className="m-kartu-isi">
         <span className="m-kartu-kategori">{p.kategori}</span>
@@ -529,7 +531,9 @@ function KartuPasar({ p }: { p: Produk }) {
           <span style={{ minWidth: 0, display: 'flex', flexDirection: 'column' }}>
             {p.toko?.nama_toko && <span className="m-kartu-toko">{p.toko.nama_toko}</span>}
             {penjual && (
-              <NamaPenjual nama={penjual.nama} label={penjual.label_angkatan} angkatan={penjual.angkatan} institusi={penjual.is_institusi} kecil style={{ fontSize: '12px' }} />
+              // Boleh membungkus, tidak dipotong: angkatan adalah mekanisme
+              // koreksi sosial dan tidak boleh hilang demi menghemat ruang
+              <NamaPenjual nama={penjual.nama} label={penjual.label_angkatan} angkatan={penjual.angkatan} institusi={penjual.is_institusi} kecil style={{ fontSize: '12px', whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', lineHeight: 1.4 }} />
             )}
           </span>
         </div>
