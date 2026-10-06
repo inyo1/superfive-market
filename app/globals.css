@@ -2048,6 +2048,84 @@ main {
   .d-ruang-bawah { height: 24px; }
 }
 
+/* ── Skala desktop 100% (fase 3.3) ──
+   Wadah tetap 1360px; yang dikecilkan ukuran komponen di DALAM kolom,
+   ±8–10%, supaya zoom 100% terasa seperti zoom 90% versi 3.2 (acuan
+   diukur dari render 90%: navbar ±70px, logo ±48px, foto ±343px, judul
+   ±20px, harga ±22px, avatar ±58px, padding panel ±16px).
+   Navbar ikut dirapatkan HANYA di halaman detail (.detail) — beranda dan
+   etalase memakai navbar 3.1 apa adanya. */
+@media (min-width: 1100px) {
+  /* Navbar halaman detail */
+  .detail .nav-dalam { min-height: 70px; gap: 16px; }
+  .detail .nav-brand img { width: 48px !important; height: 48px !important; }
+  .detail .nav-brand-teks > span:first-child { font-size: 15.5px !important; }
+  .detail .nav-tautan { font-size: 14px; padding: 0 11px; }
+  .detail .nav-cari { height: 42px; max-width: 460px; }
+  .detail .nav-cari-teks { font-size: 14px; }
+  .detail .nav-cari-ikon { width: 36px; height: 32px; }
+  .detail .nav-masuk { min-height: 38px; padding: 0 18px; font-size: 13.5px; }
+  .detail .nav-ikon { min-width: 40px; min-height: 40px; }
+
+  .d-remah { padding: 10px 0; font-size: 12.5px; }
+  .d-utama { gap: 16px; }
+  .d-panel { padding: 15px; border-radius: 16px; }
+  .d-galeri { border-radius: 16px; aspect-ratio: 5 / 3; }
+
+  /* Info produk */
+  .d-kategori { font-size: 12px; padding: 3px 9px; }
+  .d-label-baris { margin-bottom: 10px; }
+  .d-info .d-judul { font-size: 20.5px; line-height: 1.25; }
+  .d-info .d-harga { font-size: 22.5px; margin-top: 6px; }
+  .d-info .d-status { margin-top: 8px; padding-bottom: 12px; font-size: 13px; }
+  .d-subjudul { font-size: 13px; margin-bottom: 6px; }
+  .d-varian-item { min-height: 34px; min-width: 46px; padding: 0 12px; font-size: 13px; border-radius: 8px; }
+  .d-catatan { font-size: 12.5px; }
+  .d-po { padding: 12px; gap: 9px; border-radius: 12px; }
+  .d-po-baris { font-size: 13px; }
+  .d-po-baris > span { font-size: 12px; }
+  .d-po-catatan { font-size: 12.5px; padding: 8px 10px; }
+  .d-aksi-lebar { margin-top: 12px; }
+  .d-aksi-lebar button { min-height: 44px !important; font-size: 14px !important; border-radius: 9px !important; }
+
+  /* Kartu penjual — hierarki toko · nama · Superfive NN tetap */
+  .d-eyebrow { font-size: 11px; margin-bottom: 10px; }
+  .d-penjual-kepala { gap: 10px; }
+  .d-avatar { width: 58px; height: 58px; font-size: 18px; }
+  .d-nama-toko { font-size: 16.5px; }
+  .d-penjual-nama > span { font-size: 13.5px !important; }
+  .d-penjual-nama > span > span:first-of-type { font-size: 11.5px; padding: 2px 9px; margin-top: 5px; }
+  .d-penjual-aksi { margin-top: 12px; gap: 6px; }
+  .d-tombol-garis { min-height: 40px; font-size: 13.5px; border-radius: 9px; }
+  .d-tombol-teks { font-size: 12.5px; padding: 6px 0; }
+  .d-penjual .d-catatan { margin-top: 10px !important; }
+
+  /* Deskripsi · Informasi · Ulasan */
+  .d-detail { margin-top: 12px; gap: 12px 16px; }
+  .d-h2 { font-size: 16.5px; margin-bottom: 8px; }
+  .d-deskripsi { font-size: 14px; line-height: 1.65; }
+  .d-info-daftar > div { padding: 7px 0; font-size: 13px; }
+  .d-ulasan > div > div { padding: 10px 14px !important; }
+
+  /* Rak — tetap 6 kartu di 1440, isinya sedikit lebih rapat */
+  .d-rak { margin-top: 22px; }
+  .d-rak .b-kepala { margin-bottom: 10px; }
+  .d-rak .d-h2 { font-size: 17px; }
+  .d-rak .b-tautan { font-size: 13px; min-height: 36px; }
+  .d-rak .m-grid { gap: 12px; }
+  .d-rak .m-foto > div { height: 140px !important; }
+  .d-rak .m-kartu { border-radius: 12px; }
+  .d-rak .m-kartu-isi { padding: 9px 11px 11px; gap: 3px; }
+  .d-rak .m-kartu-kategori { font-size: 10.5px; }
+  .d-rak .m-kartu-nama { font-size: 13px; min-height: 35px; }
+  .d-rak .m-kartu-harga { font-size: 14.5px; }
+  .d-rak .m-kartu-toko { font-size: 11.5px; }
+  .d-rak .m-kartu-penjual span span:not(.m-kartu-toko) { font-size: 11px !important; }
+  .d-rak .m-avatar { width: 24px; height: 24px; font-size: 10px; }
+  .d-rak .m-kartu-aksi { font-size: 12px; }
+  .d-ruang-bawah { height: 20px; }
+}
+
 /* ── Kepadatan etalase (fase 2.1) ──
    /produk adalah halaman penjelajahan, bukan katalog: kartu lebih rapat,
    hero lebih pendek, dan baris produk pertama tampil lebih cepat.
