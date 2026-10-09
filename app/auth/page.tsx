@@ -1,12 +1,22 @@
 'use client'
 import Image from 'next/image'
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useState, type CSSProperties } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 import Navbar from '../components/Navbar'
 import InputPassword from '../components/InputPassword'
 import PilihAngkatan, { labelOpsiAngkatan } from '../components/PilihAngkatan'
 import DialogKonfirmasi from '../components/DialogKonfirmasi'
+import { IkonSurat } from '../components/beranda/Ikon'
+
+// Kotak informasi (bukan peringatan): biru muda + teks navy, sama dengan
+// pesan ?msg= di atas formulir. Jangan diberi merah — pendaftar belum
+// berbuat salah apa pun.
+const gayaInfo: CSSProperties = {
+  display: 'flex', alignItems: 'flex-start', gap: '8px',
+  background: '#E6F1FB', border: '0.5px solid #b3d1ee', borderRadius: '8px',
+  color: '#0C447C', fontSize: '12px', lineHeight: '1.6',
+}
 
 function AuthContent() {
   const searchParams = useSearchParams()
@@ -168,8 +178,15 @@ function AuthContent() {
             <div style={{ fontSize: '14px', fontWeight: '600', color: '#0C447C', marginBottom: '20px', wordBreak: 'break-all' }}>
               {email}
             </div>
-            <p style={{ fontSize: '13px', color: '#9ab4cc', lineHeight: '1.6', margin: '0 0 24px' }}>
-              Klik link di email untuk mengaktifkan akun, lalu kembali ke sini untuk masuk.
+            <div role="status" style={{ ...gayaInfo, textAlign: 'left', fontSize: '13px', padding: '12px 14px', margin: '0 0 14px' }}>
+              <span style={{ flexShrink: 0, marginTop: '2px', display: 'inline-flex' }}><IkonSurat size={18} tebal={1.8} /></span>
+              <span>
+                Periksa email kamu dan klik tautan konfirmasi untuk mengaktifkan akun.
+                Jika belum terlihat, periksa folder <strong>Spam</strong> atau <strong>Promosi</strong>.
+              </span>
+            </div>
+            <p style={{ fontSize: '13px', color: '#5a7da0', lineHeight: '1.6', margin: '0 0 24px' }}>
+              Setelah akun aktif, kembali ke sini untuk masuk.
               {jenis === 'alumni' && (labelTerkunci
                 ? ` Kamu sudah tercatat sebagai ${labelTerkunci}.`
                 : ' Setelah masuk, kamu akan diarahkan untuk mengunci angkatanmu.')}
@@ -327,8 +344,18 @@ function AuthContent() {
               autoComplete="username"
               inputMode="email"
               placeholder="email@kamu.com"
+              aria-describedby={mode==='register' ? 'info-email-daftar' : undefined}
               style={{width:'100%',padding:'11px 12px',border:'0.5px solid #c5d9ef',borderRadius:'8px',fontSize:'13px',outline:'none',boxSizing:'border-box',minHeight:'44px'}}
             />
+            {/* Hanya saat daftar: akun baru harus dikonfirmasi lewat email,
+                jadi email yang salah ketik atau tidak bisa dibuka berarti
+                akunnya tidak pernah aktif. Di tab Masuk tidak relevan. */}
+            {mode==='register' && (
+              <p id="info-email-daftar" style={{...gayaInfo, margin:'6px 0 0', padding:'8px 10px'}}>
+                <span style={{flexShrink:0, marginTop:'1px', display:'inline-flex'}}><IkonSurat size={16} tebal={1.8} /></span>
+                <span>Gunakan email aktif yang bisa kamu akses. Kami akan mengirimkan tautan konfirmasi untuk mengaktifkan akunmu.</span>
+              </p>
+            )}
           </div>
 
           <div style={{marginBottom:'12px'}}>
