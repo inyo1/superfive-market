@@ -2414,12 +2414,12 @@ a.a-kartu:hover { border-color: #b9d3ec; box-shadow: 0 10px 24px rgba(6, 47, 89,
    layar. Kartu tegak di >= 640px dengan avatar 56px; di HP kartu mendatar
    satu kolom supaya nama panjang terbaca dan area sentuhnya lebar. */
 .a-hero .m-hero-isi { padding-top: 16px; padding-bottom: 40px; }
-.a-hero .b-eyebrow { margin-bottom: 8px; }
+.a-hero .b-eyebrow { margin-bottom: 6px; }
 .a-hero .m-hero-judul { font-size: clamp(28px, 4vw, 34px); }
-.a-hero .m-hero-sub { margin: 6px 0 12px; font-size: 14px; line-height: 1.55; max-width: 760px; }
-.a-statistik { margin: 0 0 14px; line-height: 20px; }
+.a-hero .m-hero-sub { margin: 4px 0 10px; font-size: 14px; line-height: 1.55; max-width: 760px; }
+.a-statistik { margin: 0 0 12px; line-height: 20px; }
 @media (min-width: 1024px) {
-  .a-hero .m-hero-isi { padding-top: 24px; padding-bottom: 40px; }
+  .a-hero .m-hero-isi { padding-top: 18px; padding-bottom: 40px; }
   .a-hero .m-hero-judul { font-size: 34px; }
   .a-hero .m-hero-sub { font-size: 15px; }
 }
