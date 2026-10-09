@@ -37,6 +37,10 @@ export default function ProfilPage() {
   const [pesan, setPesan] = useState('')
   const [statusAlumni, setStatusAlumni] = useState<string | null>(null)
   const [isInstitusi, setIsInstitusi] = useState(false)
+  // Pilihan tampil di Direktori Alumni publik (users.tampil_publik, opt-in)
+  const [tampilPublik, setTampilPublik] = useState(false)
+  const [simpanTampil, setSimpanTampil] = useState(false)
+  const [pesanTampil, setPesanTampil] = useState<{ ok: boolean; teks: string } | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -48,7 +52,7 @@ export default function ProfilPage() {
 
       const { data } = await supabase
         .from('users')
-        .select('nama, email, angkatan, avatar_url, no_hp, jalan, kelurahan, kecamatan, kota, provinsi, kode_pos, wilayah_kode, status_alumni, is_institusi')
+        .select('nama, email, angkatan, avatar_url, no_hp, jalan, kelurahan, kecamatan, kota, provinsi, kode_pos, wilayah_kode, status_alumni, is_institusi, tampil_publik')
         .eq('id', user.id)
         .single()
 
@@ -56,6 +60,7 @@ export default function ProfilPage() {
         setNama(data.nama ?? '')
         setStatusAlumni(data.status_alumni ?? 'umum')
         setIsInstitusi(Boolean(data.is_institusi))
+        setTampilPublik(data.tampil_publik === true)
         // Label dari view, bukan dirangkai di klien. Baris di alumni_publik
         // hanya ada untuk alumni, jadi yang lain memang tidak punya label.
         if (data.status_alumni === 'alumni' && !data.is_institusi) {
@@ -84,6 +89,39 @@ export default function ProfilPage() {
     if (!f) return
     setFile(f)
     setPreview(URL.createObjectURL(f))
+  }
+
+  // Disimpan begitu sakelarnya ditekan, terpisah dari tombol Simpan: ini
+  // persetujuan, bukan isian formulir — tidak boleh ikut tertunda atau ikut
+  // gagal bersama upload foto. Hanya baris sendiri (RLS users_update_own).
+  // Nilai di layar diambil dari baris yang dikembalikan database, bukan dari
+  // yang diminta, supaya yang terlihat selalu yang benar-benar tersimpan.
+  async function ubahTampilPublik(nilai: boolean) {
+    if (!userId || simpanTampil) return
+    setSimpanTampil(true)
+    setPesanTampil(null)
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .update({ tampil_publik: nilai })
+        .eq('id', userId)
+        .select('tampil_publik')
+        .maybeSingle()
+      if (error) throw new Error(error.message)
+      if (!data) throw new Error('perubahan tidak tersimpan')
+      const tersimpan = data.tampil_publik === true
+      setTampilPublik(tersimpan)
+      setPesanTampil({
+        ok: tersimpan === nilai,
+        teks: tersimpan === nilai
+          ? (tersimpan ? 'Profilmu sekarang tampil di Direktori Alumni publik.' : 'Profilmu tidak lagi tampil di Direktori Alumni publik.')
+          : 'Gagal menyimpan pilihan. Coba lagi.',
+      })
+    } catch (e) {
+      setPesanTampil({ ok: false, teks: 'Gagal menyimpan pilihan: ' + (e as Error).message })
+    } finally {
+      setSimpanTampil(false)
+    }
   }
 
   async function handleSave() {
@@ -292,6 +330,74 @@ export default function ProfilPage() {
               style={{ width: '100%', padding: '10px 12px', border: '0.5px solid #e8f0f8', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: '#f8fbff', color: '#9ab4cc', cursor: 'default' }} />
           </div>
         </div>
+
+        {/* Direktori Alumni publik — akun institusi tidak punya tempat di
+            direktori sama sekali, jadi sakelarnya tidak ditawarkan */}
+        {!isInstitusi && (
+          <div style={{ background: '#fff', borderRadius: '16px', padding: '20px', border: '0.5px solid #c5d9ef', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div id="judul-tampil-publik" style={{ fontSize: '13px', fontWeight: '600', color: '#0C447C', marginBottom: '6px', lineHeight: '1.5' }}>
+                  Tampilkan profil saya di Direktori Alumni publik
+                </div>
+                <div style={{ fontSize: '12px', color: '#5a7da0', lineHeight: '1.7' }}>
+                  {tampilPublik
+                    ? 'Aktif: pengunjung yang belum masuk dapat menemukan kamu di Direktori Alumni dan membuka profil alumnimu, yang berisi nama, angkatan (Superfive NN), foto profil, dan lapakmu bila sedang aktif.'
+                    : 'Nonaktif: kamu tidak muncul di Direktori Alumni untuk pengunjung.'}
+                </div>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={tampilPublik}
+                aria-labelledby="judul-tampil-publik"
+                disabled={simpanTampil}
+                onClick={() => ubahTampilPublik(!tampilPublik)}
+                style={{
+                  flexShrink: 0, position: 'relative', width: '48px', height: '28px', marginTop: '2px',
+                  borderRadius: '14px', border: 'none', padding: 0,
+                  background: tampilPublik ? '#0C447C' : '#c5d9ef',
+                  cursor: simpanTampil ? 'wait' : 'pointer', opacity: simpanTampil ? 0.6 : 1,
+                  transition: 'background 0.15s',
+                }}
+              >
+                <span aria-hidden style={{
+                  position: 'absolute', top: '3px', left: tampilPublik ? '23px' : '3px',
+                  width: '22px', height: '22px', borderRadius: '50%', background: '#fff',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.2)', transition: 'left 0.15s',
+                }} />
+              </button>
+            </div>
+
+            {/* Cakupannya sengaja ditulis terang: sakelar ini BUKAN pengaturan
+                privasi seluruh Superfive */}
+            <div style={{ fontSize: '11px', color: '#9ab4cc', lineHeight: '1.7', marginTop: '10px' }}>
+              Pengaturan ini hanya berlaku untuk Direktori Alumni. Sesama anggota yang sudah masuk
+              tetap bisa melihat profil alumnimu, dan bagian lain Superfive, seperti produk yang kamu
+              jual, tetap menampilkan nama dan angkatanmu seperti biasa.
+            </div>
+            <div style={{ fontSize: '11px', color: '#9ab4cc', lineHeight: '1.7', marginTop: '6px' }}>
+              Tentang foto: foto profil disimpan di penyimpanan publik. Alamat langsung foto yang
+              pernah dibuka orang lain mungkin tetap dapat diakses setelah pengaturan ini dimatikan.
+            </div>
+            {statusAlumni !== 'alumni' && (
+              <div style={{ fontSize: '11px', color: '#5a7da0', lineHeight: '1.7', marginTop: '6px' }}>
+                Pilihan ini baru berlaku setelah kamu terdaftar sebagai alumni.
+              </div>
+            )}
+
+            {pesanTampil && (
+              <div role="status" style={{
+                marginTop: '12px', borderRadius: '8px', padding: '9px 12px', fontSize: '12px',
+                background: pesanTampil.ok ? '#e8f5e9' : '#fce4e4',
+                border: `0.5px solid ${pesanTampil.ok ? '#a5d6a7' : '#f09595'}`,
+                color: pesanTampil.ok ? '#2e7d32' : '#c62828',
+              }}>
+                {pesanTampil.teks}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Kontak & Alamat */}
         <div style={{ background: '#fff', borderRadius: '16px', padding: '20px', border: '0.5px solid #c5d9ef', marginBottom: '12px' }}>

@@ -31,6 +31,11 @@ function AuthContent() {
   // memikirkannya — sama seperti pemilih status barang di EditorPreorder.
   const [jenis, setJenis] = useState<'' | 'alumni' | 'umum'>('')
   const [angkatan, setAngkatan] = useState('')
+  // Persetujuan tampil di Direktori Alumni publik. TIDAK tercentang secara
+  // bawaan, dan hanya dikirim kalau dicentang — trigger trg_buat_profil_baru
+  // membaca raw_user_meta_data->>'tampil_publik' dan hanya 'true' yang
+  // berarti setuju; tanpa kuncinya sama sekali, hasilnya false.
+  const [setujuPublik, setSetujuPublik] = useState(false)
   const [loading, setLoading] = useState(false)
   const [pesan, setPesan] = useState('')
   const [registered, setRegistered] = useState(false)
@@ -117,6 +122,9 @@ function AuthContent() {
           data: {
             nama: nama.trim(),
             ...(jenis === 'alumni' ? { angkatan: parseInt(angkatan) } : {}),
+            // Hanya alumni, dan hanya kalau dicentang sendiri. Nilai false
+            // sengaja tidak dikirim: ketiadaan kunci sudah berarti tidak setuju.
+            ...(jenis === 'alumni' && setujuPublik === true ? { tampil_publik: true } : {}),
           },
         },
       })
@@ -372,7 +380,7 @@ function AuthContent() {
                       <input
                         type="radio" name="jenis-pendaftar" value={o.nilai}
                         checked={dipilih}
-                        onChange={()=>setJenis(o.nilai)}
+                        onChange={()=>{ setJenis(o.nilai); if (o.nilai!=='alumni') setSetujuPublik(false) }}
                         style={{accentColor:'#0C447C',width:'16px',height:'16px',flexShrink:0}}
                       />
                       <span style={{fontSize:'13px',color: dipilih ? '#0C447C' : '#1a1a1a',fontWeight: dipilih ? '600' : '400'}}>
@@ -392,6 +400,29 @@ function AuthContent() {
                   <div style={{fontSize:'11px',color:'#9ab4cc',marginTop:'6px',lineHeight:'1.6'}}>
                     Pilih dengan teliti — setelah terdaftar, angkatan tidak bisa kamu ubah sendiri.
                   </div>
+
+                  {/* Opt-in Direktori Alumni publik — tidak tercentang secara
+                      bawaan. Hanya untuk alumni: teman/keluarga alumni memang
+                      tidak masuk direktori. */}
+                  <label style={{display:'flex',alignItems:'flex-start',gap:'10px',cursor:'pointer',marginTop:'12px',padding:'11px 12px',borderRadius:'8px',border:`1px solid ${setujuPublik ? '#0C447C' : '#c5d9ef'}`,background: setujuPublik ? '#E6F1FB' : '#fff'}}>
+                    <input
+                      type="checkbox"
+                      checked={setujuPublik}
+                      onChange={e=>setSetujuPublik(e.target.checked)}
+                      style={{accentColor:'#0C447C',width:'16px',height:'16px',flexShrink:0,marginTop:'2px'}}
+                    />
+                    <span style={{minWidth:0}}>
+                      <span style={{display:'block',fontSize:'13px',fontWeight:'600',color:'#0C447C',marginBottom:'4px'}}>
+                        Tampilkan profil saya di Direktori Alumni publik
+                      </span>
+                      <span style={{display:'block',fontSize:'11px',color:'#5a7da0',lineHeight:'1.6'}}>
+                        Jika dicentang, pengunjung yang belum masuk dapat menemukan saya di Direktori Alumni dan
+                        melihat nama, angkatan (Superfive NN), dan foto profil saya, serta lapak saya bila sedang
+                        aktif. Direktori Alumni tidak menampilkan email, nomor HP, alamat, maupun rekening.
+                        Pengaturan ini bisa diubah kapan saja di halaman Profil.
+                      </span>
+                    </span>
+                  </label>
                 </div>
               )}
             </div>
