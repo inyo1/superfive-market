@@ -2196,6 +2196,13 @@ main {
 
 .a-angkatan { justify-content: flex-start; }
 .a-angkatan .m-kategori-item { white-space: nowrap; }
+/* Jumlah angkatan tidak terbatas seperti enam kategori. Di HP bar tetap
+   digeser dengan jari; di tablet/desktop pengguna mouse tidak bisa menggeser
+   bar tanpa scrollbar, jadi tombolnya dibungkus ke baris berikutnya. */
+@media (min-width: 768px) {
+  .a-angkatan { flex-wrap: wrap; overflow-x: visible; }
+  .a-angkatan .m-kategori-item { flex: 0 0 auto; }
+}
 
 .a-isi { padding-top: 20px; }
 .a-jumlah { margin: 0 0 16px; }
@@ -2392,6 +2399,7 @@ a.a-kartu:hover { border-color: #b9d3ec; box-shadow: 0 10px 24px rgba(6, 47, 89,
   overflow: hidden;
 }
 .a-toko-tombol { min-height: 44px; flex-shrink: 0; }
+.a-toko-kosong { margin: 0; padding: 14px 16px; border: 1px dashed var(--sf-garis); border-radius: 12px; font-size: 14px; color: var(--sf-teks-2); background: #fff; }
 @media (max-width: 639px) {
   .a-toko { flex-wrap: wrap; }
   .a-toko-tombol { width: 100%; }

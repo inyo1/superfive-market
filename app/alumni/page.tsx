@@ -177,6 +177,17 @@ export default function AlumniPage() {
 
   function resetSemua() { setSearch(''); setFilterAngkatan('semua') }
 
+  // UJI VISUAL — penanda supaya data rekaan tidak dikira data asli
+  const bannerUji = modeUji && (
+    <div className="b-wadah">
+      <p className="a-uji" role="status">
+        <strong>Mode uji visual.</strong> Semua alumni, toko, dan produk di halaman ini rekaan
+        (fixture), bukan data Superfive, dan hanya aktif di preview. Tautan toko dan produk
+        rekaan tidak bisa dibuka. Hapus <code>?uji=alumni</code> dari alamat untuk kembali ke data asli.
+      </p>
+    </div>
+  )
+
   return (
     <main className="beranda pasar">
       <Navbar />
@@ -234,17 +245,6 @@ export default function AlumniPage() {
         </div>
       </section>
 
-      {/* UJI VISUAL — penanda supaya data rekaan tidak dikira data asli */}
-      {modeUji && (
-        <div className="b-wadah">
-          <p className="a-uji" role="status">
-            <strong>Mode uji visual.</strong> Semua alumni, toko, dan produk di halaman ini rekaan
-            (fixture), bukan data Superfive, dan hanya aktif di preview. Tautan toko dan produk
-            rekaan tidak bisa dibuka. Hapus <code>?uji=alumni</code> dari alamat untuk kembali ke data asli.
-          </p>
-        </div>
-      )}
-
       {tampilSkeleton ? (
         <div className="b-wadah a-isi">
           <div className="a-grid">
@@ -258,7 +258,10 @@ export default function AlumniPage() {
           </div>
         </div>
       ) : mode === 'ringkas' ? (
-        <TampilanRingkas ringkas={ringkas} />
+        <>
+          {bannerUji}
+          <TampilanRingkas ringkas={ringkas} />
+        </>
       ) : (
         <>
           {/* ── Saring angkatan ── */}
@@ -282,6 +285,9 @@ export default function AlumniPage() {
               </nav>
             </div>
           )}
+          {/* Setelah bar angkatan, bukan sebelumnya: bar itu menumpang ke
+              atas (margin negatif) dan akan menutupi penanda di atasnya */}
+          {bannerUji}
 
           <section className="b-wadah a-isi" aria-label="Daftar alumni">
             <p className="m-jumlah a-jumlah" aria-live="polite">
@@ -331,7 +337,8 @@ function KartuAlumni({ a, sufiks }: { a: Alumni; sufiks: string }) {
   return (
     <Link href={`/alumni/${a.id}${sufiks}`} className="a-kartu">
       <AvatarAlumni nama={a.nama} foto={a.avatar_url || a.foto_url} ukuran={56} />
-      <span className="a-kartu-nama">{a.nama || 'Alumni'}</span>
+      {/* Nama panjang dipotong dua baris; nama lengkapnya tetap terbaca lewat title */}
+      <span className="a-kartu-nama" title={a.nama ?? undefined}>{a.nama || 'Alumni'}</span>
       <span className="a-label a-label-kecil">{a.label_angkatan}</span>
       {a.jumlahProduk !== null && (
         <span className="a-kartu-toko">

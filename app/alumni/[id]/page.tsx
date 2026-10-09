@@ -221,10 +221,13 @@ export default function ProfilAlumniPage() {
                     Kunjungi Toko <IkonPanah size={16} tebal={2.2} />
                   </Link>
                 </div>
-                {produk.length > 0 && (
+                {produk.length > 0 ? (
                   <ul className="m-grid a-rak-produk" role="list">
                     {produk.map(p => <li key={p.id}><KartuPasar p={p} /></li>)}
                   </ul>
+                ) : (
+                  // Toko tanpa produk tidak dibiarkan sebagai kotak kosong
+                  <p className="a-toko-kosong">Belum ada produk yang tayang di toko ini.</p>
                 )}
               </section>
             )}
