@@ -62,51 +62,93 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { itemsRef.current = items }, [items])
 
   useEffect(() => {
-    async function init() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        userIdRef.current = user.id
-        const { data, error } = await supabase
-          .from('keranjang')
-          .select(KOLOM)
-          .eq('user_id', user.id)
-        if (!error && data) setItems(data.map(rowToItem))
-      } else {
-        try {
-          const stored = localStorage.getItem('keranjang')
-          if (stored) setItems(JSON.parse(stored))
-        } catch {}
-      }
-      setLoading(false)
-    }
-    init()
+    // Naik setiap kali sesi berganti (masuk, keluar, ganti akun) dan saat
+    // unmount. Hasil query yang dimulai di generasi lama dibuang, supaya
+    // keranjang akun sebelumnya tidak menimpa state setelah logout.
+    let generasi = 0
+    let aktif = true
+    const masihBerlaku = (gen: number) => aktif && gen === generasi
+    const timer = new Set<ReturnType<typeof setTimeout>>()
 
-    const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        userIdRef.current = session.user.id
-
-        let localItems: CartItem[] = []
-        try {
-          const stored = localStorage.getItem('keranjang')
-          if (stored) localItems = JSON.parse(stored)
-        } catch {}
-
-        for (const i of localItems) {
-          await simpanBaris(session.user.id, i, i.qty)
+    async function init(gen: number) {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!masihBerlaku(gen)) return
+        if (user) {
+          userIdRef.current = user.id
+          const { data, error } = await supabase
+            .from('keranjang')
+            .select(KOLOM)
+            .eq('user_id', user.id)
+          if (masihBerlaku(gen) && !error && data) setItems(data.map(rowToItem))
+        } else {
+          try {
+            const stored = localStorage.getItem('keranjang')
+            if (stored) setItems(JSON.parse(stored))
+          } catch {}
         }
-        if (localItems.length > 0) localStorage.removeItem('keranjang')
+      } finally {
+        if (aktif) setLoading(false)
+      }
+    }
+    init(generasi)
 
-        const { data } = await supabase
-          .from('keranjang')
-          .select(KOLOM)
-          .eq('user_id', session.user.id)
-        if (data) setItems(data.map(rowToItem))
+    // Isi keranjang tamu digabung ke akun, lalu keranjang akun dibaca ulang.
+    async function sinkronSetelahMasuk(uid: string, gen: number) {
+      let localItems: CartItem[] = []
+      try {
+        const stored = localStorage.getItem('keranjang')
+        if (stored) localItems = JSON.parse(stored)
+      } catch {}
+
+      for (const i of localItems) {
+        if (!masihBerlaku(gen)) return
+        await simpanBaris(uid, i, i.qty)
+      }
+      if (!masihBerlaku(gen)) return
+      if (localItems.length > 0) localStorage.removeItem('keranjang')
+
+      const { data } = await supabase
+        .from('keranjang')
+        .select(KOLOM)
+        .eq('user_id', uid)
+      if (masihBerlaku(gen) && data) setItems(data.map(rowToItem))
+    }
+
+    // Callback auth WAJIB selesai seketika dan tidak boleh menunggu query
+    // Supabase. auth-js memanggilnya sambil memegang lock auth dan menunggu
+    // semua callback selesai; query di dalamnya butuh lock yang sama, jadi
+    // menunggunya membuat keduanya saling tunggu selamanya — seluruh
+    // getUser()/query berikutnya di semua tab ikut macet (halaman tertahan di
+    // skeleton). SIGNED_IN dikirim ulang setiap tab kembali terlihat, jadi ini
+    // bukan kasus langka. Pekerjaannya dijadwalkan ke luar callback, sesuai
+    // anjuran Supabase.
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        const uid = session.user.id
+        // SIGNED_IN berulang untuk akun yang sama tidak membatalkan
+        // sinkronisasi yang sedang berjalan; ganti akun membatalkannya.
+        if (userIdRef.current !== uid) generasi++
+        userIdRef.current = uid
+        const gen = generasi
+        const t = setTimeout(() => {
+          timer.delete(t)
+          sinkronSetelahMasuk(uid, gen).catch(() => {})
+        }, 0)
+        timer.add(t)
       } else if (event === 'SIGNED_OUT') {
+        generasi++
         userIdRef.current = null
         setItems([])
       }
     })
-    return () => listener.subscription.unsubscribe()
+
+    return () => {
+      aktif = false
+      generasi++
+      timer.forEach(clearTimeout)
+      listener.subscription.unsubscribe()
+    }
   }, [])
 
   useEffect(() => {
