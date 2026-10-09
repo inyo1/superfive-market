@@ -40,13 +40,6 @@ type Teman = Pick<Profil, 'id' | 'nama' | 'label_angkatan' | 'avatar_url' | 'fot
 
 const KOLOM_KARTU = 'id, nama, harga, kategori, foto_url, is_tersedia, is_preorder, po_janji_kirim, toko!inner(id, nama_toko, seller_id, is_official)'
 
-// UJI VISUAL SEMENTARA — lihat app/alumni/fixtureUjiAlumni.ts. Hanya di
-// development atau preview Vercel, dengan ?uji=alumni dan id uji-alumni-NN.
-// Login TETAP wajib: pemeriksaan sesi berjalan lebih dulu, fixture tidak
-// melewatinya. Di production konstanta ini false sejak build.
-const FIXTURE_DIIZINKAN =
-  process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_VERCEL_ENV === 'preview'
-
 function bulanTahun(iso: string) {
   return new Date(iso).toLocaleDateString('id-ID', { month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' })
 }
@@ -60,8 +53,6 @@ export default function ProfilAlumniPage() {
   const [toko, setToko] = useState<Toko | null>(null)
   const [produk, setProduk] = useState<ProdukKartu[]>([])
   const [teman, setTeman] = useState<Teman[]>([])
-  // UJI VISUAL: true selama halaman berisi data rekaan
-  const [modeUji, setModeUji] = useState(false)
   const tampilSkeleton = useTampilSkeleton(keadaan === 'muat')
 
   useEffect(() => {
@@ -73,22 +64,6 @@ export default function ProfilAlumniPage() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!aktif) return
       if (!session) { setKeadaan('gerbang'); return }
-
-      // UJI VISUAL — setelah pemeriksaan sesi, bukan sebelumnya
-      if (FIXTURE_DIIZINKAN && id.startsWith('uji-alumni-') &&
-          new URLSearchParams(window.location.search).get('uji') === 'alumni') {
-        const { ambilFixtureProfil } = await import('../fixtureUjiAlumni')
-        if (!aktif) return
-        const f = ambilFixtureProfil(id)
-        if (!f) { setKeadaan('tidak-ada'); return }
-        setModeUji(true)
-        setProfil(f.profil)
-        setToko(f.toko)
-        setProduk(f.produk)
-        setTeman(f.teman)
-        setKeadaan('ada')
-        return
-      }
 
       // Id yang bukan UUID membuat Postgres menolak query (400) — itu tautan
       // keliru, bukan sesi yang kedaluwarsa
@@ -154,7 +129,7 @@ export default function ProfilAlumniPage() {
         <nav className="d-remah" aria-label="Remah roti">
           <ol>
             <li><Link href="/">Beranda</Link></li>
-            <li><Link href={modeUji ? '/alumni?uji=alumni' : '/alumni'}>Alumni</Link></li>
+            <li><Link href="/alumni">Alumni</Link></li>
             <li aria-current="page">{keadaan === 'ada' ? (profil?.nama || 'Alumni') : 'Profil'}</li>
           </ol>
         </nav>
@@ -184,14 +159,6 @@ export default function ProfilAlumniPage() {
           </div>
         ) : (
           <>
-            {/* UJI VISUAL — penanda supaya data rekaan tidak dikira data asli */}
-            {modeUji && (
-              <p className="a-uji a-uji-profil" role="status">
-                <strong>Mode uji visual.</strong> Profil, toko, dan produk ini rekaan (fixture), bukan
-                data Superfive. Tautan toko dan produk rekaan tidak bisa dibuka.
-              </p>
-            )}
-
             {/* ── Kepala profil ── */}
             <section className="a-profil" aria-labelledby="nama-alumni">
               <AvatarAlumni nama={profil.nama} foto={profil.avatar_url || profil.foto_url} ukuran={104} />
@@ -239,12 +206,12 @@ export default function ProfilAlumniPage() {
               <section className="d-rak" aria-labelledby="judul-teman">
                 <div className="b-kepala">
                   <h2 id="judul-teman" className="a-rak-judul">Alumni {profil.label_angkatan} Lainnya</h2>
-                  <Link href={modeUji ? '/alumni?uji=alumni' : '/alumni'} className="b-tautan">Direktori <IkonPanah size={16} tebal={2.2} /></Link>
+                  <Link href="/alumni" className="b-tautan">Direktori <IkonPanah size={16} tebal={2.2} /></Link>
                 </div>
                 <ul className="a-grid" role="list">
                   {teman.map(t => (
                     <li key={t.id}>
-                      <Link href={`/alumni/${t.id}${modeUji ? '?uji=alumni' : ''}`} className="a-kartu">
+                      <Link href={`/alumni/${t.id}`} className="a-kartu">
                         <AvatarAlumni nama={t.nama} foto={t.avatar_url || t.foto_url} ukuran={48} />
                         <span className="a-kartu-nama">{t.nama || 'Alumni'}</span>
                         <span className="a-label a-label-kecil">{t.label_angkatan}</span>

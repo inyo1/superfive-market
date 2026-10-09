@@ -45,18 +45,7 @@ const TUJUAN_DAFTAR = '/auth?mode=daftar&redirect=/alumni&msg=' +
 const TUJUAN_MASUK = '/auth?redirect=/alumni&msg=' +
   encodeURIComponent('Masuk untuk melihat nama teman seangkatanmu')
 
-// UJI VISUAL SEMENTARA — data rekaan untuk QA tampilan Wave 2 fase 1.
-// HANYA kalau lingkungannya development atau preview Vercel DAN URL memuat
-// ?uji=alumni. Di production konstanta ini false sejak build, jadi
-// parameternya tidak berpengaruh dan fixture-nya tidak ikut ke bundel.
-// Login tetap wajib untuk melihat nama — fixture tidak melewati apa pun.
-// MENCABUT: lihat app/alumni/fixtureUjiAlumni.ts.
-const FIXTURE_DIIZINKAN =
-  process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_VERCEL_ENV === 'preview'
-
 export default function AlumniPage() {
-  // UJI VISUAL: true selama halaman berisi data rekaan
-  const [modeUji, setModeUji] = useState(false)
   // null = belum tahu; 'ringkas' = belum login (atau nama gagal dimuat)
   const [mode, setMode] = useState<'ringkas' | 'lengkap' | null>(null)
   const [alumni, setAlumni] = useState<Alumni[]>([])
@@ -81,17 +70,6 @@ export default function AlumniPage() {
         // getSession: cukup untuk memilih tingkat, tanpa panggilan jaringan.
         // Pengunjung anon langsung ke ringkasan — query nama pasti ditolak.
         const { data: { session } } = await supabase.auth.getSession()
-
-        // UJI VISUAL — data rekaan saja, tidak dicampur dengan data asli.
-        // Pengunjung tetap hanya melihat ringkasan tanpa nama.
-        if (FIXTURE_DIIZINKAN && new URLSearchParams(window.location.search).get('uji') === 'alumni') {
-          const { ambilFixtureAlumni, ambilFixtureRingkas } = await import('./fixtureUjiAlumni')
-          setModeUji(true)
-          if (session) { setAlumni(ambilFixtureAlumni()); setMode('lengkap') }
-          else { setRingkas(ambilFixtureRingkas()); setMode('ringkas') }
-          return
-        }
-
         if (!session) { await muatRingkas(); return }
 
         // JANGAN menyaring lagi di sini. View-nya sudah menyaring sendiri:
@@ -177,17 +155,6 @@ export default function AlumniPage() {
 
   function resetSemua() { setSearch(''); setFilterAngkatan('semua') }
 
-  // UJI VISUAL — penanda supaya data rekaan tidak dikira data asli
-  const bannerUji = modeUji && (
-    <div className="b-wadah">
-      <p className="a-uji" role="status">
-        <strong>Mode uji visual.</strong> Semua alumni, toko, dan produk di halaman ini rekaan
-        (fixture), bukan data Superfive, dan hanya aktif di preview. Tautan toko dan produk
-        rekaan tidak bisa dibuka. Hapus <code>?uji=alumni</code> dari alamat untuk kembali ke data asli.
-      </p>
-    </div>
-  )
-
   return (
     <main className="beranda pasar">
       <Navbar />
@@ -258,10 +225,7 @@ export default function AlumniPage() {
           </div>
         </div>
       ) : mode === 'ringkas' ? (
-        <>
-          {bannerUji}
-          <TampilanRingkas ringkas={ringkas} />
-        </>
+        <TampilanRingkas ringkas={ringkas} />
       ) : (
         <>
           {/* ── Saring angkatan ── */}
@@ -285,9 +249,6 @@ export default function AlumniPage() {
               </nav>
             </div>
           )}
-          {/* Setelah bar angkatan, bukan sebelumnya: bar itu menumpang ke
-              atas (margin negatif) dan akan menutupi penanda di atasnya */}
-          {bannerUji}
 
           <section className="b-wadah a-isi" aria-label="Daftar alumni">
             <p className="m-jumlah a-jumlah" aria-live="polite">
@@ -318,7 +279,7 @@ export default function AlumniPage() {
                     <span className="a-garis" aria-hidden />
                   </div>
                   <ul className="a-grid" role="list">
-                    {k.anggota.map(a => <li key={a.id}><KartuAlumni a={a} sufiks={modeUji ? '?uji=alumni' : ''} /></li>)}
+                    {k.anggota.map(a => <li key={a.id}><KartuAlumni a={a} /></li>)}
                   </ul>
                 </section>
               ))
@@ -333,9 +294,9 @@ export default function AlumniPage() {
   )
 }
 
-function KartuAlumni({ a, sufiks }: { a: Alumni; sufiks: string }) {
+function KartuAlumni({ a }: { a: Alumni }) {
   return (
-    <Link href={`/alumni/${a.id}${sufiks}`} className="a-kartu">
+    <Link href={`/alumni/${a.id}`} className="a-kartu">
       <AvatarAlumni nama={a.nama} foto={a.avatar_url || a.foto_url} ukuran={56} />
       {/* Nama panjang dipotong dua baris; nama lengkapnya tetap terbaca lewat title */}
       <span className="a-kartu-nama" title={a.nama ?? undefined}>{a.nama || 'Alumni'}</span>
