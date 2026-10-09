@@ -86,8 +86,8 @@ Yang berubah bersamaan:
 | profil baru | dibuat trigger `trg_buat_profil_baru` di `auth.users`, nama dari `raw_user_meta_data->>'nama'`. **Jangan insert ke `users` dari klien** — anon tidak punya grant apa pun di tabel itu |
 | angkatan | terkunci begitu `status_alumni = 'alumni'` (`jaga_field_sensitif`); setiap perubahan tercatat di `riwayat_angkatan` |
 | label angkatan | kolom `label_angkatan` ("Superfive 92") di view. **Jangan merangkainya di klien**, kecuali opsi dropdown di [PilihAngkatan](app/components/PilihAngkatan.tsx) |
-| `alumni_publik` | **hanya `authenticated`**. Permukaan publik pakai `penjual_publik` atau `angkatan_ringkas` |
-| `/alumni` | dua tingkat: anon melihat `angkatan_ringkas` (jumlah tanpa nama), yang login melihat nama |
+| `alumni_publik` | **hanya `authenticated`**. Permukaan publik pakai `penjual_publik`, `alumni_direktori`, atau `angkatan_ringkas` |
+| `/alumni` | dua sumber (sejak 10 Okt 2026): anon membaca `alumni_direktori` — hanya alumni yang opt-in lewat `users.tampil_publik` — yang login membaca `alumni_publik` (semua alumni) |
 | `/jual` | rekening dan "kota asal" (masuk ke `alamat_lengkap`) opsional; aturan penjual versi katalog |
 
 `TombolLapor` **sengaja mati**: ia mengembalikan null selama
@@ -185,7 +185,7 @@ app/
   admin/             panel admin (hapus produk & toko)
                      + /admin/verifikasi (Alumni Terbaru, cabut status)
                      + /admin/penjual (izin jualan)
-  alumni/            direktori alumni, dua tingkat (anon / login)
+  alumni/            direktori alumni: anon → alumni_direktori (opt-in), login → alumni_publik
   auth/              login & daftar  → /auth?redirect=...&msg=...&mode=daftar
                      plus /auth/reset untuk ganti kata sandi
   chat/              chat pembeli–penjual
@@ -268,6 +268,17 @@ Penonaktifan akun dan permintaan data ulang oleh admin:
 
 `nonaktif_at` · `nonaktif_oleh` uuid · `alasan_nonaktif` · `catatan_admin` ·
 `diminta_data_at` · `diminta_data_oleh` uuid
+
+Persetujuan tampil di Direktori Alumni publik (sejak 10 Oktober 2026):
+
+`tampil_publik`✳ bool (default **false**)
+
+Opt-in milik pemiliknya sendiri — **sengaja tidak masuk `jaga_field_sensitif`**,
+karena ini pilihan privasi, bukan kewenangan; pemiliknya harus bisa
+mengubahnya kapan saja lewat `users_update_own`. Diisi trigger daftar dari
+metadata, diubah dari sakelar di [/profil](app/profil/page.tsx). Satu-satunya
+pembacanya `alumni_direktori` — kolomnya tidak ikut ke view lain mana pun.
+Lihat [`alumni_direktori`](#alumni_direktori-view--direktori-untuk-pengunjung-opt-in).
 
 Alamat disimpan terpisah per bagian, lalu dirangkai jadi satu string saat checkout
 (lihat `buildAlamat` di [app/checkout/page.tsx](app/checkout/page.tsx)).
@@ -505,6 +516,7 @@ tidak aktif), [DaftarProspek](app/components/DaftarProspek.tsx), dan
 | nama, avatar, lencana terverifikasi | `pengguna_publik` | ya |
 | nama · angkatan **penjual** (kartu, detail, toko, pencarian) | `penjual_publik` | ya |
 | jumlah alumni per angkatan, tanpa nama | `angkatan_ringkas` | ya |
+| isi direktori `/alumni` dan profil `/alumni/[id]` untuk **pengunjung** | `alumni_direktori` | ya — hanya yang opt-in |
 | isi direktori `/alumni`, angkatan orang lain saat login | `alumni_publik` | **tidak** |
 | nama + status alumni + angkatan (mis. header toko) | dua query, gabung di JavaScript | — |
 
@@ -551,6 +563,58 @@ ambil dari `pengguna_publik`, yang memuat semua akun aktif. Menyimpulkan
 Cara pakainya sama seperti tabel biasa:
 `supabase.from('alumni_publik').select('id, nama, angkatan, label_angkatan')`
 
+### `alumni_direktori` (VIEW) — direktori untuk pengunjung, opt-in
+
+`id` · `nama` · `angkatan` · `label_angkatan` · `avatar_url` · `foto_url`
+
+```sql
+WHERE status_alumni = 'alumni' AND nonaktif_at IS NULL AND NOT is_institusi
+  AND angkatan IS NOT NULL AND tampil_publik
+```
+
+Penyaringnya sama dengan `alumni_publik`, **ditambah `tampil_publik`**. Ini
+yang dibaca [/alumni](app/alumni/page.tsx) dan
+[/alumni/[id]](app/alumni/[id]/page.tsx) untuk pengunjung yang belum login.
+Dibuat 10 Oktober 2026; SQL-nya tercatat di
+[scripts/migrasi-wave2-alumni-publik.sql](scripts/migrasi-wave2-alumni-publik.sql).
+
+**Dua jenis akses, dua view — jangan disatukan:**
+
+| Pembaca | View | Isinya |
+|---|---|---|
+| pengunjung (anon) | `alumni_direktori` | hanya alumni yang **memilih** tampil publik |
+| anggota (login) | `alumni_publik` | **semua** alumni aktif, apa pun pilihannya |
+
+Sakelar itu hanya mengatur yang pertama. Sesama anggota tetap saling
+melihat, dan nama · angkatan penjual tetap tampil di kartu produk lewat
+`penjual_publik`. Teks sakelar di /profil dan centang di /auth menyebut
+batas itu terang-terangan; jangan diubah jadi kesan "sembunyikan profilku
+dari semua orang".
+
+Yang perlu dipegang:
+
+- **Kolomnya sengaja minimal.** Tidak ada `created_at`, `is_seller`, email,
+  maupun kolom status. Profil `/alumni/[id]` untuk pengunjung karena itu
+  tidak menampilkan "bergabung sejak". Menambah kolom berarti menambah apa
+  yang dilihat orang yang tidak pernah login — putuskan dulu, jangan
+  sekadar menambahkan karena butuh
+- **Jangan menyaring `tampil_publik` di klien** — kolomnya tidak ada di view
+  mana pun yang terbaca klien, dan penyaringnya sudah di sini
+- **Kosong itu keadaan wajar**, terutama di awal: semua akun lama mulai
+  dengan `false`. Halaman yang membacanya wajib punya state kosong berupa
+  ajakan, bukan "tidak ada alumni"
+- **Profil yang tidak opt-in dan profil yang tidak ada mendapat tampilan
+  yang sama** untuk pengunjung ("Profil ini hanya terlihat oleh anggota").
+  Membedakannya membuat halaman profil bisa dipakai menebak siapa yang
+  punya akun
+- `security_invoker = false` dan `security_barrier = true`; hanya SELECT
+  untuk `anon` dan `authenticated`, tanpa hak tulis (sudah diverifikasi)
+
+⚠ **Opt-in ini belum utuh selama `pengguna_publik` masih terbaca anon** —
+lewat view itu pengunjung masih bisa membaca nama dan avatar semua akun
+aktif. Pencabutannya (Bagian 3 di berkas migrasi) belum diterapkan; lihat
+[Utang Teknis](#utang-teknis-yang-diketahui).
+
 ### `penjual_publik` (VIEW) — identitas penjual, terbuka untuk anon
 
 `id` · `nama` · `angkatan` · `label_angkatan` · `avatar_url` · `foto_url` ·
@@ -575,9 +639,11 @@ Sumber "Nama · Superfive 92" di semua permukaan publik, lewat
 
 `angkatan` · `label_angkatan` · `jumlah` int
 
-Penyaringnya sama dengan `alumni_publik`. Dipakai direktori `/alumni` untuk
-pengunjung (tanpa nama), dan hitungan ALUMNI di hero beranda (dijumlah di
-klien) — jangan kembali ke `count` ke `alumni_publik`, yang gagal untuk anon.
+Penyaringnya sama dengan `alumni_publik`. Dipakai hitungan ALUMNI di hero
+beranda (dijumlah di klien) — jangan kembali ke `count` ke `alumni_publik`,
+yang gagal untuk anon. Di `/alumni` sekarang hanya **cadangan** untuk
+pengunjung kalau `alumni_direktori` gagal dimuat; tampilan utamanya
+`alumni_direktori`.
 
 ### Aturan bersama view publik
 
@@ -1000,7 +1066,7 @@ Chat yang dipakai sekarang.
 | Bucket | Sifat | Isi |
 |---|---|---|
 | `produk-foto` | publik | Foto produk, lewat `uploadFotoProduk()` di [lib/uploadFoto.ts](lib/uploadFoto.ts) |
-| `avatar` | publik | Foto profil |
+| `avatar` | publik | Foto profil. Sejak 10 Okt 2026 hanya pemilik folder (`${uid}/...`) yang boleh unggah, ubah, hapus, dan mendaftar isinya; tampilan lewat URL publik tidak terpengaruh |
 | `bukti-alumni` | **privat** | Ijazah/rapor/kartu pelajar, maks 5 MB, hanya jpeg/png/webp |
 
 `bukti-alumni` privat karena isinya dokumen identitas. Aturannya:
@@ -1835,7 +1901,7 @@ Jangan tulis manual hal-hal di bawah ini dari aplikasi — sudah ditangani datab
 | `trg_jaga_toko_official` | BEFORE INSERT/UPDATE `toko` | Kembalikan `is_official` ke false / nilai lama kalau yang mengubah bukan admin |
 | `trg_jaga_field_sensitif` | BEFORE UPDATE `users` | Kembalikan 22 kolom kewenangan (`role`, `status_alumni`, `status_penjual`, dan seterusnya) ke nilai lama **diam-diam**, kecuali admin atau ada penanda `superfive.lewat_rpc` — ditambah `angkatan` kalau sudah alumni. Daftar kolomnya baca dari database, lihat [Keduanya dijaga](#keduanya-dijaga-jaga_field_sensitif) |
 | `trg_catat_riwayat_angkatan` | AFTER UPDATE OF angkatan `users` | Catat perubahan angkatan yang benar-benar terjadi ke `riwayat_angkatan` (`user_id`, `angkatan_lama`, `angkatan_baru`, `diubah_oleh` = `auth.uid()`, `diubah_at`). Tabelnya RLS, hanya bisa dibaca admin (`riwayat_angkatan_admin_read`), tanpa hak tulis untuk siapa pun |
-| `trg_buat_profil_baru` | AFTER INSERT `auth.users` | Buat baris `public.users` (`id`, `email`, `nama` dari metadata). `ON CONFLICT DO NOTHING`, jadi aman terhadap baris yang sudah ada |
+| `trg_buat_profil_baru` | AFTER INSERT `auth.users` | Buat baris `public.users` (`id`, `email`, `nama` dari metadata, `tampil_publik`). `tampil_publik` hanya true kalau metadata `tampil_publik` bernilai `true` / `"true"` — tanpa kuncinya (pendaftaran tanpa centang, atau jalur daftar lain) hasilnya false. Hanya dibaca saat INSERT; mengubah metadata sesudahnya tidak berefek. `ON CONFLICT DO NOTHING`, jadi aman terhadap baris yang sudah ada |
 
 `trg_kurangi_stok` melewati produk PO dengan sengaja — itu sebabnya stok produk
 PO selalu 0 dan **tidak boleh ditampilkan** sebagai angka di UI.
@@ -1996,7 +2062,7 @@ memang normal dan ditahan oleh RLS; semua tabel di project ini punya
 policy-nya. Untuk view, tidak ada yang menahan.
 
 Sudah diverifikasi: `pengguna_publik`, `penjual_publik`, `angkatan_ringkas`,
-`preorder_progress`, dan tabel `refund` hanya memberi SELECT ke `anon` dan
+`alumni_direktori`, `preorder_progress`, dan tabel `refund` hanya memberi SELECT ke `anon` dan
 `authenticated`; `alumni_publik` hanya SELECT ke `authenticated` (anon tidak
 punya apa pun). Semua view itu juga `security_invoker = false`, sama
 alasannya: tanpa itu `users` yang tertutup membuat hasilnya kosong.
@@ -2297,12 +2363,18 @@ ulasan, lalu rak "Produk Lain dari Toko Ini" dan "Produk Serupa" (khusus
 lapak alumni) memakai [KartuPasar](app/components/KartuPasar.tsx) — kartu
 yang sama dengan `/produk`. Satu foto saja (`foto_url` memang satu gambar).
 
-**`/alumni` dan `/alumni/[id]` (Wave 2 fase 1)** memakai kelas `a-` di atas
-kelas `m-`. Direktori tetap dua tingkat (anon → `angkatan_ringkas`, login →
-`alumni_publik`). Profil `/alumni/[id]` **hanya untuk yang login** — anon
-melihat ajakan masuk — dan isinya hanya kolom `alumni_publik` plus toko kalau
-penjualnya ada di `penjual_publik`. Tidak ada kota, kontak, profesi, atau
-lencana lain: datanya tidak ada di view publik mana pun.
+**`/alumni` dan `/alumni/[id]` (Wave 2)** memakai kelas `a-` di atas kelas
+`m-`. Dua sumber: pengunjung → `alumni_direktori` (hanya yang opt-in, dengan
+pencarian, saringan angkatan, dan profil publik), anggota → `alumni_publik`.
+Angka di hero = jumlah profil yang **bisa dilihat pembacanya**, jadi untuk
+pengunjung angkanya lebih kecil, dan pengunjung mendapat kartu "Ini alumni
+yang memilih tampil publik" supaya angkatan yang tidak muncul tidak terbaca
+kosong. Rak seangkatan di profil memakai sumber yang sama. Isinya hanya
+kolom view plus toko kalau penjualnya ada di `penjual_publik` — "bergabung
+sejak" hanya untuk anggota. Tidak ada kota, kontak, profesi, atau lencana
+lain: datanya tidak ada di view publik mana pun. Sakelar opt-in ada di
+/profil (disimpan langsung, terpisah dari tombol Simpan), centangnya di
+/auth (hanya untuk pilihan "alumni", tidak tercentang bawaan).
 
 **`position: sticky` di bagian bawah tidak bekerja di project ini.** `html`
 dan `body` sama-sama `overflow-x: hidden`, sehingga `body` mendapat
@@ -2474,6 +2546,14 @@ lihat [Utang Teknis](#utang-teknis-yang-diketahui).
   lewat SQL. Yang paling perlu dilihat langsung: pendaftaran dua pilihan,
   `/jual` di tiap nilai `status_penjual`, `/admin/penjual`, dan nama lawan
   bicara di chat dengan akun non-alumni.
+- **`pengguna_publik` masih terbaca anon** (per 10 Oktober 2026). Lewat view
+  itu pengunjung bisa membaca nama, avatar, dan status alumni **semua** akun
+  aktif — termasuk alumni yang tidak memilih tampil di Direktori Alumni
+  publik — jadi opt-in `tampil_publik` belum utuh. Usulan pencabutannya
+  (`revoke select on public.pengguna_publik from anon`, beserta audit
+  pemakainya) ada di Bagian 3
+  [scripts/migrasi-wave2-alumni-publik.sql](scripts/migrasi-wave2-alumni-publik.sql);
+  menunggu persetujuan Inyo.
 - **Stok pesanan yang batal sebelum `trg_kembalikan_stok` ada tidak kembali
   secara surut.** Trigger-nya hanya bekerja pada pembatalan yang terjadi
   setelah ia dipasang (14 Agustus 2026); pesanan yang dibatalkan sebelum itu
