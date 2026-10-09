@@ -1077,9 +1077,45 @@ Chat yang dipakai sekarang.
 
 | Bucket | Sifat | Isi |
 |---|---|---|
-| `produk-foto` | publik | Foto produk, lewat `uploadFotoProduk()` di [lib/uploadFoto.ts](lib/uploadFoto.ts) |
-| `avatar` | publik | Foto profil. Sejak 10 Okt 2026 hanya pemilik folder (`${uid}/...`) yang boleh unggah, ubah, hapus, dan mendaftar isinya; tampilan lewat URL publik tidak terpengaruh |
+| `produk-foto` | publik | Foto produk, lewat `uploadFotoProduk()` di [lib/uploadFoto.ts](lib/uploadFoto.ts). Sejak 10 Okt 2026 berbasis pemilik berkas — lihat di bawah |
+| `avatar` | publik | Foto profil, lewat [lib/avatar.ts](lib/avatar.ts) di `${uid}/<uuid>.<ext>`. Sejak 10 Okt 2026 hanya pemilik folder (`${uid}/...`) yang boleh unggah, ubah, hapus, dan mendaftar isinya; tampilan lewat URL publik tidak terpengaruh |
 | `bukti-alumni` | **privat** | Ijazah/rapor/kartu pelajar, maks 5 MB, hanya jpeg/png/webp |
+
+**Bucket publik ≠ policy terbuka.** "Publik" hanya berarti berkasnya bisa
+dibuka lewat `/storage/v1/object/public/...` tanpa melewati policy apa pun.
+Mengunggah, menimpa, menghapus, dan mendaftar isinya tetap ditentukan
+policy `storage.objects` — dan sebelum 10 Okt 2026 **kedua bucket publik
+terbuka untuk semua yang login** (siapa pun bisa menimpa atau menghapus foto
+orang lain). Bucket baru: tulis policy-nya sendiri, jangan pakai templat
+dashboard "Give users authenticated access to folder".
+
+### `produk-foto` — hak berbasis pemilik berkas
+
+Berkasnya **datar di akar bucket** (`<waktu>-<acak>.<ext>`, tanpa folder uid),
+jadi pola `foldername = uid` seperti `avatar` tidak bisa dipakai. Penanda
+pemiliknya `storage.objects.owner_id`, yang **diisi server Storage dari JWT
+pengunggah** — tidak bisa dipalsukan klien, karena schema `storage` tidak
+dibuka PostgREST (`PGRST106`) dan tidak ada fungsi `public` yang menulis
+`storage.objects`.
+
+| Operasi | Siapa | Policy |
+|---|---|---|
+| unggah | penjual aktif (`penjual_aktif()`) atau admin | `produk_foto_insert_penjual` |
+| daftar / metadata | pemilik berkas atau admin | `produk_foto_select_pemilik` |
+| hapus | pemilik berkas atau admin | `produk_foto_delete_pemilik` |
+| timpa (UPDATE, `x-upsert: true`) | **tidak ada siapa pun**, termasuk admin | sengaja tanpa policy |
+| tampil | siapa saja lewat URL publik | tidak lewat policy |
+
+Konsekuensinya:
+
+- **Kode hanya boleh mengunggah dengan `upsert: false`** dan nama baru tiap
+  kali — itu yang dilakukan `uploadFotoProduk()`. Menimpa berkas yang ada
+  akan ditolak `new row violates row-level security policy`
+- **Penjual yang dibekukan tidak bisa mengganti foto produk.** Disengaja:
+  produknya memang tidak tayang. Pesannya bunyi RLS mentah
+- Hapus produk dan ganti foto **tidak** menghapus berkas lama — lihat
+  [Utang Teknis](#utang-teknis-yang-diketahui)
+- SQL dan hasil ujinya: [scripts/migrasi-perawatan-produk-foto.sql](scripts/migrasi-perawatan-produk-foto.sql)
 
 `bukti-alumni` privat karena isinya dokumen identitas. Aturannya:
 
@@ -2558,15 +2594,23 @@ lihat [Utang Teknis](#utang-teknis-yang-diketahui).
   lewat SQL. Yang paling perlu dilihat langsung: pendaftaran dua pilihan,
   `/jual` di tiap nilai `status_penjual`, `/admin/penjual`, dan nama lawan
   bicara di chat dengan akun non-alumni.
-- **URL foto profil bisa ditebak dari uid** (per 10 Oktober 2026). Foto
-  disimpan di jalur tetap `${uid}/avatar.<ext>` di bucket publik `avatar`,
-  dan uid terbaca anon lewat `toko.seller_id` dan `reviews.user_id`. Jadi
-  foto siapa pun yang uid-nya diketahui tetap bisa dibuka, opt-in Direktori
-  Alumni atau tidak. Perbaikannya nama file acak
-  (`${uid}/${crypto.randomUUID()}.<ext>`) di [/profil](app/profil/page.tsx)
-  plus pembersihan file lama — perubahan kode, belum dikerjakan. Teks
-  sakelar di /profil sudah jujur soal ini ("foto profil disimpan di
-  penyimpanan publik").
+- **Dua avatar lama masih di jalur yang bisa ditebak** (per 10 Oktober
+  2026). Sejak Wave 2 (commit `49c9cee`) unggahan baru memakai nama acak
+  `${uid}/<uuid>.<ext>` lewat [lib/avatar.ts](lib/avatar.ts), dan foto lama
+  dihapus setelah URL baru tersimpan. Tetapi dua berkas yang diunggah
+  sebelumnya (`9fb43ac5…/avatar.jpg`, `bc721a45…/avatar.jpg`) masih di jalur
+  tetap, dan uid terbaca anon lewat `toko.seller_id` dan `reviews.user_id`.
+  Hilang sendiri begitu pemiliknya mengganti foto; memindahkannya paksa
+  berarti mengubah data production.
+- **Berkas yatim di `produk-foto`** (per 10 Oktober 2026): 8 dari 13 berkas
+  tidak dipakai produk mana pun, milik tiga akun yang sudah tidak ada di
+  `auth.users`. Hapus produk dan ganti foto tidak membersihkan berkas lama,
+  jadi jumlahnya akan terus bertambah. Pembersihannya penghapusan data —
+  butuh izin, dan pakai Storage API sebagai admin (DELETE lewat SQL ditolak
+  trigger `storage.protect_delete`).
+- **Bucket `produk-foto` tanpa batas ukuran dan jenis berkas.** Usulan
+  10 MB + JPG/PNG/WebP (sama dengan atribut `accept` ketiga form) belum
+  diterapkan — keputusan terpisah dari perbaikan policy.
 - **Tabel warisan `ulasan` masih terbaca semua orang** (policy
   `ulasan_select_public` = `true`, memuat `buyer_id`). Isinya 0 baris dan
   tidak dipakai kode mana pun; layak dibuang bersama `chat` saat
