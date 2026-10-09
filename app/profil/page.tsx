@@ -9,6 +9,7 @@ import Skeleton, { SkeletonPanel } from '../components/Skeleton'
 import Tombol from '../components/Tombol'
 import PilihWilayah from '../components/PilihWilayah'
 import { useTampilSkeleton } from '../hooks/useSkeleton'
+import { JENIS_AVATAR, hapusAvatar, jalurAvatarDariUrl, unggahAvatar } from '../../lib/avatar'
 
 export default function ProfilPage() {
   const router = useRouter()
@@ -124,64 +125,85 @@ export default function ProfilPage() {
     }
   }
 
+  // Urutan foto profil (lib/avatar.ts):
+  //   1. unggah foto BARU dengan nama acak — foto lama belum disentuh
+  //   2. simpan URL baru ke users.avatar_url
+  //   3. baru setelah 2 berhasil, hapus foto lama
+  // Gagal di 1: tidak ada yang berubah. Gagal di 2: foto baru yang terlanjur
+  // terunggah dibuang, avatar lama tetap dipakai. Gagal di 3: profil sudah
+  // benar, yang tertinggal hanya berkas lama di folder sendiri.
   async function handleSave() {
     if (!userId) return
     setSaving(true)
     setPesan('')
 
     let finalAvatarUrl = avatarUrl
+    let jalurBaru: string | null = null
 
-    if (file) {
-      const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg'
-      const path = `${userId}/avatar.${ext}`
-      const { error: upErr } = await supabase.storage
-        .from('avatar')
-        .upload(path, file, { upsert: true, cacheControl: '3600' })
+    try {
+      if (file) {
+        const hasil = await unggahAvatar(userId, file)
+        if ('error' in hasil) {
+          setPesan('Gagal upload foto: ' + hasil.error)
+          return
+        }
+        jalurBaru = hasil.jalur
+        finalAvatarUrl = hasil.url
+      }
 
-      if (upErr) {
-        setPesan('Gagal upload foto: ' + upErr.message)
-        setSaving(false)
+      const { error } = await supabase
+        .from('users')
+        .upsert({
+          id: userId,
+          email: userEmail,
+          nama,
+          // angkatan sengaja tidak ikut: hanya ajukan_alumni() yang mengisinya
+          avatar_url: finalAvatarUrl,
+          no_hp: noHp || null,
+          jalan: jalan || null,
+          kelurahan: kelurahan || null,
+          kecamatan: kecamatan || null,
+          kota: kota || null,
+          provinsi: provinsi || null,
+          kode_pos: kodePos || null,
+          // Kode kelurahan dari pemilih wilayah. Nama tiap tingkat tetap ikut
+          // disimpan di kolomnya masing-masing supaya menampilkan alamat tidak
+          // perlu join, dan alamat teks lama tetap sebentuk dengan yang baru.
+          //
+          // Hanya ditulis kalau pemilihnya benar-benar disentuh: tanpa penjaga
+          // ini, pengguna lama yang membuka /profil lalu menekan Simpan untuk
+          // urusan lain akan kehilangan alamat teksnya.
+          ...(wilayahDisentuh ? { wilayah_kode: wilayahKode } : {}),
+        })
+
+      if (error) {
+        // Profil tidak tersimpan: avatar_url masih menunjuk foto lama, jadi
+        // foto baru yang terlanjur terunggah dibuang dan foto lama dibiarkan
+        if (jalurBaru) await hapusAvatar(jalurBaru)
+        setPesan('Gagal menyimpan: ' + error.message)
         return
       }
-      const { data: urlData } = supabase.storage.from('avatar').getPublicUrl(path)
-      finalAvatarUrl = urlData.publicUrl + '?t=' + Date.now()
-    }
 
-    const { error } = await supabase
-      .from('users')
-      .upsert({
-        id: userId,
-        email: userEmail,
-        nama,
-        // angkatan sengaja tidak ikut: hanya ajukan_alumni() yang mengisinya
-        avatar_url: finalAvatarUrl,
-        no_hp: noHp || null,
-        jalan: jalan || null,
-        kelurahan: kelurahan || null,
-        kecamatan: kecamatan || null,
-        kota: kota || null,
-        provinsi: provinsi || null,
-        kode_pos: kodePos || null,
-        // Kode kelurahan dari pemilih wilayah. Nama tiap tingkat tetap ikut
-        // disimpan di kolomnya masing-masing supaya menampilkan alamat tidak
-        // perlu join, dan alamat teks lama tetap sebentuk dengan yang baru.
-        //
-        // Hanya ditulis kalau pemilihnya benar-benar disentuh: tanpa penjaga
-        // ini, pengguna lama yang membuka /profil lalu menekan Simpan untuk
-        // urusan lain akan kehilangan alamat teksnya.
-        ...(wilayahDisentuh ? { wilayah_kode: wilayahKode } : {}),
-      })
+      // URL baru sudah tersimpan — baru sekarang foto lama boleh dihapus.
+      // Hanya berkas di folder sendiri di bucket avatar; URL dari luar
+      // (atau bentuk yang tidak dikenal) tidak pernah dihapus.
+      if (jalurBaru) {
+        const jalurLama = jalurAvatarDariUrl(avatarUrl, userId)
+        if (jalurLama && jalurLama !== jalurBaru) await hapusAvatar(jalurLama)
+      }
 
-    if (error) {
-      setPesan('Gagal menyimpan: ' + error.message)
-    } else {
       setAvatarUrl(finalAvatarUrl)
       setFile(null)
       setPreview(null)
       setPesan('Profil berhasil diperbarui!')
       if (fileRef.current) fileRef.current.value = ''
+    } catch (e) {
+      // Galat tak terduga (mis. jaringan putus) setelah unggah: foto baru
+      // belum tentu tersimpan di profil, jadi tidak ada foto lama yang dihapus
+      setPesan('Gagal menyimpan: ' + (e as Error).message)
+    } finally {
+      setSaving(false)
     }
-    setSaving(false)
   }
 
   if (tampilSkeleton) {
@@ -240,7 +262,7 @@ export default function ProfilPage() {
               display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px',
             }}>📷</div>
           </div>
-          <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFileChange} style={{ display: 'none' }} />
+          <input ref={fileRef} type="file" accept={JENIS_AVATAR} onChange={handleFileChange} style={{ display: 'none' }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '2px' }}>
             <span style={{ fontSize: '13px', fontWeight: '500', color: '#1a1a1a' }}>{nama || 'Nama belum diisi'}</span>
             <BadgeVerifikasi alumni={statusAlumni === 'alumni'} size={14} />
