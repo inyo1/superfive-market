@@ -12,15 +12,20 @@ import { IkonEtalase, IkonOrang, IkonPanah } from '../../components/beranda/Ikon
 import { useTampilSkeleton } from '../../hooks/useSkeleton'
 import { ambilPenjualPublik } from '../../../lib/penjualPublik'
 
-// Profil alumni — Wave 2 fase 1. HANYA UNTUK YANG LOGIN.
+// Profil alumni — Wave 2. DUA SUMBER, sama seperti direktorinya:
 //
-// Sumbernya `alumni_publik`, yang hanya di-grant ke `authenticated`. Untuk
-// pengunjung anon query-nya gagal, dan halaman ini menampilkan ajakan masuk
-// — bukan pesan error, dan bukan data dari jalur lain. Jangan membaca tabel
-// `users` untuk profil orang lain: RLS-nya hanya membuka baris sendiri.
+// Belum login → `alumni_direktori`: hanya alumni yang memilih tampil publik.
+//               Yang tidak memilih — atau yang memang tidak ada — mendapat
+//               ajakan masuk yang SAMA, supaya halaman ini tidak bisa dipakai
+//               menebak siapa saja yang punya akun.
+// Sudah login → `alumni_publik` (hanya di-grant ke `authenticated`).
 //
-// Isinya hanya yang memang ada di view: nama, avatar, angkatan, tanggal
-// bergabung. Toko tampil kalau penjualnya aktif (penjual_publik). Kontak
+// Jangan membaca tabel `users` untuk profil orang lain: RLS-nya hanya membuka
+// baris sendiri.
+//
+// Isinya hanya yang memang ada di view: nama, avatar, angkatan, dan — khusus
+// anggota — tanggal bergabung (`alumni_direktori` sengaja tidak memuatnya).
+// Toko tampil kalau penjualnya aktif (penjual_publik). Kontak
 // penjual tidak pernah tampil di sini — satu-satunya jalan keluarnya tombol
 // Hubungi Penjual di halaman produk (RPC buka_kontak_toko).
 
@@ -31,7 +36,7 @@ type Profil = {
   label_angkatan: string
   avatar_url: string | null
   foto_url: string | null
-  created_at: string
+  created_at?: string     // hanya dari alumni_publik (anggota)
 }
 
 type Toko = { id: string; nama_toko: string | null; deskripsi: string | null; kategori: string | null }
@@ -46,7 +51,8 @@ function bulanTahun(iso: string) {
 
 export default function ProfilAlumniPage() {
   const { id } = useParams<{ id: string }>()
-  // 'gerbang' = belum login; 'tidak-ada' = bukan alumni aktif / tidak ditemukan
+  // 'gerbang' = pengunjung, profil tidak tampil publik (atau tidak ada);
+  // 'tidak-ada' = anggota, bukan alumni aktif / tidak ditemukan
   const [keadaan, setKeadaan] = useState<'muat' | 'gerbang' | 'tidak-ada' | 'ada'>('muat')
   const [profil, setProfil] = useState<Profil | null>(null)
   const [diriSendiri, setDiriSendiri] = useState(false)
@@ -63,32 +69,40 @@ export default function ProfilAlumniPage() {
       setKeadaan('muat'); setProfil(null); setToko(null); setProduk([]); setTeman([])
       const { data: { session } } = await supabase.auth.getSession()
       if (!aktif) return
-      if (!session) { setKeadaan('gerbang'); return }
+      const sumber = session ? 'alumni_publik' : 'alumni_direktori'
 
       // Id yang bukan UUID membuat Postgres menolak query (400) — itu tautan
       // keliru, bukan sesi yang kedaluwarsa
-      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) { setKeadaan('tidak-ada'); return }
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+        setKeadaan(session ? 'tidak-ada' : 'gerbang'); return
+      }
 
       const { data, error } = await supabase
-        .from('alumni_publik')
-        .select('id, nama, angkatan, label_angkatan, avatar_url, foto_url, created_at')
+        .from(sumber)
+        .select(session
+          ? 'id, nama, angkatan, label_angkatan, avatar_url, foto_url, created_at'
+          : 'id, nama, angkatan, label_angkatan, avatar_url, foto_url')
         .eq('id', id)
         .maybeSingle()
       if (!aktif) return
       // Sesi kedaluwarsa atau grant berubah — tetap ajakan masuk, bukan error
       if (error) { setKeadaan('gerbang'); return }
-      // Tidak punya baris = bukan alumni aktif (pembeli biasa, akun institusi,
-      // akun nonaktif, atau status alumninya dicabut). Keadaan wajar.
-      if (!data) { setKeadaan('tidak-ada'); return }
+      // Tidak punya baris. Untuk anggota: bukan alumni aktif (pembeli biasa,
+      // akun institusi, akun nonaktif, atau status alumninya dicabut). Untuk
+      // pengunjung: belum memilih tampil publik — atau memang tidak ada;
+      // keduanya sengaja tidak dibedakan. Keadaan wajar, bukan error.
+      if (!data) { setKeadaan(session ? 'tidak-ada' : 'gerbang'); return }
 
-      const p = data as Profil
+      const p = data as unknown as Profil
       setProfil(p)
-      setDiriSendiri(session.user.id === p.id)
+      setDiriSendiri(session?.user.id === p.id)
       setKeadaan('ada')
 
+      // Rak seangkatan dari sumber yang sama: pengunjung hanya melihat
+      // seangkatan yang juga memilih tampil publik
       const [penjual, seangkatan] = await Promise.all([
         ambilPenjualPublik([p.id]),
-        supabase.from('alumni_publik')
+        supabase.from(sumber)
           .select('id, nama, label_angkatan, avatar_url, foto_url')
           .eq('angkatan', p.angkatan).neq('id', p.id)
           .order('nama').limit(12),
@@ -146,8 +160,11 @@ export default function ProfilAlumniPage() {
         ) : keadaan === 'gerbang' ? (
           <div className="m-kosong">
             <span className="m-kosong-ikon"><IkonOrang size={26} /></span>
-            <h2>Masuk untuk melihat profil alumni</h2>
-            <p>Profil alumni hanya terlihat oleh sesama anggota yang sudah masuk.</p>
+            <h2>Profil ini hanya terlihat oleh anggota</h2>
+            <p>
+              Profil ini tidak ditampilkan untuk publik, atau tautannya keliru.
+              Masuk untuk melihat profil sesama alumni Superfive.
+            </p>
             <Link href={tujuanMasuk} className="b-tombol m-tombol-biru">Masuk</Link>
           </div>
         ) : keadaan === 'tidak-ada' || !profil ? (
@@ -166,7 +183,8 @@ export default function ProfilAlumniPage() {
                 <h1 id="nama-alumni" className="a-profil-nama">{profil.nama || 'Alumni'}</h1>
                 <span className="a-label">{profil.label_angkatan}</span>
                 <p className="a-profil-meta">
-                  Angkatan {profil.angkatan} · Bergabung di Superfive sejak {bulanTahun(profil.created_at)}
+                  Angkatan {profil.angkatan}
+                  {profil.created_at && <> · Bergabung di Superfive sejak {bulanTahun(profil.created_at)}</>}
                 </p>
               </div>
               {diriSendiri && (

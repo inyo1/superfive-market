@@ -10,15 +10,21 @@ import AvatarAlumni from '../components/alumni/AvatarAlumni'
 import { IkonCari, IkonEtalase, IkonOrang, IkonTutup } from '../components/beranda/Ikon'
 import { useTampilSkeleton } from '../hooks/useSkeleton'
 
-// Direktori alumni — redesain Wave 2 fase 1. DUA TINGKAT, sama seperti
-// sebelumnya; yang berubah tampilannya.
+// Direktori alumni — Wave 2. DUA SUMBER, menurut siapa yang membuka:
 //
-// Belum login → `angkatan_ringkas`: jumlah alumni per angkatan, TANPA nama.
-// Sudah login → `alumni_publik`: nama, avatar, dan angkatan.
+// Belum login → `alumni_direktori`: HANYA alumni yang memilih tampil publik
+//               (users.tampil_publik, opt-in). Pengunjung bisa mencari,
+//               menyaring angkatan, dan membuka profilnya.
+// Sudah login → `alumni_publik`: semua alumni aktif, tanpa melihat pilihan
+//               tampil publik — sesama anggota memang boleh saling melihat.
 //
 // Bukan pilihan tampilan, melainkan grant di database: `alumni_publik` hanya
-// di-grant ke `authenticated`. Query anon ke sana GAGAL (permission denied),
-// dan kegagalan itu harus berujung ke tampilan ringkas, bukan pesan error.
+// di-grant ke `authenticated`. Query anon ke sana GAGAL (permission denied).
+// Jangan menyaring tampil_publik di klien — kolomnya memang tidak ada di view
+// mana pun, dan penyaringnya sudah di `alumni_direktori`.
+//
+// Kalau `alumni_direktori` sendiri gagal dimuat, pengunjung jatuh ke
+// `angkatan_ringkas` (jumlah per angkatan, tanpa nama) — bukan pesan error.
 //
 // Yang ditampilkan hanya data yang memang ada di view: nama, avatar, label
 // angkatan ("Superfive 92", dari kolom `label_angkatan` — tidak dirangkai di
@@ -41,13 +47,14 @@ type Kelompok = { angkatan: number; label: string; anggota: Alumni[] }
 type Ringkas = { angkatan: number; label_angkatan: string; jumlah: number }
 
 const TUJUAN_DAFTAR = '/auth?mode=daftar&redirect=/alumni&msg=' +
-  encodeURIComponent('Daftar atau masuk untuk melihat nama teman seangkatanmu')
+  encodeURIComponent('Daftar atau masuk untuk melihat seluruh alumni')
 const TUJUAN_MASUK = '/auth?redirect=/alumni&msg=' +
-  encodeURIComponent('Masuk untuk melihat nama teman seangkatanmu')
+  encodeURIComponent('Masuk untuk melihat seluruh alumni')
 
 export default function AlumniPage() {
-  // null = belum tahu; 'ringkas' = belum login (atau nama gagal dimuat)
-  const [mode, setMode] = useState<'ringkas' | 'lengkap' | null>(null)
+  // null = belum tahu; 'publik' = pengunjung (alumni_direktori);
+  // 'lengkap' = anggota (alumni_publik); 'ringkas' = cadangan kalau gagal
+  const [mode, setMode] = useState<'ringkas' | 'publik' | 'lengkap' | null>(null)
   const [alumni, setAlumni] = useState<Alumni[]>([])
   const [ringkas, setRingkas] = useState<Ringkas[]>([])
   const [loading, setLoading] = useState(true)
@@ -65,49 +72,50 @@ export default function AlumniPage() {
       setMode('ringkas')
     }
 
+    // Jumlah produk per alumni yang punya toko aktif. Toko hanya dihitung
+    // kalau penjualnya aktif (penjual_publik) — RLS memperlihatkan toko milik
+    // sendiri walau sedang dibekukan, dan toko itu tidak tayang untuk orang
+    // lain. Ketiga query terbuka untuk anon, jadi sama untuk kedua sumber.
+    async function hitungProduk(ids: string[]) {
+      const jumlah: Record<string, number> = {}
+      if (ids.length === 0) return jumlah
+      const { data: aktif } = await supabase.from('penjual_publik').select('id').in('id', ids)
+      const aktifIds = (aktif ?? []).map(p => p.id as string)
+      if (aktifIds.length === 0) return jumlah
+      const { data: toko } = await supabase.from('toko').select('id, seller_id').in('seller_id', aktifIds)
+      const tokoKe: Record<string, string> = {}
+      for (const t of toko ?? []) { tokoKe[t.id] = t.seller_id; jumlah[t.seller_id] = 0 }
+      const tokoIds = Object.keys(tokoKe)
+      if (tokoIds.length > 0) {
+        const { data: produk } = await supabase.from('produk').select('toko_id').in('toko_id', tokoIds)
+        for (const p of produk ?? []) {
+          const sid = tokoKe[p.toko_id]
+          if (sid) jumlah[sid] = (jumlah[sid] ?? 0) + 1
+        }
+      }
+      return jumlah
+    }
+
     async function muat() {
       try {
-        // getSession: cukup untuk memilih tingkat, tanpa panggilan jaringan.
-        // Pengunjung anon langsung ke ringkasan — query nama pasti ditolak.
+        // getSession: cukup untuk memilih sumber, tanpa panggilan jaringan
         const { data: { session } } = await supabase.auth.getSession()
-        if (!session) { await muatRingkas(); return }
+        const sumber = session ? 'alumni_publik' : 'alumni_direktori'
 
-        // JANGAN menyaring lagi di sini. View-nya sudah menyaring sendiri:
+        // JANGAN menyaring lagi di sini. Kedua view menyaring sendiri:
         // status_alumni = 'alumni', angkatan terisi, akun nonaktif dan akun
-        // institusi dikecualikan.
+        // institusi dikecualikan — alumni_direktori ditambah tampil_publik.
         const { data, error } = await supabase
-          .from('alumni_publik')
+          .from(sumber)
           .select('id, nama, angkatan, label_angkatan, avatar_url, foto_url')
-        // Sesi kedaluwarsa atau grant berubah — jatuh ke ringkasan, bukan error
+        // Sesi kedaluwarsa, grant berubah, atau view belum ada — jatuh ke
+        // ringkasan per angkatan, bukan error
         if (error) { await muatRingkas(); return }
 
         const baris = (data ?? []) as Omit<Alumni, 'jumlahProduk'>[]
-        const ids = baris.map(a => a.id)
-
-        // Toko hanya dihitung kalau penjualnya aktif (penjual_publik) — RLS
-        // memperlihatkan toko milik sendiri walau sedang dibekukan, dan toko
-        // itu tidak tayang untuk orang lain.
-        const jumlah: Record<string, number> = {}
-        if (ids.length > 0) {
-          const { data: aktif } = await supabase.from('penjual_publik').select('id').in('id', ids)
-          const aktifIds = (aktif ?? []).map(p => p.id as string)
-          if (aktifIds.length > 0) {
-            const { data: toko } = await supabase.from('toko').select('id, seller_id').in('seller_id', aktifIds)
-            const tokoKe: Record<string, string> = {}
-            for (const t of toko ?? []) { tokoKe[t.id] = t.seller_id; jumlah[t.seller_id] = 0 }
-            const tokoIds = Object.keys(tokoKe)
-            if (tokoIds.length > 0) {
-              const { data: produk } = await supabase.from('produk').select('toko_id').in('toko_id', tokoIds)
-              for (const p of produk ?? []) {
-                const sid = tokoKe[p.toko_id]
-                if (sid) jumlah[sid] = (jumlah[sid] ?? 0) + 1
-              }
-            }
-          }
-        }
-
+        const jumlah = await hitungProduk(baris.map(a => a.id))
         setAlumni(baris.map(a => ({ ...a, jumlahProduk: a.id in jumlah ? jumlah[a.id] : null })))
-        setMode('lengkap')
+        setMode(session ? 'lengkap' : 'publik')
       } finally {
         setLoading(false)
       }
@@ -144,9 +152,12 @@ export default function AlumniPage() {
   }, [alumni, kata, filterAngkatan])
 
   const jumlahTampil = kelompok.reduce((n, k) => n + k.anggota.length, 0)
-  const lengkap = mode === 'lengkap'
-  const totalAlumni = lengkap ? alumni.length : ringkas.reduce((n, r) => n + (r.jumlah ?? 0), 0)
-  const totalAngkatan = lengkap ? daftarAngkatan.length : ringkas.length
+  // 'publik' dan 'lengkap' sama-sama menampilkan nama; bedanya sumbernya
+  const bernama = mode === 'lengkap' || mode === 'publik'
+  // Angka di hero = yang benar-benar bisa dilihat pembaca ini. Untuk
+  // pengunjung itu hanya yang tampil publik, bukan seluruh alumni.
+  const totalAlumni = bernama ? alumni.length : ringkas.reduce((n, r) => n + (r.jumlah ?? 0), 0)
+  const totalAngkatan = bernama ? daftarAngkatan.length : ringkas.length
 
   function handleCari(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -183,7 +194,7 @@ export default function AlumniPage() {
           </p>
 
           {/* Pencarian nama hanya bermakna kalau namanya terlihat */}
-          {lengkap && (
+          {bernama && alumni.length > 0 && (
             <form role="search" onSubmit={handleCari} className="b-hero-cari m-cari">
               <label htmlFor="cari-alumni" className="sr-only">Cari nama atau angkatan</label>
               <span className="b-hero-cari-ikon"><IkonCari size={20} /></span>
@@ -203,7 +214,7 @@ export default function AlumniPage() {
               <button type="submit">Cari</button>
             </form>
           )}
-          {mode === 'ringkas' && (
+          {(mode === 'ringkas' || mode === 'publik') && (
             <div className="a-hero-aksi">
               <Link href={TUJUAN_DAFTAR} className="b-tombol b-tombol-emas">Daftar Gratis</Link>
               <Link href={TUJUAN_MASUK} className="b-tombol b-tombol-garis">Masuk</Link>
@@ -251,6 +262,19 @@ export default function AlumniPage() {
           )}
 
           <section className="b-wadah a-isi" aria-label="Daftar alumni">
+            {/* Pengunjung melihat sebagian saja — katakan terus terang, supaya
+                angkatan yang tidak muncul tidak terbaca "tidak ada alumninya" */}
+            {mode === 'publik' && alumni.length > 0 && (
+              <div className="a-ajakan">
+                <span className="m-kosong-ikon a-ajakan-ikon"><IkonOrang size={24} /></span>
+                <div style={{ minWidth: 0 }}>
+                  <h2>Ini alumni yang memilih tampil publik</h2>
+                  <p>Masuk untuk melihat seluruh alumni yang sudah bergabung di Superfive.</p>
+                </div>
+                <Link href={TUJUAN_MASUK} className="b-tombol m-tombol-biru">Masuk</Link>
+              </div>
+            )}
+
             {/* Hanya saat mencari atau menyaring — tanpa itu angkanya sudah
                 ada di hero, dan baris ini hanya menambah jarak */}
             {(kata || filterAngkatan !== 'semua') && kelompok.length > 0 && (
@@ -259,7 +283,23 @@ export default function AlumniPage() {
               </p>
             )}
 
-            {kelompok.length === 0 ? (
+            {mode === 'publik' && alumni.length === 0 ? (
+              // Belum ada yang memilih tampil publik — keadaan wajar di awal,
+              // jadi ajakan, bukan pesan error
+              <div className="m-kosong">
+                <span className="m-kosong-ikon"><IkonOrang size={26} /></span>
+                <h2>Direktori publik masih menunggu alumni pertamanya.</h2>
+                <p>
+                  Alumni yang memilih menampilkan profilnya akan muncul di sini.
+                  Sudah bergabung? Masuk untuk melihat seluruh alumni — atau daftar
+                  dan tampilkan profilmu agar teman seangkatan bisa menemukanmu.
+                </p>
+                <div className="a-kosong-aksi">
+                  <Link href={TUJUAN_DAFTAR} className="b-tombol m-tombol-biru">Daftar Gratis</Link>
+                  <Link href={TUJUAN_MASUK} className="b-tombol a-tombol-garis">Masuk</Link>
+                </div>
+              </div>
+            ) : kelompok.length === 0 ? (
               <div className="m-kosong">
                 <span className="m-kosong-ikon"><IkonOrang size={26} /></span>
                 <h2>{alumni.length === 0 ? 'Belum ada alumni terdaftar.' : 'Alumni tidak ditemukan.'}</h2>
@@ -318,7 +358,8 @@ function KartuAlumni({ a }: { a: Alumni }) {
   )
 }
 
-// Tingkat pertama: berapa alumni di tiap angkatan, tanpa satu nama pun.
+// Cadangan untuk pengunjung kalau alumni_direktori gagal dimuat: berapa
+// alumni di tiap angkatan, tanpa satu nama pun.
 function TampilanRingkas({ ringkas }: { ringkas: Ringkas[] }) {
   return (
     <section className="b-wadah a-isi" aria-label="Alumni per angkatan">
