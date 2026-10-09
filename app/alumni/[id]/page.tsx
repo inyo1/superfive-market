@@ -211,10 +211,13 @@ export default function ProfilAlumniPage() {
                 <ul className="a-grid" role="list">
                   {teman.map(t => (
                     <li key={t.id}>
-                      <Link href={`/alumni/${t.id}`} className="a-kartu">
-                        <AvatarAlumni nama={t.nama} foto={t.avatar_url || t.foto_url} ukuran={48} />
-                        <span className="a-kartu-nama">{t.nama || 'Alumni'}</span>
-                        <span className="a-label a-label-kecil">{t.label_angkatan}</span>
+                      {/* Kartu yang sama dengan direktori, termasuk avatar 56px */}
+                      <Link href={`/alumni/${t.id}`} className="a-kartu" aria-label={`Profil ${t.nama || 'alumni'}, ${t.label_angkatan}`}>
+                        <AvatarAlumni nama={t.nama} foto={t.avatar_url || t.foto_url} ukuran={56} />
+                        <span className="a-kartu-teks">
+                          <span className="a-kartu-nama" title={t.nama ?? undefined}>{t.nama || 'Alumni'}</span>
+                          <span className="a-label a-label-kecil">{t.label_angkatan}</span>
+                        </span>
                       </Link>
                     </li>
                   ))}

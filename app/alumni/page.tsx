@@ -7,7 +7,7 @@ import Navbar from '../components/Navbar'
 import Skeleton from '../components/Skeleton'
 import SiteFooter from '../components/beranda/SiteFooter'
 import AvatarAlumni from '../components/alumni/AvatarAlumni'
-import { IkonCari, IkonEtalase, IkonOrang, IkonPanah, IkonTutup } from '../components/beranda/Ikon'
+import { IkonCari, IkonEtalase, IkonOrang, IkonTutup } from '../components/beranda/Ikon'
 import { useTampilSkeleton } from '../hooks/useSkeleton'
 
 // Direktori alumni — redesain Wave 2 fase 1. DUA TINGKAT, sama seperti
@@ -251,9 +251,13 @@ export default function AlumniPage() {
           )}
 
           <section className="b-wadah a-isi" aria-label="Daftar alumni">
-            <p className="m-jumlah a-jumlah" aria-live="polite">
-              <strong>{jumlahTampil.toLocaleString('id-ID')}</strong> alumni ditemukan
-            </p>
+            {/* Hanya saat mencari atau menyaring — tanpa itu angkanya sudah
+                ada di hero, dan baris ini hanya menambah jarak */}
+            {(kata || filterAngkatan !== 'semua') && kelompok.length > 0 && (
+              <p className="m-jumlah a-jumlah" aria-live="polite">
+                <strong>{jumlahTampil.toLocaleString('id-ID')}</strong> alumni ditemukan
+              </p>
+            )}
 
             {kelompok.length === 0 ? (
               <div className="m-kosong">
@@ -296,17 +300,20 @@ export default function AlumniPage() {
 
 function KartuAlumni({ a }: { a: Alumni }) {
   return (
-    <Link href={`/alumni/${a.id}`} className="a-kartu">
+    // Seluruh kartu adalah tautan ke profil. Tegak di >= 640px, mendatar di HP
+    // (avatar kiri, teks kanan) — susunannya diatur CSS, markupnya satu.
+    <Link href={`/alumni/${a.id}`} className="a-kartu" aria-label={`Profil ${a.nama || 'alumni'}, ${a.label_angkatan}`}>
       <AvatarAlumni nama={a.nama} foto={a.avatar_url || a.foto_url} ukuran={56} />
-      {/* Nama panjang dipotong dua baris; nama lengkapnya tetap terbaca lewat title */}
-      <span className="a-kartu-nama" title={a.nama ?? undefined}>{a.nama || 'Alumni'}</span>
-      <span className="a-label a-label-kecil">{a.label_angkatan}</span>
-      {a.jumlahProduk !== null && (
-        <span className="a-kartu-toko">
-          <IkonEtalase size={14} tebal={2} /> Punya toko · {a.jumlahProduk} produk
-        </span>
-      )}
-      <span className="a-kartu-aksi">Lihat Profil <IkonPanah size={14} tebal={2.2} /></span>
+      <span className="a-kartu-teks">
+        {/* Nama panjang dipotong dua baris; nama lengkapnya tetap terbaca lewat title */}
+        <span className="a-kartu-nama" title={a.nama ?? undefined}>{a.nama || 'Alumni'}</span>
+        <span className="a-label a-label-kecil">{a.label_angkatan}</span>
+        {a.jumlahProduk !== null && (
+          <span className="a-kartu-toko">
+            <IkonEtalase size={14} tebal={2} /> Punya toko · {a.jumlahProduk} produk
+          </span>
+        )}
+      </span>
     </Link>
   )
 }
