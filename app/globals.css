@@ -1902,19 +1902,6 @@ main {
 /* Bilah aksi menempel di HP; di layar lebar tombolnya ada di panel info */
 .d-cta-hp { display: none; }
 .d-ruang-bawah { height: 32px; }
-
-/* UJI VISUAL (sementara, QA fase 3) — banner selama fixture detail aktif.
-   Hapus bersama app/produk/[id]/fixtureUjiVisual.ts. */
-.d-uji {
-  margin-top: 16px;
-  padding: 10px 14px;
-  border-radius: 12px;
-  border: 1px dashed #c98a00;
-  background: #FFF7E0;
-  color: #5c4100;
-  font-size: 13px;
-  line-height: 1.6;
-}
 @media (max-width: 767px) {
   .d-aksi-lebar { display: none; }
   /* fixed, bukan sticky — alasannya di komentar portalnya, page.tsx */
