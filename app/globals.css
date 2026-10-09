@@ -2399,3 +2399,17 @@ a.a-kartu:hover { border-color: #b9d3ec; box-shadow: 0 10px 24px rgba(6, 47, 89,
 @media (min-width: 1024px) {
   .a-rak-produk { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
 }
+
+/* UJI VISUAL SEMENTARA — penanda mode uji direktori & profil alumni.
+   Dicabut bersama app/alumni/fixtureUjiAlumni.ts. */
+.a-uji {
+  margin: 16px 0 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px dashed #c98a00;
+  background: #FFF7E0;
+  color: #5c4100;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.a-uji-profil { margin: 0 0 16px; }
