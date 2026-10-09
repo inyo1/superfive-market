@@ -2297,6 +2297,13 @@ ulasan, lalu rak "Produk Lain dari Toko Ini" dan "Produk Serupa" (khusus
 lapak alumni) memakai [KartuPasar](app/components/KartuPasar.tsx) — kartu
 yang sama dengan `/produk`. Satu foto saja (`foto_url` memang satu gambar).
 
+**`/alumni` dan `/alumni/[id]` (Wave 2 fase 1)** memakai kelas `a-` di atas
+kelas `m-`. Direktori tetap dua tingkat (anon → `angkatan_ringkas`, login →
+`alumni_publik`). Profil `/alumni/[id]` **hanya untuk yang login** — anon
+melihat ajakan masuk — dan isinya hanya kolom `alumni_publik` plus toko kalau
+penjualnya ada di `penjual_publik`. Tidak ada kota, kontak, profesi, atau
+lencana lain: datanya tidak ada di view publik mana pun.
+
 **`position: sticky` di bagian bawah tidak bekerja di project ini.** `html`
 dan `body` sama-sama `overflow-x: hidden`, sehingga `body` mendapat
 `overflow-y: auto` dan menjadi wadah gulir sticky — padahal yang menggulir
