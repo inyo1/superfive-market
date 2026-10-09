@@ -102,10 +102,18 @@ export default function TokoPage() {
       // pengguna_publik sebagai cadangan, karena penjual_publik hanya memuat
       // penjual AKTIF — pemilik toko yang dibekukan masih boleh membuka
       // tokonya sendiri, dan tanpa cadangan ini namanya hilang dari header.
+      //
+      // pengguna_publik hanya untuk yang login (anon dicabut, Wave 2
+      // Bagian 3), jadi pengunjung tidak memanggilnya sama sekali — header
+      // mereka sepenuhnya dari penjual_publik. Toko yang terlihat pengunjung
+      // memang selalu milik penjual aktif (RLS toko_select_public).
+      const { data: { session } } = await supabase.auth.getSession()
       const [profilRes, penjualPub] = await Promise.all([
-        supabase.from('pengguna_publik')
-          .select('nama, is_institusi, alumni_terverifikasi')
-          .eq('id', tokoData.seller_id).maybeSingle(),
+        session
+          ? supabase.from('pengguna_publik')
+              .select('nama, is_institusi, alumni_terverifikasi')
+              .eq('id', tokoData.seller_id).maybeSingle()
+          : Promise.resolve({ data: null }),
         ambilSatuPenjualPublik(tokoData.seller_id),
       ])
 
