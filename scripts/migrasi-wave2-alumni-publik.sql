@@ -2,8 +2,8 @@
 -- WAVE 2 ALUMNI PUBLIK — CATATAN MIGRASI YANG SUDAH DITERAPKAN
 -- =====================================================================
 --
--- Berkas ini CATATAN, bukan perintah yang menunggu dijalankan. Bagian 2
--- dan Bagian 1 di bawah SUDAH diterapkan ke production (project
+-- Berkas ini CATATAN, bukan perintah yang menunggu dijalankan. Ketiga
+-- bagian di bawah SUDAH diterapkan ke production (project
 -- cbepplpvlizwyaalndas) pada 10 Oktober 2026 WIB, masing-masing setelah
 -- dry-run dalam transaksi yang di-rollback dan persetujuan Inyo.
 -- Menjalankannya ulang akan GAGAL (kolom dan view sudah ada) — itu
@@ -12,7 +12,7 @@
 -- Urutannya mengikuti urutan eksekusi, bukan nomor bagian:
 --   Bagian 2  policy Storage bucket `avatar`       — diterapkan lebih dulu
 --   Bagian 1  users.tampil_publik + alumni_direktori + trigger daftar
---   Bagian 3  cabut SELECT anon dari pengguna_publik — BELUM DITERAPKAN
+--   Bagian 3  cabut SELECT anon dari pengguna_publik — diterapkan terakhir
 --
 -- Kode klien yang memakainya: /alumni, /alumni/[id], /profil, /auth.
 -- Rinciannya di CLAUDE.md, bagian `alumni_direktori` dan `users`.
@@ -136,10 +136,20 @@ commit;
 
 
 -- ---------------------------------------------------------------------
--- BAGIAN 3 — BELUM DITERAPKAN, menunggu persetujuan
+-- BAGIAN 3 — pengguna_publik hanya untuk yang login
 -- ---------------------------------------------------------------------
--- revoke select on public.pengguna_publik from anon;
+-- Diterapkan 10 Okt 2026 (05:18 WIB) setelah dry-run 21/21. Tanpa ini anon
+-- bisa membaca nama, avatar, dan status alumni SEMUA akun aktif lewat
+-- pengguna_publik, dan opt-in Bagian 1 tidak ada artinya.
 --
--- Sampai ini dijalankan, anon masih bisa membaca nama, avatar, dan status
--- alumni SEMUA akun aktif lewat pengguna_publik — termasuk alumni yang
--- tidak memilih tampil publik. Opt-in di atas belum utuh tanpanya.
+-- Pemakai di kode (semuanya jalur anggota): chat, chat/[id], DaftarProspek,
+-- ReviewSection.handleSubmit, dan /toko/[id] — yang terakhir dibuat hanya
+-- memanggilnya kalau ada sesi. Tidak ada view, fungsi, atau policy yang
+-- bergantung padanya, dan tidak ada hibah PUBLIC.
+begin;
+revoke select on public.pengguna_publik from anon;
+commit;
+
+-- Sesudah: relacl = {postgres=…, service_role=…, authenticated=r/postgres};
+-- REST anon → 401 permission denied; authenticated → 5 akun, 6 kolom.
+-- Pembatalan (membuka lagi kebocorannya): grant select on public.pengguna_publik to anon;

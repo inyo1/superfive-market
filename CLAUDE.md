@@ -482,9 +482,17 @@ empat digit.
 penampilnya harus jatuh ke **nama saja, tanpa pemisah** — `NamaPenjual` dan
 `BadgeAngkatan` sudah begitu; jangan sampai muncul "Nama · null".
 
-### `pengguna_publik` (VIEW) — identitas siapa pun
+### `pengguna_publik` (VIEW) — identitas siapa pun, HANYA untuk yang login
 
 View baca-saja berisi identitas **semua akun aktif**, alumni maupun bukan.
+
+**Sejak 10 Oktober 2026 hanya di-grant ke `authenticated`** (Wave 2 Bagian 3).
+Query anon gagal dengan `permission denied for view pengguna_publik` (401),
+bukan nol baris. Alasannya: view ini memuat nama, avatar, dan status alumni
+**semua** akun — membiarkannya terbuka berarti opt-in Direktori Alumni
+publik (`tampil_publik`) bisa dilewati begitu saja. **Jangan memakainya di
+jalur pengunjung**; identitas penjual untuk pengunjung datang dari
+`penjual_publik`, alumni yang opt-in dari `alumni_direktori`.
 
 `id` · `nama` · `avatar_url` · `foto_url` · `is_institusi` ·
 `alumni_terverifikasi` bool
@@ -504,8 +512,9 @@ alumni. Sebelum view ini ada, mereka tampil sebagai kata "Pengguna" tanpa nama.
 Yang memakainya sekarang: [chat](app/chat/page.tsx) dan
 [detail percakapan](app/chat/[id]/page.tsx), header
 [halaman toko](app/toko/[id]/page.tsx) (cadangan nama untuk penjual yang
-tidak aktif), [DaftarProspek](app/components/DaftarProspek.tsx), dan
-`nama_reviewer` di [ReviewSection](app/components/ReviewSection.tsx).
+tidak aktif — **hanya dipanggil kalau ada sesi**), [DaftarProspek](app/components/DaftarProspek.tsx), dan
+`nama_reviewer` di [ReviewSection](app/components/ReviewSection.tsx) (hanya
+saat mengirim ulasan, yang memang butuh login). Semuanya jalur anggota.
 
 ### `alumni_publik` (VIEW) — khusus urusan alumni, HANYA untuk yang login
 
@@ -513,7 +522,7 @@ tidak aktif), [DaftarProspek](app/components/DaftarProspek.tsx), dan
 
 | Butuh | Pakai | Anon? |
 |---|---|---|
-| nama, avatar, lencana terverifikasi | `pengguna_publik` | ya |
+| nama, avatar, lencana terverifikasi (chat, prospek, ulasan) | `pengguna_publik` | **tidak** (sejak 10 Okt 2026) |
 | nama · angkatan **penjual** (kartu, detail, toko, pencarian) | `penjual_publik` | ya |
 | jumlah alumni per angkatan, tanpa nama | `angkatan_ringkas` | ya |
 | isi direktori `/alumni` dan profil `/alumni/[id]` untuk **pengunjung** | `alumni_direktori` | ya — hanya yang opt-in |
@@ -610,9 +619,10 @@ Yang perlu dipegang:
 - `security_invoker = false` dan `security_barrier = true`; hanya SELECT
   untuk `anon` dan `authenticated`, tanpa hak tulis (sudah diverifikasi)
 
-⚠ **Opt-in ini belum utuh selama `pengguna_publik` masih terbaca anon** —
-lewat view itu pengunjung masih bisa membaca nama dan avatar semua akun
-aktif. Pencabutannya (Bagian 3 di berkas migrasi) belum diterapkan; lihat
+Pasangannya: `pengguna_publik` **sudah ditutup untuk anon** (10 Okt 2026,
+Bagian 3) — tanpa itu pengunjung bisa membaca nama dan avatar semua akun
+lewat view itu, dan opt-in ini tidak ada artinya. Jalur yang tersisa:
+URL avatar yang bisa ditebak dari uid, lihat
 [Utang Teknis](#utang-teknis-yang-diketahui).
 
 ### `penjual_publik` (VIEW) — identitas penjual, terbuka untuk anon
@@ -631,7 +641,9 @@ Sumber "Nama · Superfive 92" di semua permukaan publik, lewat
 - **Hanya penjual aktif.** Pemilik toko yang dibekukan tetap boleh membuka
   tokonya sendiri, tapi tidak punya baris di sini — header
   [/toko/[id]](app/toko/[id]/page.tsx) karena itu memakai `pengguna_publik`
-  sebagai cadangan nama
+  sebagai cadangan nama — hanya kalau ada sesi, karena view itu tertutup
+  untuk anon. Pengunjung memang tidak pernah melihat toko yang dibekukan
+  (RLS `toko_select_public`)
 - **Memuat akun institusi**, dengan `label_angkatan` NULL. Lencana centang
   alumni diturunkan dengan `penjualAlumni()`: bukan institusi dan punya label
 
@@ -2061,10 +2073,10 @@ memang normal dan ditahan oleh RLS; semua tabel di project ini punya
 `authenticated` punya INSERT/UPDATE/DELETE di sebuah tabel — periksa dulu
 policy-nya. Untuk view, tidak ada yang menahan.
 
-Sudah diverifikasi: `pengguna_publik`, `penjual_publik`, `angkatan_ringkas`,
+Sudah diverifikasi: `penjual_publik`, `angkatan_ringkas`,
 `alumni_direktori`, `preorder_progress`, dan tabel `refund` hanya memberi SELECT ke `anon` dan
-`authenticated`; `alumni_publik` hanya SELECT ke `authenticated` (anon tidak
-punya apa pun). Semua view itu juga `security_invoker = false`, sama
+`authenticated`; `alumni_publik` dan `pengguna_publik` hanya SELECT ke
+`authenticated` (anon tidak punya apa pun). Semua view itu juga `security_invoker = false`, sama
 alasannya: tanpa itu `users` yang tertutup membuat hasilnya kosong.
 
 Default privileges di project ini sudah dikunci, tapi tetap **verifikasi tiap
@@ -2546,14 +2558,19 @@ lihat [Utang Teknis](#utang-teknis-yang-diketahui).
   lewat SQL. Yang paling perlu dilihat langsung: pendaftaran dua pilihan,
   `/jual` di tiap nilai `status_penjual`, `/admin/penjual`, dan nama lawan
   bicara di chat dengan akun non-alumni.
-- **`pengguna_publik` masih terbaca anon** (per 10 Oktober 2026). Lewat view
-  itu pengunjung bisa membaca nama, avatar, dan status alumni **semua** akun
-  aktif — termasuk alumni yang tidak memilih tampil di Direktori Alumni
-  publik — jadi opt-in `tampil_publik` belum utuh. Usulan pencabutannya
-  (`revoke select on public.pengguna_publik from anon`, beserta audit
-  pemakainya) ada di Bagian 3
-  [scripts/migrasi-wave2-alumni-publik.sql](scripts/migrasi-wave2-alumni-publik.sql);
-  menunggu persetujuan Inyo.
+- **URL foto profil bisa ditebak dari uid** (per 10 Oktober 2026). Foto
+  disimpan di jalur tetap `${uid}/avatar.<ext>` di bucket publik `avatar`,
+  dan uid terbaca anon lewat `toko.seller_id` dan `reviews.user_id`. Jadi
+  foto siapa pun yang uid-nya diketahui tetap bisa dibuka, opt-in Direktori
+  Alumni atau tidak. Perbaikannya nama file acak
+  (`${uid}/${crypto.randomUUID()}.<ext>`) di [/profil](app/profil/page.tsx)
+  plus pembersihan file lama — perubahan kode, belum dikerjakan. Teks
+  sakelar di /profil sudah jujur soal ini ("foto profil disimpan di
+  penyimpanan publik").
+- **Tabel warisan `ulasan` masih terbaca semua orang** (policy
+  `ulasan_select_public` = `true`, memuat `buyer_id`). Isinya 0 baris dan
+  tidak dipakai kode mana pun; layak dibuang bersama `chat` saat
+  pembersihan tabel warisan.
 - **Stok pesanan yang batal sebelum `trg_kembalikan_stok` ada tidak kembali
   secara surut.** Trigger-nya hanya bekerja pada pembatalan yang terjadi
   setelah ia dipasang (14 Agustus 2026); pesanan yang dibatalkan sebelum itu
