@@ -123,27 +123,10 @@ export default function JualPage() {
     </main>
   )
 
-  // Syaratnya alumni terverifikasi, dan database memang akan menolak kalau
-  // bukan. Formulirnya tidak ditampilkan supaya tidak ada yang mengisi panjang
-  // lebar lalu ditolak di detik terakhir.
-  if (statusAlumni !== 'alumni') return (
-    <Bingkai>
-      <div style={{ ...KOTAK, textAlign: 'center', padding: '28px 20px' }}>
-        <div style={{ fontSize: '44px', marginBottom: '12px' }}>🎓</div>
-        <div style={{ fontSize: '15px', fontWeight: '700', color: '#1a1a1a', marginBottom: '8px' }}>
-          Daftar sebagai alumni dulu
-        </div>
-        <p style={{ fontSize: '13px', color: '#5a7da0', lineHeight: '1.7', margin: '0 0 18px' }}>
-          Yang boleh berjualan di Superfive Market hanya alumni SMPN 5 Bandung.
-          Daftarkan angkatanmu — langsung aktif, tanpa menunggu.
-        </p>
-        <Link href="/verifikasi" style={{ display: 'inline-flex', alignItems: 'center', background: '#0C447C', color: '#fff', padding: '0 20px', minHeight: '44px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', textDecoration: 'none' }}>
-          Daftar sebagai Alumni
-        </Link>
-      </div>
-    </Bingkai>
-  )
-
+  // Penjual aktif dikenali lebih dulu, sebelum syarat alumni: akun institusi
+  // (toko resmi) aktif berjualan tanpa pernah berstatus alumni, dan
+  // putuskan_penjual memang mengizinkannya. Yang menentukan toko tayang adalah
+  // status_penjual, bukan status_alumni.
   if (statusPenjual === 'aktif') return (
     <Bingkai>
       <div style={{ ...KOTAK, textAlign: 'center', padding: '28px 20px' }}>
@@ -162,6 +145,27 @@ export default function JualPage() {
             Tambah Produk
           </Link>
         </div>
+      </div>
+    </Bingkai>
+  )
+
+  // Syaratnya alumni terverifikasi, dan database memang akan menolak kalau
+  // bukan. Formulirnya tidak ditampilkan supaya tidak ada yang mengisi panjang
+  // lebar lalu ditolak di detik terakhir.
+  if (statusAlumni !== 'alumni') return (
+    <Bingkai>
+      <div style={{ ...KOTAK, textAlign: 'center', padding: '28px 20px' }}>
+        <div style={{ fontSize: '44px', marginBottom: '12px' }}>🎓</div>
+        <div style={{ fontSize: '15px', fontWeight: '700', color: '#1a1a1a', marginBottom: '8px' }}>
+          Daftar sebagai alumni dulu
+        </div>
+        <p style={{ fontSize: '13px', color: '#5a7da0', lineHeight: '1.7', margin: '0 0 18px' }}>
+          Yang boleh berjualan di Superfive Market hanya alumni SMPN 5 Bandung.
+          Daftarkan angkatanmu — langsung aktif, tanpa menunggu.
+        </p>
+        <Link href="/verifikasi" style={{ display: 'inline-flex', alignItems: 'center', background: '#0C447C', color: '#fff', padding: '0 20px', minHeight: '44px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', textDecoration: 'none' }}>
+          Daftar sebagai Alumni
+        </Link>
       </div>
     </Bingkai>
   )
