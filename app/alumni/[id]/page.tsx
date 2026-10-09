@@ -213,7 +213,9 @@ export default function ProfilAlumniPage() {
                 <div className="a-toko">
                   <span className="a-toko-ikon" aria-hidden><IkonEtalase size={26} /></span>
                   <div style={{ minWidth: 0, flex: 1 }}>
-                    <p className="a-toko-eyebrow">Toko {profil.nama?.split(' ')[0] || 'alumni'}</p>
+                    {/* Bukan "Toko <kata pertama nama>": kata pertama sering gelar
+                        (Raden, Haji, dr.), dan nama orangnya sudah ada di atas */}
+                    <p className="a-toko-eyebrow">Lapak Alumni</p>
                     <h2 id="judul-toko" className="a-toko-nama">{toko.nama_toko || 'Toko alumni'}</h2>
                     {toko.deskripsi && <p className="a-toko-desk">{toko.deskripsi}</p>}
                   </div>
