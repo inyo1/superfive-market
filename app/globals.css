@@ -193,8 +193,9 @@ main {
 }
 
 /* ── Navbar satu baris ──
-   >= 1024px: brand, menu, kolom cari, chat, akun — semuanya satu baris.
-   Di bawahnya: brand + tombol cari + chat; navigasi ditangani bottom nav. */
+   >= 1024px: brand, menu, ikon cari, Gabung Alumni / chat, akun — satu baris.
+   Di bawahnya: brand + ikon cari + Gabung (ringkas) + chat; navigasi
+   ditangani bottom nav. Kolom cari panjang dihapus Oktober 2026. */
 .nav-utama {
   background: var(--sf-navy);
   position: sticky;
@@ -252,7 +253,6 @@ main {
   border-radius: 3px 3px 0 0;
   background: var(--sf-emas);
 }
-.nav-cari { display: none; }
 .nav-utilitas { display: flex; }
 .nav-ringkas { display: none; }
 
@@ -323,6 +323,36 @@ main {
   transition: background 0.15s ease;
 }
 .nav-masuk:hover { background: #0670dc; }
+/* Gabung Alumni: emas #FFB71B + teks navy (kontras 7,7:1) — CTA utama.
+   Masuk tetap biru aksi seperti semula. */
+.nav-gabung {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 42px;
+  padding: 0 18px 0 15px;
+  border-radius: 10px;
+  background: #FFB71B;
+  color: var(--sf-navy);
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  text-decoration: none;
+  box-shadow: 0 4px 14px rgba(255, 183, 27, 0.22);
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.nav-gabung:hover { background: #FFC544; transform: translateY(-1px); }
+.nav-gabung svg { flex-shrink: 0; }
+/* Versi HP: lebih kecil, cukup "Gabung" — label lengkap ada di aria-label */
+.nav-gabung-ringkas {
+  min-height: 36px;
+  padding: 0 11px 0 9px;
+  gap: 5px;
+  font-size: 13px;
+  border-radius: 9px;
+  box-shadow: none;
+}
+.nav-gabung-ringkas svg { width: 15px; height: 15px; }
 .nav-dropdown {
   position: absolute;
   right: 0;
@@ -369,54 +399,33 @@ main {
   /* logo membesar hanya di desktop; navbar HP tetap setinggi semula */
   .nav-brand img { width: 48px !important; height: 48px !important; }
   .nav-brand-teks > span:first-child { font-size: 16px !important; }
+  /* pengisi diganti margin otomatis: satu celah 12px lebih hemat */
+  .nav-pengisi { display: none; }
+  .nav-ringkas { margin-left: auto; }
+}
+/* HP sempit (<= 399px): brand sedikit dipadatkan supaya ikon cari dan
+   Gabung muat tanpa terpotong di 375px; gutter 16px tetap */
+@media (max-width: 399px) {
+  .nav-brand { gap: 8px; }
+  .nav-brand img { width: 42px !important; height: 42px !important; }
+  .nav-brand-teks > span:last-child { letter-spacing: 0.5px !important; }
+  .nav-gabung-ringkas { padding: 0 10px 0 8px; }
+}
+/* <= 349px: subjudul menyingkir dan Gabung jadi ikon saja (aria-label
+   tetap "Gabung Alumni"); nama platform tetap utuh */
+@media (max-width: 349px) {
+  .nav-brand-teks > span:last-child { display: none !important; }
+  .nav-gabung-ringkas span { display: none; }
+  .nav-gabung-ringkas { padding: 0 10px; }
 }
 
 @media (min-width: 1024px) {
   .nav-dalam { padding: 0 24px; min-height: 78px; gap: 18px; }
   .nav-menu { display: flex; }
-  .nav-pengisi { display: none; }
-  .nav-cari {
-    display: flex;
-    align-items: center;
-    flex: 1;
-    min-width: 160px;
-    max-width: 500px;
-    margin-left: auto;
-    height: 46px;
-    padding: 0 4px 0 16px;
-    gap: 8px;
-    background: #fff;
-    border: 1px solid transparent;
-    border-radius: 10px;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
-    cursor: text;
-    text-align: left;
-    transition: box-shadow 0.15s ease;
-  }
-  .nav-cari:hover { box-shadow: 0 0 0 3px rgba(8, 126, 245, 0.3), 0 4px 14px rgba(0, 0, 0, 0.18); }
-  .nav-cari-teks {
-    flex: 1;
-    min-width: 0;
-    font-size: 15px;
-    color: #6F87A0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .nav-cari-ikon {
-    flex-shrink: 0;
-    width: 40px;
-    height: 36px;
-    border-radius: 8px;
-    background: var(--sf-aksi);
-    color: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
 }
 
-/* Lebar 1024–1179: subjudul brand menyingkir supaya kolom cari tetap lega */
+/* Lebar 1024–1179: subjudul brand menyingkir supaya menu, ikon cari,
+   Gabung Alumni, dan Masuk tetap satu baris */
 @media (min-width: 1024px) and (max-width: 1179px) {
   .nav-brand-teks span:last-child { display: none !important; }
   .nav-tautan { padding: 0 9px; }
@@ -1533,6 +1542,7 @@ main {
   .il-titik span, .il-kartu-foto img, .b-produk-foto img { transition: none !important; }
   .il-kartu:hover .il-kartu-foto img, .b-produk-kartu:hover .b-produk-foto img { transform: none !important; }
   .b-tombol:hover, .b-kategori-kartu:hover, .prod-card:hover { transform: none !important; }
+  .nav-gabung, .nav-gabung:hover { transition: none !important; transform: none !important; }
   .b-kategori-kartu img, .b-kategori-kartu:hover img { transition: none !important; transform: none !important; }
 }
 
@@ -2337,9 +2347,7 @@ main {
   .detail .nav-brand img { width: 48px !important; height: 48px !important; }
   .detail .nav-brand-teks > span:first-child { font-size: 15.5px !important; }
   .detail .nav-tautan { font-size: 14px; padding: 0 11px; }
-  .detail .nav-cari { height: 42px; max-width: 460px; }
-  .detail .nav-cari-teks { font-size: 14px; }
-  .detail .nav-cari-ikon { width: 36px; height: 32px; }
+  .detail .nav-gabung { min-height: 38px; padding: 0 16px 0 13px; font-size: 13.5px; }
   .detail .nav-masuk { min-height: 38px; padding: 0 18px; font-size: 13.5px; }
   .detail .nav-ikon { min-width: 40px; min-height: 40px; }
 

@@ -34,6 +34,22 @@ function IkonChat() {
   )
 }
 
+function IkonTambahOrang() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="9" cy="8" r="4" />
+      <path d="M2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v1" />
+      <path d="M19 8v6M16 11h6" />
+    </svg>
+  )
+}
+
+// Tujuan tombol Gabung Alumni untuk pengunjung: pendaftaran yang sudah ada.
+// Pilihan "Saya alumni" SENGAJA tidak dipilihkan (lihat /auth — tanpa nilai
+// awal supaya tidak ada yang tercatat alumni karena tidak pernah memilih);
+// yang dipakai hanya ?msg=, kotak info yang memang sudah ada di /auth.
+const DAFTAR_ALUMNI = '/auth?mode=daftar&msg=' + encodeURIComponent('Pilih "Saya alumni SMPN 5 Bandung" saat mendaftar untuk bergabung sebagai alumni.')
+
 function IkonPanahBawah() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -45,6 +61,14 @@ function IkonPanahBawah() {
 export default function Navbar() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [user, setUser] = useState<any>(null)
+  // Sesi belum diketahui sampai getUser() selesai. Selama itu area akun
+  // tidak dirender sama sekali — dulu pengguna yang sudah login sempat
+  // melihat tombol Masuk sekejap.
+  const [sesiSiap, setSesiSiap] = useState(false)
+  // Status alumni milik sendiri, untuk CTA Gabung Alumni. null = profil
+  // belum termuat (CTA disembunyikan dulu, bukan ditebak).
+  const [statusAlumni, setStatusAlumni] = useState<string | null>(null)
+  const [institusi, setInstitusi] = useState(false)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [userName, setUserName] = useState<string>('')
   const [isAdmin, setIsAdmin] = useState(false)
@@ -61,10 +85,12 @@ export default function Navbar() {
   async function fetchProfile(userId: string) {
     const { data } = await supabase
       .from('users')
-      .select('nama, avatar_url, role')
+      .select('nama, avatar_url, role, status_alumni, is_institusi')
       .eq('id', userId)
       .single()
     if (data) {
+      setStatusAlumni(data.status_alumni ?? 'umum')
+      setInstitusi(Boolean(data.is_institusi))
       setUserName(data.nama ?? '')
       setAvatarUrl(data.avatar_url ?? null)
       setIsAdmin(adminPenuh(data.role))
@@ -86,12 +112,14 @@ export default function Navbar() {
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       setUser(data.user)
+      setSesiSiap(true)
       if (data.user) fetchProfile(data.user.id)
     })
     const { data: listener } = supabase.auth.onAuthStateChange((_e, session) => {
       setUser(session?.user ?? null)
+      setSesiSiap(true)
       if (session?.user) fetchProfile(session.user.id)
-      else { setAvatarUrl(null); setUserName(''); setIsAdmin(false); setMenungguPenjual(0) }
+      else { setAvatarUrl(null); setUserName(''); setIsAdmin(false); setMenungguPenjual(0); setStatusAlumni(null); setInstitusi(false) }
     })
     return () => listener.subscription.unsubscribe()
   }, [])
@@ -145,6 +173,23 @@ export default function Navbar() {
     return href === '/' ? pathname === '/' : pathname.startsWith(href)
   }
 
+  // Ke mana Gabung Alumni membawa orang — null berarti tombolnya tidak ada.
+  //   pengunjung                  → pendaftaran akun (/auth?mode=daftar)
+  //   login, status umum/menunggu → /verifikasi, alur alumni yang berlaku
+  //   alumni, ditolak, institusi  → tidak ada (ditolak sudah diputus
+  //                                 pengurus; institusi bukan perorangan)
+  // Selama sesi atau profil belum termuat, juga null — lebih baik tombolnya
+  // muncul belakangan daripada salah tampil lalu hilang. Di /auth dan
+  // /verifikasi sendiri tombolnya juga tidak ada: orangnya sudah di tujuan.
+  const diTujuan = pathname.startsWith('/auth') || pathname.startsWith('/verifikasi')
+  const tujuanGabung: string | null = !sesiSiap || diTujuan
+    ? null
+    : !user
+      ? DAFTAR_ALUMNI
+      : statusAlumni !== null && !institusi && (statusAlumni === 'umum' || statusAlumni === 'menunggu')
+        ? '/verifikasi'
+        : null
+
   const initials = userName
     ? userName.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase()
     : (user?.email?.charAt(0).toUpperCase() ?? '?')
@@ -193,19 +238,24 @@ export default function Navbar() {
             })}
           </ul>
 
-          {/* Kolom cari. Bentuknya kolom, tapi isinya membuka SearchOverlay
-              yang sudah ada — hasil produk dan toko sekaligus, dengan
-              penyaring merchandise yang sama. Tidak ada logika cari kedua. */}
-          <button type="button" className="nav-cari" onClick={() => setSearchOpen(true)} aria-label="Cari produk, jasa, atau usaha alumni">
-            <span className="nav-cari-teks">Cari produk, jasa, atau usaha alumni...</span>
-            <span className="nav-cari-ikon"><IkonCari /></span>
-          </button>
-
+          {/* Kolom cari panjang dihapus (Oktober 2026) supaya CTA Gabung
+              Alumni punya ruang. Pencarian tetap ada: hero beranda, /produk,
+              dan ikon ini — yang membuka SearchOverlay yang sama seperti
+              kolom lama. Tidak ada logika cari kedua. */}
           <div style={{ flex: 1 }} className="nav-pengisi" />
 
           {/* Utilitas desktop */}
           <div className="nav-utilitas" style={{ alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+            <button type="button" className="nav-ikon nav-ikon-cari" onClick={() => setSearchOpen(true)} aria-label="Cari produk, jasa, atau usaha alumni">
+              <IkonCari />
+            </button>
             {/* Ikon keranjang dihapus di mode katalog — lihat lib/config.ts */}
+            {tujuanGabung && (
+              <Link href={tujuanGabung} className="nav-gabung">
+                <IkonTambahOrang /> Gabung Alumni
+              </Link>
+            )}
+
             {user && (
               <Link href="/chat" className="nav-ikon" aria-label={unreadCount > 0 ? `Chat, ${unreadCount} pesan belum dibaca` : 'Chat'}>
                 <IkonChat />
@@ -282,9 +332,9 @@ export default function Navbar() {
                   </div>
                 )}
               </div>
-            ) : (
+            ) : sesiSiap ? (
               <Link href="/auth" className="nav-masuk">Masuk</Link>
-            )}
+            ) : null}
           </div>
 
           {/* Kontrol ringkas di bawah 1024px — sisanya ditangani bottom nav */}
@@ -297,6 +347,13 @@ export default function Navbar() {
             >
               <IkonCari />
             </button>
+            {/* HP: satu tombol ringkas saja — Masuk tetap lewat tab Akun di
+                bottom nav, supaya baris atas tidak dijejali dua tombol besar */}
+            {tujuanGabung && (
+              <Link href={tujuanGabung} className="nav-gabung nav-gabung-ringkas" aria-label="Gabung Alumni">
+                <IkonTambahOrang /> <span>Gabung</span>
+              </Link>
+            )}
             {user && (
               <Link
                 href="/chat"
