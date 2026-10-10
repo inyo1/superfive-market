@@ -1,23 +1,28 @@
 'use client'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { supabase } from '../../lib/supabase'
 import { useTampilSkeleton } from '../hooks/useSkeleton'
-import BadgeOfficial from './BadgeOfficial'
 import LogoInilima from './LogoInilima'
+import BadgeTersedia from './BadgeTersedia'
+import BadgePreorder from './BadgePreorder'
 import FotoBeranda from './beranda/FotoBeranda'
-import { IkonLencana, IkonHati, IkonPanah } from './beranda/Ikon'
+import { IkonPerisai, IkonOrang, IkonHati, IkonPanah } from './beranda/Ikon'
 
-// Official Merchandise IniLima — redesain homepage Oktober 2026.
+// Official Merchandise IniLima — redesain homepage Oktober 2026 (putaran 2,
+// mengikuti referensi visual banner IniLima).
 //
-// Tiga kolom di desktop: identitas IniLima · SATU kartu produk yang berganti
-// sendiri · deretan foto merchandise asli sebagai pendukung visual sekaligus
-// navigasi. Bertumpuk di bawah 1024px.
+// Tiga area di desktop: identitas IniLima · SATU kartu produk kaca di tengah
+// yang berganti sendiri · kolase foto merchandise di kanan. Urutan di HP:
+// identitas → kartu → kolase → poin nilai (grid-template-areas di CSS).
 //
 // Rak ini SATU-SATUNYA tempat merchandise di beranda — Produk Terbaru di
-// bawahnya menyaringnya. Isinya selalu data asli dari database; tidak ada
-// produk contoh, karena kartu di sini menautkan ke produk yang benar-benar
-// bisa ditanyakan ke penjualnya.
+// bawahnya menyaringnya. Semua isinya data asli dari database, termasuk
+// kolase kanan: referensi memuat tumbler, topi, dan tas, tapi barang itu
+// tidak ada di katalog, jadi kolasenya disusun dari foto produk resmi yang
+// memang bisa ditanyakan ke penjualnya. Siluet gedung di belakangnya foto
+// SMPN 5 yang sama dengan hero.
 //
 // Satu pengatur waktu saja: setTimeout yang dipasang ulang tiap kali slide
 // berpindah, dan dibersihkan di cleanup effect yang sama. Tidak ada
@@ -27,6 +32,7 @@ const JEDA = 4000           // jarak antar pergantian otomatis
 const JEDA_SETELAH_MANUAL = 8000
 const AMBANG_GESER = 40     // px minimum supaya sentuhan dihitung geser
 const MAKS = 12
+const MAKS_KOLASE = 3
 
 type ProdukResmi = {
   id: string
@@ -34,6 +40,8 @@ type ProdukResmi = {
   harga: number | null
   kategori: string | null
   foto_url: string | string[] | null
+  is_tersedia: boolean | null
+  is_preorder: boolean
   toko: { id: string; nama_toko: string | null; is_official: boolean } | null
 }
 
@@ -65,7 +73,7 @@ export default function SectionOfficial() {
       // Barang habis tidak dipajang di panel kampanye.
       const { data } = await supabase
         .from('produk')
-        .select('id, nama, harga, kategori, foto_url, toko!inner(id, nama_toko, is_official)')
+        .select('id, nama, harga, kategori, foto_url, is_tersedia, is_preorder, toko!inner(id, nama_toko, is_official)')
         .eq('toko.is_official', true)
         .or('is_preorder.eq.true,is_tersedia.eq.true')
         .order('urutan', { ascending: true })
@@ -122,6 +130,9 @@ export default function SectionOfficial() {
 
   const tokoResmiId = produk[0]?.toko?.id
   const aktif = Math.min(index, Math.max(jumlah - 1, 0))
+  // Kolase hanya dari produk yang memang punya foto — kotak "foto belum
+  // tersedia" tidak punya tempat di visual pendukung
+  const kolase = produk.filter(p => p.foto_url && (Array.isArray(p.foto_url) ? p.foto_url.length : true)).slice(0, MAKS_KOLASE)
 
   function onKeyDown(e: React.KeyboardEvent) {
     if (!bisaGeser) return
@@ -133,22 +144,28 @@ export default function SectionOfficial() {
     <section className="b-seksi" aria-labelledby="judul-inilima">
       <div className="b-wadah">
         <div className="il-panel">
-          {/* ── Kiri: identitas ── */}
+          {/* Siluet gedung SMPN 5 di belakang kolase, sangat samar */}
+          <div className="il-gedung" aria-hidden>
+            <Image src="/smpn5-hero.png" alt="" fill sizes="(max-width: 1023px) 100vw, 520px" style={{ objectFit: 'cover', objectPosition: 'center 30%' }} />
+          </div>
+
+          {/* ── A. Identitas ── */}
           <div className="il-info">
-            <div className="il-logo"><LogoInilima lebar="100%" /></div>
-            <h2 id="judul-inilima" className="il-judul">
-              <span className="il-eyebrow">Official Merchandise</span>
-              <span className="il-merek">
-                IniLima <span className="il-resmi">RESMI</span>
-              </span>
-            </h2>
+            <div className="il-identitas">
+              <div className="il-logo"><LogoInilima lebar="100%" /></div>
+              <h2 id="judul-inilima" className="il-judul">
+                <span className="il-eyebrow">Official Merchandise</span>
+                <span className="il-merek">
+                  IniLima <span className="il-resmi">RESMI</span>
+                </span>
+              </h2>
+            </div>
             <p className="il-desk">
               Merchandise original untuk kebanggaan alumni SMPN 5 Bandung.
-              Setiap pembelian ikut mendukung kegiatan komunitas.
             </p>
             {tokoResmiId && (
               <div className="il-aksi">
-                <Link href={`/toko/${tokoResmiId}`} className="b-tombol b-tombol-emas">
+                <Link href={`/toko/${tokoResmiId}`} className="b-tombol il-tombol-putih">
                   Lihat Koleksi IniLima <IkonPanah size={18} tebal={2} />
                 </Link>
                 {/* IniLima belum punya halaman profil sendiri; deskripsinya
@@ -160,7 +177,24 @@ export default function SectionOfficial() {
             )}
           </div>
 
-          {/* ── Tengah: satu kartu produk ── */}
+          {/* ── Poin nilai ── di desktop tepat di bawah identitas, di HP
+              paling akhir. Teks ketiganya permintaan pemilik produk. */}
+          <ul className="il-nilai" role="list">
+            <li>
+              <span className="il-nilai-ikon"><IkonPerisai size={18} /></span>
+              <span><strong>Original</strong><span>Produk Resmi</span></span>
+            </li>
+            <li>
+              <span className="il-nilai-ikon"><IkonOrang size={18} /></span>
+              <span><strong>Dukungan Alumni</strong><span>Setiap pembelian berarti</span></span>
+            </li>
+            <li>
+              <span className="il-nilai-ikon"><IkonHati size={18} /></span>
+              <span><strong>Kualitas Terjamin</strong><span>Untuk kebanggaan bersama</span></span>
+            </li>
+          </ul>
+
+          {/* ── B. Satu kartu produk ── */}
           <div
             className="il-panggung"
             role="region"
@@ -184,14 +218,14 @@ export default function SectionOfficial() {
               <div className="il-kartu il-kartu-skeleton" aria-hidden>
                 <div className="il-kartu-foto skeleton" />
                 <div className="il-kartu-isi">
-                  <span className="skeleton" style={{ height: 16, width: '70%', borderRadius: 6 }} />
-                  <span className="skeleton" style={{ height: 20, width: '40%', borderRadius: 6 }} />
+                  <span className="skeleton" style={{ height: 18, width: '75%', borderRadius: 6, opacity: 0.3 }} />
+                  <span className="skeleton" style={{ height: 14, width: '45%', borderRadius: 6, opacity: 0.3 }} />
                 </div>
               </div>
             ) : (
               <>
-                {/* Semua slide ditumpuk di satu sel grid supaya tinggi panggung
-                    tetap — yang berganti hanya opacity, tanpa layout shift */}
+                {/* Semua slide ditumpuk di satu sel grid supaya tinggi
+                    panggung tetap — yang berganti hanya opacity */}
                 <div className="il-tumpuk" aria-live={berputar ? 'off' : 'polite'}>
                   {produk.map((p, i) => {
                     const tampil = i === aktif
@@ -207,19 +241,28 @@ export default function SectionOfficial() {
                       >
                         <Link href={`/produk/${p.id}`} className="il-kartu">
                           <div className="il-kartu-foto">
-                            <BadgeOfficial aktif bentuk="pita" />
+                            <span className="il-kartu-pita">Official</span>
+                            <BadgePreorder aktif={p.is_preorder} bentuk="pita" />
                             <FotoBeranda
                               src={p.foto_url}
                               kategori={p.kategori}
                               alt={p.nama}
-                              sizes="(max-width: 767px) 90vw, 360px"
+                              sizes="(max-width: 767px) 90vw, 320px"
                             />
                           </div>
                           <div className="il-kartu-isi">
                             <span className="il-kartu-nama">{p.nama}</span>
-                            <span className="il-kartu-bawah">
+                            <span className="il-kartu-meta">
+                              {p.kategori ?? 'Merchandise'} <i aria-hidden>|</i> Official IniLima
+                            </span>
+                            <span className="il-kartu-baris">
                               <span className="il-kartu-harga">{fmt(p.harga)}</span>
-                              <span className="il-kartu-lihat">Lihat Detail <IkonPanah size={14} tebal={2.2} /></span>
+                              {/* Stok produk PO selalu 0 — PO memakai lencana
+                                  ungunya sendiri, bukan lencana stok */}
+                              {!p.is_preorder && <BadgeTersedia tersedia={p.is_tersedia} kecil />}
+                            </span>
+                            <span className="il-kartu-lihat">
+                              Lihat Detail <IkonPanah size={16} tebal={2.2} />
                             </span>
                           </div>
                         </Link>
@@ -232,7 +275,7 @@ export default function SectionOfficial() {
                 {bisaGeser && (
                   <div className="il-kontrol">
                     <button type="button" className="il-panah" onClick={() => keSlide(aktif - 1, true)} aria-label="Merchandise sebelumnya">
-                      <span style={{ display: 'inline-flex', transform: 'rotate(180deg)' }}><IkonPanah size={18} tebal={2.2} /></span>
+                      <span style={{ display: 'inline-flex', transform: 'rotate(180deg)' }}><IkonPanah size={16} tebal={2.2} /></span>
                     </button>
                     <div className="il-titik" role="group" aria-label="Pilih merchandise">
                       {produk.map((p, i) => (
@@ -248,7 +291,7 @@ export default function SectionOfficial() {
                       ))}
                     </div>
                     <button type="button" className="il-panah" onClick={() => keSlide(aktif + 1, true)} aria-label="Merchandise berikutnya">
-                      <IkonPanah size={18} tebal={2.2} />
+                      <IkonPanah size={16} tebal={2.2} />
                     </button>
                     {!kurangiGerak && (
                       <button
@@ -267,38 +310,15 @@ export default function SectionOfficial() {
             )}
           </div>
 
-          {/* ── Kanan: foto merchandise asli + janji ── */}
-          <div className="il-samping">
-            {!tampilSkeleton && bisaGeser && (
-              <ul className="il-galeri" role="list" aria-label="Koleksi merchandise">
-                {produk.slice(0, 6).map((p, i) => (
-                  <li key={p.id}>
-                    <button
-                      type="button"
-                      className={i === aktif ? 'aktif' : undefined}
-                      onClick={() => keSlide(i, true)}
-                      aria-label={`Tampilkan ${p.nama}`}
-                      aria-current={i === aktif ? 'true' : undefined}
-                    >
-                      <FotoBeranda src={p.foto_url} kategori={p.kategori} alt="" sizes="96px" />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {/* Hanya dua janji yang memang benar hari ini. "Kualitas
-                terjamin" sengaja tidak ditulis — tidak ada apa pun di sistem
-                yang menjaminnya. */}
-            <ul className="il-janji" role="list">
-              <li>
-                <span className="il-janji-ikon"><IkonLencana size={18} /></span>
-                <span><strong>Original</strong><span>Produk resmi IniLima</span></span>
-              </li>
-              <li>
-                <span className="il-janji-ikon"><IkonHati size={18} /></span>
-                <span><strong>Dukungan Alumni</strong><span>Setiap pembelian berarti</span></span>
-              </li>
-            </ul>
+          {/* ── C. Kolase merchandise ── dekoratif; tautannya sudah ada di
+              kartu tengah dan tombol koleksi */}
+          <div className={`il-kolase il-kolase-${Math.max(kolase.length, 1)}`} aria-hidden>
+            {!tampilSkeleton && kolase.map((p, i) => (
+              <div key={p.id} className={`il-kolase-foto il-kolase-${i + 1}x`}>
+                <FotoBeranda src={p.foto_url} kategori={p.kategori} alt="" sizes="(max-width: 767px) 50vw, 260px" />
+              </div>
+            ))}
+            <span className="il-panggung-alas" />
           </div>
         </div>
       </div>
