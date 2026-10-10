@@ -10,29 +10,34 @@ import BadgePreorder from './BadgePreorder'
 import FotoBeranda from './beranda/FotoBeranda'
 import { IkonPerisai, IkonOrang, IkonHati, IkonPanah } from './beranda/Ikon'
 
-// Official Merchandise IniLima — redesain homepage Oktober 2026 (putaran 2,
-// mengikuti referensi visual banner IniLima).
+// Official Merchandise IniLima — banner horizontal mengikuti mockup yang
+// disetujui (Oktober 2026, putaran koreksi).
 //
-// Tiga area di desktop: identitas IniLima · SATU kartu produk kaca di tengah
-// yang berganti sendiri · kolase foto merchandise di kanan. Urutan di HP:
-// identitas → kartu → kolase → poin nilai (grid-template-areas di CSS).
+// Desktop (>=1280px): satu banner 400-460px, kiri ±40% identitas + manfaat
+// di bawahnya, tengah ±20% SATU kartu spotlight, kanan ±40% display
+// merchandise. Tablet (768-1279): identitas | kartu, tanpa kolom kanan.
+// HP: identitas → kartu → display (kalau asetnya ada) → manfaat.
 //
-// Rak ini SATU-SATUNYA tempat merchandise di beranda — Produk Terbaru di
-// bawahnya menyaringnya. Semua isinya data asli dari database, termasuk
-// kolase kanan: referensi memuat tumbler, topi, dan tas, tapi barang itu
-// tidak ada di katalog, jadi kolasenya disusun dari foto produk resmi yang
-// memang bisa ditanyakan ke penjualnya. Siluet gedung di belakangnya foto
-// SMPN 5 yang sama dengan hero.
+// DISPLAY MERCHANDISE KANAN MASIH MENUNGGU ASET. Visual di referensi adalah
+// satu komposisi produk (jaket, kaos, dst. di atas alas, berlatar gedung),
+// bukan kumpulan foto katalog. Foto produk di database adalah foto orang
+// memakai kaos/jaket dan mockup kaos — menumpuknya sebagai kolase sudah
+// ditolak secara visual. Jadi kolom kanan dibaca dari FOTO_DISPLAY: selama
+// null, yang tampil hanya atmosfer (siluet gedung SMPN 5 + cahaya), tanpa
+// produk apa pun. Begitu asetnya ada, isi konstanta itu — tidak ada kode lain
+// yang perlu disentuh.
 //
 // Satu pengatur waktu saja: setTimeout yang dipasang ulang tiap kali slide
 // berpindah, dan dibersihkan di cleanup effect yang sama. Tidak ada
 // setInterval yang bisa tertinggal berlapis saat state berubah cepat.
 
+/** Display merchandise kanan: berkas di /public, latar transparan. null = belum ada. */
+const FOTO_DISPLAY: string | null = null
+
 const JEDA = 4000           // jarak antar pergantian otomatis
 const JEDA_SETELAH_MANUAL = 8000
 const AMBANG_GESER = 40     // px minimum supaya sentuhan dihitung geser
 const MAKS = 12
-const MAKS_KOLASE = 3
 
 type ProdukResmi = {
   id: string
@@ -130,9 +135,6 @@ export default function SectionOfficial() {
 
   const tokoResmiId = produk[0]?.toko?.id
   const aktif = Math.min(index, Math.max(jumlah - 1, 0))
-  // Kolase hanya dari produk yang memang punya foto — kotak "foto belum
-  // tersedia" tidak punya tempat di visual pendukung
-  const kolase = produk.filter(p => p.foto_url && (Array.isArray(p.foto_url) ? p.foto_url.length : true)).slice(0, MAKS_KOLASE)
 
   function onKeyDown(e: React.KeyboardEvent) {
     if (!bisaGeser) return
@@ -143,13 +145,14 @@ export default function SectionOfficial() {
   return (
     <section className="b-seksi" aria-labelledby="judul-inilima">
       <div className="b-wadah">
-        <div className="il-panel">
-          {/* Siluet gedung SMPN 5 di belakang kolase, sangat samar */}
+        <div className={`il-panel${FOTO_DISPLAY ? ' ada-display' : ''}`}>
+          {/* Atmosfer kanan: siluet gedung SMPN 5, sangat samar, menyatu
+              dengan gradien — bukan foto produk */}
           <div className="il-gedung" aria-hidden>
-            <Image src="/smpn5-hero.png" alt="" fill sizes="(max-width: 1023px) 100vw, 520px" style={{ objectFit: 'cover', objectPosition: 'center 30%' }} />
+            <Image src="/smpn5-hero.png" alt="" fill sizes="(max-width: 1279px) 60vw, 520px" style={{ objectFit: 'cover', objectPosition: 'center 28%' }} />
           </div>
 
-          {/* ── A. Identitas ── */}
+          {/* ── Kiri: identitas ── */}
           <div className="il-info">
             <div className="il-identitas">
               <div className="il-logo"><LogoInilima lebar="100%" /></div>
@@ -177,24 +180,24 @@ export default function SectionOfficial() {
             )}
           </div>
 
-          {/* ── Poin nilai ── di desktop tepat di bawah identitas, di HP
-              paling akhir. Teks ketiganya permintaan pemilik produk. */}
+          {/* ── Manfaat ── bawah kolom kiri di desktop, paling akhir di HP.
+              Teks ketiganya permintaan pemilik produk. */}
           <ul className="il-nilai" role="list">
             <li>
-              <span className="il-nilai-ikon"><IkonPerisai size={18} /></span>
+              <span className="il-nilai-ikon"><IkonPerisai size={17} /></span>
               <span><strong>Original</strong><span>Produk Resmi</span></span>
             </li>
             <li>
-              <span className="il-nilai-ikon"><IkonOrang size={18} /></span>
+              <span className="il-nilai-ikon"><IkonOrang size={17} /></span>
               <span><strong>Dukungan Alumni</strong><span>Setiap pembelian berarti</span></span>
             </li>
             <li>
-              <span className="il-nilai-ikon"><IkonHati size={18} /></span>
+              <span className="il-nilai-ikon"><IkonHati size={17} /></span>
               <span><strong>Kualitas Terjamin</strong><span>Untuk kebanggaan bersama</span></span>
             </li>
           </ul>
 
-          {/* ── B. Satu kartu produk ── */}
+          {/* ── Tengah: satu kartu spotlight ── */}
           <div
             className="il-panggung"
             role="region"
@@ -218,8 +221,8 @@ export default function SectionOfficial() {
               <div className="il-kartu il-kartu-skeleton" aria-hidden>
                 <div className="il-kartu-foto skeleton" />
                 <div className="il-kartu-isi">
-                  <span className="skeleton" style={{ height: 18, width: '75%', borderRadius: 6, opacity: 0.3 }} />
-                  <span className="skeleton" style={{ height: 14, width: '45%', borderRadius: 6, opacity: 0.3 }} />
+                  <span className="skeleton" style={{ height: 16, width: '75%', borderRadius: 6, opacity: 0.3 }} />
+                  <span className="skeleton" style={{ height: 12, width: '45%', borderRadius: 6, opacity: 0.3 }} />
                 </div>
               </div>
             ) : (
@@ -243,11 +246,13 @@ export default function SectionOfficial() {
                           <div className="il-kartu-foto">
                             <span className="il-kartu-pita">Official</span>
                             <BadgePreorder aktif={p.is_preorder} bentuk="pita" />
+                            {/* contain: barang tampil utuh, tidak dipotong */}
                             <FotoBeranda
                               src={p.foto_url}
                               kategori={p.kategori}
                               alt={p.nama}
-                              sizes="(max-width: 767px) 90vw, 320px"
+                              sizes="(max-width: 767px) 280px, 240px"
+                              fit="contain"
                             />
                           </div>
                           <div className="il-kartu-isi">
@@ -262,7 +267,7 @@ export default function SectionOfficial() {
                               {!p.is_preorder && <BadgeTersedia tersedia={p.is_tersedia} kecil />}
                             </span>
                             <span className="il-kartu-lihat">
-                              Lihat Detail <IkonPanah size={16} tebal={2.2} />
+                              Lihat Detail <IkonPanah size={14} tebal={2.2} />
                             </span>
                           </div>
                         </Link>
@@ -275,7 +280,7 @@ export default function SectionOfficial() {
                 {bisaGeser && (
                   <div className="il-kontrol">
                     <button type="button" className="il-panah" onClick={() => keSlide(aktif - 1, true)} aria-label="Merchandise sebelumnya">
-                      <span style={{ display: 'inline-flex', transform: 'rotate(180deg)' }}><IkonPanah size={16} tebal={2.2} /></span>
+                      <span style={{ display: 'inline-flex', transform: 'rotate(180deg)' }}><IkonPanah size={14} tebal={2.2} /></span>
                     </button>
                     <div className="il-titik" role="group" aria-label="Pilih merchandise">
                       {produk.map((p, i) => (
@@ -291,7 +296,7 @@ export default function SectionOfficial() {
                       ))}
                     </div>
                     <button type="button" className="il-panah" onClick={() => keSlide(aktif + 1, true)} aria-label="Merchandise berikutnya">
-                      <IkonPanah size={16} tebal={2.2} />
+                      <IkonPanah size={14} tebal={2.2} />
                     </button>
                     {!kurangiGerak && (
                       <button
@@ -310,16 +315,12 @@ export default function SectionOfficial() {
             )}
           </div>
 
-          {/* ── C. Kolase merchandise ── dekoratif; tautannya sudah ada di
-              kartu tengah dan tombol koleksi */}
-          <div className={`il-kolase il-kolase-${Math.max(kolase.length, 1)}`} aria-hidden>
-            {!tampilSkeleton && kolase.map((p, i) => (
-              <div key={p.id} className={`il-kolase-foto il-kolase-${i + 1}x`}>
-                <FotoBeranda src={p.foto_url} kategori={p.kategori} alt="" sizes="(max-width: 767px) 50vw, 260px" />
-              </div>
-            ))}
-            <span className="il-panggung-alas" />
-          </div>
+          {/* ── Kanan: display merchandise (menunggu aset, lihat FOTO_DISPLAY) ── */}
+          {FOTO_DISPLAY && (
+            <div className="il-display" aria-hidden>
+              <Image src={FOTO_DISPLAY} alt="" fill sizes="(max-width: 767px) 100vw, 480px" style={{ objectFit: 'contain', objectPosition: 'right bottom' }} />
+            </div>
+          )}
         </div>
       </div>
     </section>
@@ -328,7 +329,7 @@ export default function SectionOfficial() {
 
 function IkonJeda() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
       <rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" />
     </svg>
   )
@@ -336,7 +337,7 @@ function IkonJeda() {
 
 function IkonPutar() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
       <path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z" />
     </svg>
   )
