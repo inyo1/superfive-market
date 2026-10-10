@@ -7,13 +7,12 @@ import { adminPenuh } from '../../lib/peran'
 import { useChatContext } from '../context/ChatContext'
 
 const BIRU = '#0C447C'
-const ABU = '#9ab4cc'
 
 // Ikon digambar inline supaya tajam di layar HP dan warnanya bisa ikut state
 // aktif. currentColor dipakai supaya cukup mengatur warna di pembungkusnya.
 function IkonBeranda({ aktif }: { aktif: boolean }) {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={aktif ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={aktif ? 2.3 : 2} strokeLinecap="round" strokeLinejoin="round">
       <path d="M3 10.5L12 3l9 7.5" />
       <path d="M5 9.5V20h14V9.5" />
       {aktif && <path d="M10 20v-5h4v5" />}
@@ -23,7 +22,7 @@ function IkonBeranda({ aktif }: { aktif: boolean }) {
 
 function IkonProduk({ aktif }: { aktif: boolean }) {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={aktif ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={aktif ? 2.3 : 2} strokeLinecap="round" strokeLinejoin="round">
       <path d="M3 7l9-4 9 4-9 4-9-4z" />
       <path d="M3 7v10l9 4 9-4V7" />
       <path d="M12 11v10" />
@@ -33,7 +32,7 @@ function IkonProduk({ aktif }: { aktif: boolean }) {
 
 function IkonChat({ aktif }: { aktif: boolean }) {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={aktif ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={aktif ? 2.3 : 2} strokeLinecap="round" strokeLinejoin="round">
       <path d="M21 12a8 8 0 01-8 8H4l2-3a8 8 0 1115-5z" />
     </svg>
   )
@@ -41,7 +40,7 @@ function IkonChat({ aktif }: { aktif: boolean }) {
 
 function IkonAkun({ aktif }: { aktif: boolean }) {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={aktif ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={aktif ? 2.3 : 2} strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="8" r="3.6" />
       <path d="M4.5 20a7.5 7.5 0 0115 0" />
     </svg>
@@ -97,8 +96,14 @@ export default function BottomNav() {
   // Tutup sheet setiap kali pindah halaman
   useEffect(() => { setSheetTerbuka(false) }, [pathname])
 
+  // Halaman toko orang lain bagian dari Marketplace, jadi tab Produk yang
+  // menyala; /toko/saya milik menu Akun.
+  const tokoPublik = pathname.startsWith('/toko/') && !pathname.startsWith('/toko/saya')
+
   function aktif(href: string) {
-    return href === '/' ? pathname === '/' : pathname.startsWith(href)
+    if (href === '/') return pathname === '/'
+    if (href === '/produk') return pathname.startsWith('/produk') || tokoPublik
+    return pathname.startsWith(href)
   }
 
   async function keluar() {
@@ -129,8 +134,12 @@ export default function BottomNav() {
         { href: '/about', label: 'Tentang Kami', ikon: 'ℹ️' },
       ]
 
-  const akunAktif = sheetTerbuka || ['/profil', '/toko', '/dashboard', '/alumni', '/about', '/admin']
+  const akunAktif = sheetTerbuka || ['/profil', '/toko/saya', '/dashboard', '/jual', '/verifikasi', '/alumni', '/about', '/admin', '/auth']
     .some(p => pathname.startsWith(p))
+
+  // Di dalam percakapan, bar ketik pesan yang menempati dasar layar —
+  // BottomNav menyingkir supaya tidak menutupinya.
+  if (pathname.startsWith('/chat/')) return null
 
   return (
     <>
@@ -229,55 +238,36 @@ export default function BottomNav() {
         </div>
       )}
 
-      <nav
-        className="bottomnav-only"
-        style={{
-          position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 150,
-          background: '#fff', borderTop: '0.5px solid #dde8f4',
-          paddingBottom: 'env(safe-area-inset-bottom)',
-          boxShadow: '0 -1px 8px rgba(12,68,124,0.06)',
-        }}
-      >
-        <div style={{ display: 'flex', height: '56px' }}>
+      <nav className="bottomnav-only bnav" aria-label="Navigasi bawah">
+        <div className="bnav-baris">
           {item.map(({ href, label, Ikon, lencana }) => {
             const isAktif = aktif(href) && !sheetTerbuka
             return (
               <Link
                 key={href}
                 href={href}
-                style={{
-                  flex: 1, display: 'flex', flexDirection: 'column',
-                  alignItems: 'center', justifyContent: 'center', gap: '3px',
-                  textDecoration: 'none', color: isAktif ? BIRU : ABU,
-                  minWidth: '44px',
-                }}
+                className={`bnav-tombol${isAktif ? ' aktif' : ''}`}
+                aria-current={isAktif ? 'page' : undefined}
+                aria-label={lencana > 0 ? `${label}, ${lencana} pesan belum dibaca` : undefined}
               >
-                <span style={{ position: 'relative', display: 'flex' }}>
+                <span className="bnav-ikon">
                   <Ikon aktif={isAktif} />
                   <Lencana jumlah={lencana} />
                 </span>
-                <span style={{ fontSize: '10px', fontWeight: isAktif ? '700' : '500', lineHeight: 1 }}>
-                  {label}
-                </span>
+                <span className="bnav-label">{label}</span>
               </Link>
             )
           })}
 
           <button
+            type="button"
             onClick={() => setSheetTerbuka(v => !v)}
-            style={{
-              flex: 1, display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'center', gap: '3px',
-              background: 'none', border: 'none', cursor: 'pointer',
-              color: akunAktif ? BIRU : ABU, minWidth: '44px', padding: 0,
-            }}
+            className={`bnav-tombol${akunAktif ? ' aktif' : ''}`}
             aria-label="Akun"
             aria-expanded={sheetTerbuka}
           >
-            <IkonAkun aktif={akunAktif} />
-            <span style={{ fontSize: '10px', fontWeight: akunAktif ? '700' : '500', lineHeight: 1 }}>
-              Akun
-            </span>
+            <span className="bnav-ikon"><IkonAkun aktif={akunAktif} /></span>
+            <span className="bnav-label">Akun</span>
           </button>
         </div>
       </nav>
