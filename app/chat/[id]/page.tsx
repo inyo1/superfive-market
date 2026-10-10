@@ -280,7 +280,9 @@ export default function ChatRoom() {
       </div>
 
       {/* Input bar */}
-      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#fff', borderTop: '0.5px solid #c5d9ef', padding: '10px 16px', zIndex: 10 }}>
+      {/* BottomNav menyingkir di halaman ini, jadi bar ini yang duduk di dasar
+          layar — beri ruang untuk home indicator iPhone */}
+      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#fff', borderTop: '0.5px solid #c5d9ef', padding: '10px 16px calc(10px + env(safe-area-inset-bottom))', zIndex: 10 }}>
         <div style={{ maxWidth: '600px', margin: '0 auto', display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
           <textarea
             ref={inputRef}

@@ -360,6 +360,8 @@ status_alumni  : umum | menunggu | alumni | ditolak
   'umum' = pembeli biasa, tidak diperiksa siapa pun. Itu default-nya.
   'menunggu' = SISA DATA LAMA. Sejak 20 September 2026 ajukan_alumni langsung
                memberi 'alumni'; tidak ada lagi yang masuk ke keadaan ini.
+               Per 10 Oktober 2026 tidak ada satu akun pun berstatus ini
+               (begitu juga 'ditolak') — kodenya tetap menangani keduanya.
   'ditolak'  = status alumninya DICABUT pengurus lewat Alumni Terbaru.
 
 status_penjual : belum_ajukan | menunggu | aktif | ditolak | dibekukan
@@ -2200,8 +2202,8 @@ adanya, `users_admin_all` membuka seluruh tabel, `jaga_toko_official`
 melewatkan `is_official`. Menguji dengan akun admin akan **selalu hijau**,
 apa pun keadaan penjaganya, termasuk kalau penjaganya tidak ada sama sekali.
 
-Akun **ITZ (`inyots1@gmail.com`) adalah admin — jangan dipakai untuk menguji
-penjaga.** Pakai akun ber-`role = 'member'`.
+Akun **ITZ (`inyots1@gmail.com`) adalah `superadmin` — jangan dipakai untuk
+menguji penjaga.** Pakai akun ber-`role = 'member'`.
 
 Cari sasaran ujinya dulu, jangan menebak dari nama:
 
@@ -2358,6 +2360,29 @@ aksi `#087EF5`, emas `#FFB51B` — dan kelas berawalan `b-` / `nav-`. Halaman
 lain masih memakai palet di atas sampai giliran redesainnya. Navbar kini satu
 baris; Dashboard, Toko Saya, tautan pengurus, dan Keluar ada di menu akun
 (dropdown avatar) di >= 1024px.
+
+**Gabung Alumni di navbar** (Oktober 2026) — tujuannya ditentukan
+`tujuanGabung` di [Navbar](app/components/Navbar.tsx), bukan dirangkai di
+tempat lain:
+
+| Keadaan | Gabung Alumni |
+|---|---|
+| sesi / profil belum termuat | tidak ada (juga Masuk) — supaya tidak salah tampil lalu hilang |
+| pengunjung | `/auth?mode=daftar&msg=…` — pilihan alumni **sengaja tidak diisi otomatis** |
+| login, `umum` / `menunggu`, bukan institusi | `/verifikasi` |
+| `alumni`, `ditolak`, institusi | tidak ada. `ditolak` sengaja tidak diajak mendaftar ulang (lihat celah `ajukan_alumni`) |
+| sedang di `/auth` atau `/verifikasi` | tidak ada |
+
+Di HP (<= 479px) ikon cari navbar menyingkir selama Gabung/Masuk tampil;
+pencarian tetap di hero beranda dan `/produk`.
+
+**BottomNav** — empat tombol `.bnav-tombol`, tampil di bawah 1024px.
+Tingginya token `--bnav-tinggi` (61px, tanpa safe area); padding `body` dan
+bilah fixed lain yang duduk di atasnya (`.d-cta-hp`, `.cta-bottom-bar`) wajib
+memakai token itu, jangan angka tetap. Tab Akun hanya menyala di halaman akun
+pribadi dan `/auth` — **tidak** di `/alumni` dan `/about`; halaman toko publik
+menyalakan Produk. BottomNav **tidak dirender di `/chat/[id]`**, karena bar
+ketik pesan di sana yang menempati dasar layar.
 
 **`/produk` (redesain fase 2)** memakai kelas `m-`. Cari, saring (kategori,
 status barang, hanya tersedia, rentang harga), dan urut semuanya di klien atas
@@ -2542,9 +2567,6 @@ lihat [Utang Teknis](#utang-teknis-yang-diketahui).
   daftar alumni dengan dan tanpa konfirmasi email, layar konfirmasi angkatan,
   /alumni sebagai anon dan login, "Kontak belum tersedia" di toko tanpa
   kontak, TombolLapor dengan `.env.local`, dan Alumni Terbaru + cabut.
-- **Empat akun lama masih berstatus alumni `menunggu`** dari masa antrean.
-  Tidak ada panel yang menampilkan mereka lagi; mereka tinggal mendaftar
-  ulang sendiri dari /verifikasi (ajakan tampil di /profil).
 - **`toko_insert_own` masih memeriksa sumbu lama** (`status_verifikasi =
   'terverifikasi'`), bukan `status_penjual = 'aktif'`. Untuk sekarang pagarnya
   ditegakkan di klien ([/produk/tambah](app/produk/tambah/page.tsx)), yang
