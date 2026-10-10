@@ -285,7 +285,7 @@ export default function ReviewSection({ produkId }: { produkId: string }) {
       {/* CTA login jika belum masuk */}
       {!currentUserId && (
         <div style={{ padding: '14px 18px', borderBottom: reviews.length > 0 ? '0.5px solid #e8f0f8' : 'none', textAlign: 'center' }}>
-          <Link href="/auth" style={{ fontSize: '13px', color: '#0C447C', textDecoration: 'none', fontWeight: '500' }}>
+          <Link href="/auth?mode=masuk" style={{ fontSize: '13px', color: '#0C447C', textDecoration: 'none', fontWeight: '500' }}>
             Masuk untuk menulis ulasan →
           </Link>
         </div>

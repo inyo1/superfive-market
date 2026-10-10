@@ -116,7 +116,7 @@ export default function DashboardPage() {
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/auth'); return }
+      if (!user) { router.push('/auth?mode=masuk'); return }
 
       const { data: profil } = await supabase
         .from('users').select('status_penjual, alasan_penjual').eq('id', user.id).single()

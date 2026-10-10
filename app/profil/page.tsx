@@ -47,7 +47,7 @@ export default function ProfilPage() {
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/auth'); return }
+      if (!user) { router.push('/auth?mode=masuk'); return }
       setUserId(user.id)
       setUserEmail(user.email ?? '')
 

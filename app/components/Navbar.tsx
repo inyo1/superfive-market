@@ -260,7 +260,7 @@ export default function Navbar() {
                     <IkonTambahOrang /> Gabung Alumni
                   </Link>
                 )}
-                {tampilMasuk && <Link href="/auth" className="nav-masuk">Masuk</Link>}
+                {tampilMasuk && <Link href="/auth?mode=masuk" className="nav-masuk">Masuk</Link>}
               </div>
             )}
 
@@ -364,7 +364,7 @@ export default function Navbar() {
                     <IkonTambahOrang /> <span>Gabung</span>
                   </Link>
                 )}
-                {tampilMasuk && <Link href="/auth" className="nav-masuk nav-masuk-ringkas">Masuk</Link>}
+                {tampilMasuk && <Link href="/auth?mode=masuk" className="nav-masuk nav-masuk-ringkas">Masuk</Link>}
               </div>
             )}
             {user && (

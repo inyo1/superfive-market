@@ -48,7 +48,7 @@ export default function TambahProduk() {
           setCountdown(sisa)
           if (sisa <= 0) {
             clearInterval(timer)
-            router.replace('/auth')
+            router.replace('/auth?mode=masuk')
           }
         }, 1000)
         return
@@ -151,7 +151,7 @@ export default function TambahProduk() {
           <div style={{ fontSize: '13px', color: '#5a7da0', marginBottom: '20px' }}>
             Mengarahkan ke halaman login dalam {countdown} detik...
           </div>
-          <Link href="/auth" style={{
+          <Link href="/auth?mode=masuk" style={{
             display: 'inline-block', background: '#0C447C', color: '#fff',
             padding: '10px 24px', borderRadius: '8px', fontSize: '13px',
             fontWeight: '600', textDecoration: 'none',

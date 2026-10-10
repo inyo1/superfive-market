@@ -165,7 +165,7 @@ export default function TokoPage() {
 
   async function handleChatSeller() {
     if (!toko || startingChat) return
-    if (!currentUserId) { router.push('/auth'); return }
+    if (!currentUserId) { router.push('/auth?mode=masuk'); return }
     if (currentUserId === toko.seller_id) return
     setStartingChat(true)
 

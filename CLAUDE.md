@@ -267,6 +267,10 @@ metadata auth untuk hak akses**. Aturan lengkap di [lib/sambutan.ts](lib/sambuta
 - **`alamatSambutan()` SELALU menyertakan `?lanjut=`, termasuk `%2F`.** Router
   Next.js 16 memulihkan URL `/selamat-datang` polos dari kunjungan sebelumnya
   di tab yang sama, lengkap dengan `?lanjut=` lamanya
+- **Tautan ke halaman Masuk SELALU `/auth?mode=masuk`, jangan `/auth` polos.**
+  Sebab yang sama: setelah `/auth?mode=daftar` dikunjungi, navigasi ke `/auth`
+  polos dipulihkan router jadi `?mode=daftar` dan tab Daftar yang terbuka
+  (terbukti di Preview). Berlaku untuk `href`, `router.push`, dan `router.replace`
 - `?redirect=` di `/auth` dan `?lanjut=` disaring `jalurInternal()` — menolak
   `//host`, `/\host`, dan karakter kontrol. Pemeriksaan `//` saja tidak cukup
 - Client memakai alur **PKCE** (signUp mengirim `code_challenge`). Tautan

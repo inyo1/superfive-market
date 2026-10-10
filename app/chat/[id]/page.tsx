@@ -76,7 +76,7 @@ export default function ChatRoom() {
   useEffect(() => {
     async function init() {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.replace('/auth'); return }
+      if (!user) { router.replace('/auth?mode=masuk'); return }
       setUid(user.id)
 
       const { data: conv, error } = await supabase

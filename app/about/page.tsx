@@ -101,7 +101,7 @@ export default function AboutPage() {
           }}>
             Lihat Produk
           </Link>
-          <Link href="/auth" style={{
+          <Link href="/auth?mode=masuk" style={{
             background: '#fff', color: '#0C447C',
             padding: '13px 32px', borderRadius: '9px',
             fontSize: '15px', fontWeight: '600', textDecoration: 'none',

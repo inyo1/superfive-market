@@ -78,7 +78,7 @@ export default function AdminPage() {
   useEffect(() => {
     async function init() {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/auth'); return }
+      if (!user) { router.push('/auth?mode=masuk'); return }
 
       const { data: profile } = await supabase
         .from('users').select('role').eq('id', user.id).single()

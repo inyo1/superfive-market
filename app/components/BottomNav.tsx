@@ -231,7 +231,7 @@ export default function BottomNav() {
               </button>
             ) : (
               <Link
-                href="/auth"
+                href="/auth?mode=masuk"
                 style={{ display: 'block', textAlign: 'center', background: BIRU, color: '#fff', padding: '13px', borderRadius: '10px', fontSize: '14px', fontWeight: '600', textDecoration: 'none', minHeight: '44px', boxSizing: 'border-box' }}
               >
                 Masuk / Daftar

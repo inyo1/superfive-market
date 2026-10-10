@@ -187,7 +187,7 @@ export default function DetailProduk() {
 
   async function handleChatSeller() {
     if (!produk || startingChat) return
-    if (!currentUserId) { router.push('/auth'); return }
+    if (!currentUserId) { router.push('/auth?mode=masuk'); return }
     const sellerId = (produk.toko as any)?.seller_id
     if (!sellerId || currentUserId === sellerId) return
     setStartingChat(true)
@@ -513,7 +513,7 @@ export default function DetailProduk() {
                 </button>
               )}
               {!currentUserId && (
-                <Link href="/auth" className="d-tombol-teks">Masuk untuk chat dengan penjual</Link>
+                <Link href="/auth?mode=masuk" className="d-tombol-teks">Masuk untuk chat dengan penjual</Link>
               )}
             </div>
 

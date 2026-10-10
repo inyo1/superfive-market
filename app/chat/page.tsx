@@ -61,7 +61,7 @@ export default function ChatListPage() {
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.replace('/auth'); return }
+      if (!user) { router.replace('/auth?mode=masuk'); return }
 
       const { data: rawConvs } = await supabase
         .from('conversations')

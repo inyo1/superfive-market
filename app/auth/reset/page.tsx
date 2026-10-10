@@ -155,7 +155,7 @@ export default function ResetPasswordPage() {
               <p style={{ fontSize: '11px', color: '#9ab4cc', margin: '0 0 18px' }}>{pesanLink}</p>
             )}
             <Link
-              href="/auth"
+              href="/auth?mode=masuk"
               style={{
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 minHeight: '44px', padding: '0 24px', borderRadius: '8px',
