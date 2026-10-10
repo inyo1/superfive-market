@@ -10,37 +10,30 @@ import BadgePreorder from './BadgePreorder'
 import FotoBeranda from './beranda/FotoBeranda'
 import { IkonPerisai, IkonOrang, IkonHati, IkonPanah } from './beranda/Ikon'
 
-// Official Merchandise IniLima — banner horizontal mengikuti mockup yang
-// disetujui (Oktober 2026, putaran koreksi).
+// Official Merchandise IniLima — SATU BACKGROUND + KOMPONEN HTML OVERLAY
+// (Oktober 2026, implementasi final mengikuti mockup yang disetujui).
 //
-// Desktop (>=1280px): satu banner 400-460px, kiri ±40% identitas + manfaat
-// di bawahnya, tengah ±20% SATU kartu spotlight, kanan ±40% display
-// merchandise. Tablet (768-1279): identitas | kartu, tanpa kolom kanan.
-// HP: identitas → kartu → display (kalau asetnya ada) → manfaat.
+// Desktop (>=1024px): satu banner 400-460px. Lapisan paling belakang adalah
+// LATAR_DESKTOP — gradien biru polos di kiri, display merchandise di ±38%
+// kanan. Di atasnya elemen HTML: kiri identitas + manfaat, tengah SATU kartu
+// carousel dari database. Kolom kanan grid sengaja kosong; yang terlihat di
+// sana adalah merchandise pada latar.
+// Di bawah 1024px: identitas → kartu → VISUAL_HP (pita ringkas) → manfaat.
 //
-// DISPLAY MERCHANDISE KANAN — lihat FOTO_DISPLAY (sekarang aset konsep). Visual di referensi adalah
-// satu komposisi produk (jaket, kaos, dst. di atas alas, berlatar gedung),
-// bukan kumpulan foto katalog. Foto produk di database adalah foto orang
-// memakai kaos/jaket dan mockup kaos — menumpuknya sebagai kolase sudah
-// ditolak secara visual. Jadi kolom kanan dibaca dari FOTO_DISPLAY: selama
-// null, yang tampil hanya atmosfer (siluet gedung SMPN 5 + cahaya), tanpa
-// produk apa pun. Begitu asetnya ada, isi konstanta itu — tidak ada kode lain
-// yang perlu disentuh.
+// Kedua gambar DEKORATIF: aria-hidden, tidak bisa diklik, tidak menautkan ke
+// mana pun. Satu-satunya tawaran produk adalah kartu tengah.
+//
+// ⚠ BLOCKER SEBELUM PRODUCTION: kedua gambar memuat tumbler, topi, dan tas
+// IniLima yang TIDAK ADA di katalog, jaket varsity berlengan putih sementara
+// JAKET 1-3 di katalog berlengan perak, dan kaos bertulisan "SUPERFIVE"
+// ganda yang bukan desain KAOS 2 ("SUPERFIVE FIVE").
 //
 // Satu pengatur waktu saja: setTimeout yang dipasang ulang tiap kali slide
 // berpindah, dan dibersihkan di cleanup effect yang sama. Tidak ada
 // setInterval yang bisa tertinggal berlapis saat state berubah cepat.
 
-/**
- * Display merchandise kanan, berkas di /public. null = belum ada.
- *
- * ⚠ ASET KONSEP — BLOCKER SEBELUM PRODUCTION. Gambar ini memuat tumbler,
- * topi, dan tas IniLima yang TIDAK ADA di katalog, dan jaket varsity
- * berlengan putih sementara JAKET 1-3 di katalog berlengan perak. Dipakai
- * hanya untuk menilai komposisi di Preview. Strip kiri gambar asli (sisa
- * kartu mockup) sudah dipotong.
- */
-const FOTO_DISPLAY: string | null = '/inilima-display-kanan-konsep.webp'
+const LATAR_DESKTOP = '/inilima-banner-background-desktop.webp'
+const VISUAL_HP = '/inilima-merchandise-mobile.webp'
 
 const JEDA = 4000           // jarak antar pergantian otomatis
 const JEDA_SETELAH_MANUAL = 8000
@@ -153,11 +146,11 @@ export default function SectionOfficial() {
   return (
     <section className="b-seksi" aria-labelledby="judul-inilima">
       <div className="b-wadah">
-        <div className={`il-panel${FOTO_DISPLAY ? ' ada-display' : ''}`}>
-          {/* Atmosfer kanan: siluet gedung SMPN 5, sangat samar, menyatu
-              dengan gradien — bukan foto produk */}
-          <div className="il-gedung" aria-hidden>
-            <Image src="/smpn5-hero.png" alt="" fill sizes="(max-width: 1279px) 60vw, 520px" style={{ objectFit: 'cover', objectPosition: 'center 28%' }} />
+        <div className="il-panel">
+          {/* Lapisan paling belakang (>=1024px): selebar banner, rata bawah —
+              merchandise-nya selalu jatuh di kolom kanan yang kosong */}
+          <div className="il-latar" aria-hidden>
+            <Image src={LATAR_DESKTOP} alt="" fill sizes="(max-width: 1023px) 1px, 1200px" style={{ objectFit: 'contain', objectPosition: 'right bottom' }} />
           </div>
 
           {/* ── Kiri: identitas ── */}
@@ -323,15 +316,10 @@ export default function SectionOfficial() {
             )}
           </div>
 
-          {/* ── Kanan: display merchandise (lihat FOTO_DISPLAY). Tidak tampil
-              di tablet 768-1279: kolom ketiga tidak muat tanpa memeras kartu ── */}
-          {FOTO_DISPLAY && (
-            <div className="il-display" aria-hidden>
-              {/* Dekoratif murni: bukan tautan, tidak bisa difokus, tidak
-                  dibaca pembaca layar — kartu tengah satu-satunya tawaran */}
-              <Image src={FOTO_DISPLAY} alt="" fill sizes="(max-width: 767px) 100vw, 560px" style={{ objectFit: 'cover' }} />
-            </div>
-          )}
+          {/* ── Visual merchandise ringkas, hanya di bawah 1024px ── */}
+          <div className="il-display" aria-hidden>
+            <Image src={VISUAL_HP} alt="" fill sizes="(max-width: 1023px) 100vw, 1px" style={{ objectFit: 'cover' }} />
+          </div>
         </div>
       </div>
     </section>

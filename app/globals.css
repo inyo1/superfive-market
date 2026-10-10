@@ -893,14 +893,14 @@ main {
   .b-kategori-nama { font-size: 13px; }
 }
 
-/* ── Banner Official Merchandise IniLima (putaran koreksi) ──
-   Satu banner horizontal mengikuti mockup yang disetujui.
-     desktop (1280+) : info kartu visual / nilai kartu visual — 40·20·40,
-                       tinggi 400-460px
-     tablet (768+)   : info kartu / nilai kartu — kolom kanan tidak ada
-     HP              : info / kartu / visual / nilai
-   Latarnya SATU gradien kontinu untuk seluruh banner; kolom tidak punya
-   latar sendiri. Kelas il- hanya dipakai SectionOfficial. */
+/* ── Banner Official Merchandise IniLima: SATU LATAR + HTML OVERLAY ──
+     desktop (1024+) : .il-latar (gambar) di belakang seluruh banner;
+                       grid info kartu . / nilai kartu . — kolom kanan 37%
+                       kosong, memperlihatkan merchandise pada latar.
+                       Tinggi 400-460px.
+     tablet (768-1023): info kartu / nilai kartu / visual visual
+     HP               : info / kartu / visual / nilai
+   Kelas il- hanya dipakai SectionOfficial. */
 .il-panel {
   position: relative;
   /* clip, bukan hidden: hidden masih bisa digulir terprogram, dan fokus
@@ -932,48 +932,37 @@ main {
   transform: rotate(16deg);
   pointer-events: none;
 }
-/* Atmosfer kanan: siluet gedung SMPN 5 */
-.il-gedung {
+/* Latar desktop. Dipasang selebar banner dan rata bawah (contain): bagian
+   kiri gambar gradien polos, merchandise di ±38% kanan. Bagian atas yang
+   tidak tertutup gambar diisi gradien panel; tepi atas gambar dipudarkan
+   supaya sambungannya tidak terlihat. */
+.il-latar {
   position: absolute;
   z-index: -1;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 46%;
-  opacity: 0.2;
-  filter: grayscale(1) contrast(1.1) brightness(1.15);
-  mix-blend-mode: luminosity;
-  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 40%, #000 85%, transparent 100%), linear-gradient(180deg, #000 55%, transparent 100%);
-  -webkit-mask-composite: source-in;
-  mask-image: linear-gradient(90deg, transparent 0%, #000 40%, #000 85%, transparent 100%), linear-gradient(180deg, #000 55%, transparent 100%);
-  mask-composite: intersect;
-  pointer-events: none;
+  inset: 0;
   display: none;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 26%);
+  mask-image: linear-gradient(180deg, transparent 0%, #000 26%);
 }
 
 .il-info { grid-area: info; min-width: 0; }
 .il-nilai { grid-area: nilai; }
 .il-panggung { grid-area: kartu; min-width: 0; position: relative; }
-/* Display merchandise: dekoratif. Disatukan ke latar lewat mask (pudar ke
-   gradien banner), bukan bingkai — tidak boleh terbaca sebagai kotak foto.
-   HP: pita selebar panel di antara kartu dan manfaat. */
+/* Visual merchandise ringkas di bawah 1024px. Dekoratif; disatukan ke
+   latar lewat mask (pudar atas-bawah), bukan bingkai. */
 .il-display {
   grid-area: visual;
   position: relative;
   min-width: 0;
-  aspect-ratio: 16 / 11;
+  aspect-ratio: 1005 / 640;
   margin: -8px -20px -4px;
   pointer-events: none;
   -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 14%, #000 80%, transparent 100%);
   mask-image: linear-gradient(180deg, transparent 0%, #000 14%, #000 80%, transparent 100%);
 }
-.il-display img { object-position: 60% 55%; }
+.il-display img { object-position: 50% 50%; }
 .il-panggung { z-index: 2; }
-/* Aset display sudah punya gedungnya sendiri — siluet buatan dimatikan di
-   lebar yang menampilkan display */
-@media (max-width: 767px), (min-width: 1280px) {
-  .il-panel.ada-display .il-gedung { display: none; }
-}
 
 /* ── Kiri: identitas ── */
 .il-identitas { display: flex; align-items: center; gap: 16px; }
@@ -1168,11 +1157,6 @@ main {
 .beranda .il-panel a:focus-visible,
 .beranda .il-panel button:focus-visible { outline-color: var(--sf-emas); }
 
-/* HP tanpa aset display: baris visual dibuang supaya tidak menyisakan
-   celah kosong ganda di antara kartu dan manfaat */
-@media (max-width: 767px) {
-  .il-panel:not(.ada-display) { grid-template-areas: 'info' 'kartu' 'nilai'; }
-}
 /* HP */
 @media (max-width: 479px) {
   .il-logo { width: 60px; }
@@ -1186,13 +1170,14 @@ main {
   .il-nilai li { flex-direction: column; align-items: flex-start; gap: 8px; }
 }
 
-/* Tablet & laptop sempit: identitas | kartu. Kolom kanan tidak muat tanpa
-   memeras kartu, jadi gedung menjadi latar di belakang kartu saja. */
+/* Tablet: identitas | kartu, visual merchandise sebagai pita di bawah.
+   Latar desktop tidak dipakai: merchandise-nya akan jatuh tepat di
+   belakang kartu. */
 @media (min-width: 768px) {
   .il-panel {
     grid-template-columns: minmax(0, 1.7fr) minmax(230px, 1fr);
     grid-template-rows: 1fr auto;
-    grid-template-areas: 'info kartu' 'nilai kartu';
+    grid-template-areas: 'info kartu' 'nilai kartu' 'visual visual';
     padding: 32px 36px;
     gap: 20px 36px;
     align-items: center;
@@ -1200,8 +1185,6 @@ main {
   .il-info { align-self: end; }
   .il-nilai { align-self: start; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding-top: 16px; }
   .il-nilai li + li { border-left: 1px solid rgba(255, 255, 255, 0.14); padding-left: 12px; }
-  .il-gedung { display: block; width: 52%; }
-  .il-display { display: none; }
   .il-logo { width: 88px; }
   .il-identitas { gap: 20px; }
   .il-judul { border-left: 1px solid rgba(255, 255, 255, 0.25); padding-left: 20px; }
@@ -1215,35 +1198,61 @@ main {
   .il-nilai-ikon { width: 30px; height: 30px; }
 }
 @media (min-width: 768px) and (max-width: 1023px) {
+  /* Pita visual tablet: komposisi utuh (contain) di tengah, tepi kiri-kanan
+     dan atas-bawah dipudarkan ke latar supaya tidak terbaca sebagai kotak */
+  .il-display {
+    aspect-ratio: 2 / 1;
+    margin: -8px -36px -32px;
+    -webkit-mask-image: linear-gradient(90deg, transparent 11%, #000 30%, #000 70%, transparent 89%), linear-gradient(180deg, transparent 0%, #000 12%, #000 86%, transparent 100%);
+    -webkit-mask-composite: source-in;
+    mask-image: linear-gradient(90deg, transparent 11%, #000 30%, #000 70%, transparent 89%), linear-gradient(180deg, transparent 0%, #000 12%, #000 86%, transparent 100%);
+    mask-composite: intersect;
+  }
+  .il-display img { object-fit: contain !important; }
   .il-nilai strong { font-size: 12px; }
   .il-nilai li > span:last-child span { font-size: 11px; }
   .il-nilai li + li { padding-left: 10px; }
   .il-nilai { gap: 10px; }
 }
 
-/* Desktop: tiga area 40·20·40 */
-@media (min-width: 1280px) {
+/* Desktop: latar + overlay. Kolom kanan dipatok 37% supaya kartu selalu
+   berakhir sebelum merchandise pada latar dimulai (±61,5% lebar gambar). */
+@media (min-width: 1024px) {
   .il-panel {
-    grid-template-columns: minmax(0, 2.15fr) minmax(220px, 1fr) minmax(0, 1.85fr);
-    grid-template-areas: 'info kartu visual' 'nilai kartu visual';
+    grid-template-columns: minmax(0, 1fr) 220px 37%;
+    grid-template-areas: 'info kartu .' 'nilai kartu .';
     padding: 36px 40px 32px 44px;
     gap: 18px 32px;
     min-height: 400px;
+    background:
+      radial-gradient(30% 60% at 48% 50%, rgba(8, 126, 245, 0.35) 0%, rgba(8, 126, 245, 0) 70%),
+      linear-gradient(100deg, #04254A 0%, var(--sf-navy) 30%, #0A4A8A 62%, #0D57A6 100%);
   }
-  .il-gedung { width: 42%; }
-  .il-display {
-    display: block;
-    align-self: stretch;
-    aspect-ratio: auto;
-    /* sampai ke tepi atas, kanan, bawah banner; sedikit masuk ke celah
-       kartu supaya pudar kirinya jatuh di ruang kosong, bukan di produk */
-    margin: -36px -40px -32px -24px;
-    -webkit-mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.55) 9%, #000 22%);
-    mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.55) 9%, #000 22%);
-  }
-  .il-display img { object-position: 100% 60%; }
+  .il-latar { display: block; }
+  .il-display { display: none; }
   .il-kartu { max-width: 230px; }
+}
+/* Laptop sempit: kolom kiri ±300px — identitas dirapatkan, manfaat
+   bertumpuk dengan ikon di samping */
+@media (min-width: 1024px) and (max-width: 1199px) {
+  .il-panel { padding: 32px 36px 28px 36px; gap: 16px 24px; }
+  .il-logo { width: 64px; }
+  .il-identitas { gap: 14px; }
+  .il-judul { padding-left: 14px; }
+  .il-eyebrow { font-size: 18px; }
+  .il-merek { font-size: 34px; }
+  .il-desk { margin: 12px 0 14px; }
+  .il-nilai { grid-template-columns: 1fr; gap: 8px; padding-top: 12px; }
+  .il-nilai li { flex-direction: row; align-items: center; gap: 10px; }
+  .il-nilai li + li { border-left: none; padding-left: 0; }
+}
+/* Lebar penuh: posisi kartu terkunci oleh merchandise pada latar, jadi
+   ruang kolom kiri didapat dari celah dan padding yang lebih rapat */
+@media (min-width: 1200px) {
+  .il-panel { padding-left: 36px; column-gap: 24px; }
   .il-merek { font-size: 42px; }
+  .il-nilai strong { font-size: 12.5px; }
+  .il-nilai li + li { padding-left: 10px; }
 }
 
 /* Foto belum tersedia — ikon garis kategori, bukan emoji */
