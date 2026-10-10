@@ -1196,7 +1196,10 @@ main {
     align-items: center;
   }
   .il-info { align-self: end; }
-  .il-nilai { align-self: start; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding-top: 16px; }
+  /* kolom mengikuti panjang judul (auto), judul tidak boleh terlipat —
+     deskripsi di bawahnya tetap boleh membungkus */
+  .il-nilai { align-self: start; grid-template-columns: repeat(3, auto); gap: 12px; padding-top: 16px; }
+  .il-nilai strong { white-space: nowrap; }
   .il-nilai li + li { border-left: 1px solid rgba(255, 255, 255, 0.14); padding-left: 12px; }
   .il-logo { width: 88px; }
   .il-identitas { gap: 20px; }

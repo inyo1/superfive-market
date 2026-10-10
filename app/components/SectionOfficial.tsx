@@ -194,7 +194,7 @@ export default function SectionOfficial() {
             </li>
             <li>
               <span className="il-nilai-ikon"><IkonHati size={17} /></span>
-              <span><strong>Kualitas Terjamin</strong><span>Untuk kebanggaan bersama</span></span>
+              <span><strong>Kebanggaan Bersama</strong><span>Untuk keluarga besar Superfive</span></span>
             </li>
           </ul>
 
