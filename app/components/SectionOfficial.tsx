@@ -18,7 +18,7 @@ import { IkonPerisai, IkonOrang, IkonHati, IkonPanah } from './beranda/Ikon'
 // merchandise. Tablet (768-1279): identitas | kartu, tanpa kolom kanan.
 // HP: identitas → kartu → display (kalau asetnya ada) → manfaat.
 //
-// DISPLAY MERCHANDISE KANAN MASIH MENUNGGU ASET. Visual di referensi adalah
+// DISPLAY MERCHANDISE KANAN — lihat FOTO_DISPLAY (sekarang aset konsep). Visual di referensi adalah
 // satu komposisi produk (jaket, kaos, dst. di atas alas, berlatar gedung),
 // bukan kumpulan foto katalog. Foto produk di database adalah foto orang
 // memakai kaos/jaket dan mockup kaos — menumpuknya sebagai kolase sudah
@@ -31,8 +31,16 @@ import { IkonPerisai, IkonOrang, IkonHati, IkonPanah } from './beranda/Ikon'
 // berpindah, dan dibersihkan di cleanup effect yang sama. Tidak ada
 // setInterval yang bisa tertinggal berlapis saat state berubah cepat.
 
-/** Display merchandise kanan: berkas di /public, latar transparan. null = belum ada. */
-const FOTO_DISPLAY: string | null = null
+/**
+ * Display merchandise kanan, berkas di /public. null = belum ada.
+ *
+ * ⚠ ASET KONSEP — BLOCKER SEBELUM PRODUCTION. Gambar ini memuat tumbler,
+ * topi, dan tas IniLima yang TIDAK ADA di katalog, dan jaket varsity
+ * berlengan putih sementara JAKET 1-3 di katalog berlengan perak. Dipakai
+ * hanya untuk menilai komposisi di Preview. Strip kiri gambar asli (sisa
+ * kartu mockup) sudah dipotong.
+ */
+const FOTO_DISPLAY: string | null = '/inilima-display-kanan-konsep.webp'
 
 const JEDA = 4000           // jarak antar pergantian otomatis
 const JEDA_SETELAH_MANUAL = 8000
@@ -315,10 +323,13 @@ export default function SectionOfficial() {
             )}
           </div>
 
-          {/* ── Kanan: display merchandise (menunggu aset, lihat FOTO_DISPLAY) ── */}
+          {/* ── Kanan: display merchandise (lihat FOTO_DISPLAY). Tidak tampil
+              di tablet 768-1279: kolom ketiga tidak muat tanpa memeras kartu ── */}
           {FOTO_DISPLAY && (
             <div className="il-display" aria-hidden>
-              <Image src={FOTO_DISPLAY} alt="" fill sizes="(max-width: 767px) 100vw, 480px" style={{ objectFit: 'contain', objectPosition: 'right bottom' }} />
+              {/* Dekoratif murni: bukan tautan, tidak bisa difokus, tidak
+                  dibaca pembaca layar — kartu tengah satu-satunya tawaran */}
+              <Image src={FOTO_DISPLAY} alt="" fill sizes="(max-width: 767px) 100vw, 560px" style={{ objectFit: 'cover' }} />
             </div>
           )}
         </div>

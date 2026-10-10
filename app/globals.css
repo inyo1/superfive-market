@@ -954,7 +954,26 @@ main {
 .il-info { grid-area: info; min-width: 0; }
 .il-nilai { grid-area: nilai; }
 .il-panggung { grid-area: kartu; min-width: 0; position: relative; }
-.il-display { grid-area: visual; position: relative; aspect-ratio: 16 / 9; min-width: 0; }
+/* Display merchandise: dekoratif. Disatukan ke latar lewat mask (pudar ke
+   gradien banner), bukan bingkai — tidak boleh terbaca sebagai kotak foto.
+   HP: pita selebar panel di antara kartu dan manfaat. */
+.il-display {
+  grid-area: visual;
+  position: relative;
+  min-width: 0;
+  aspect-ratio: 16 / 11;
+  margin: -8px -20px -4px;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 14%, #000 80%, transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0%, #000 14%, #000 80%, transparent 100%);
+}
+.il-display img { object-position: 60% 55%; }
+.il-panggung { z-index: 2; }
+/* Aset display sudah punya gedungnya sendiri — siluet buatan dimatikan di
+   lebar yang menampilkan display */
+@media (max-width: 767px), (min-width: 1280px) {
+  .il-panel.ada-display .il-gedung { display: none; }
+}
 
 /* ── Kiri: identitas ── */
 .il-identitas { display: flex; align-items: center; gap: 16px; }
@@ -1212,7 +1231,17 @@ main {
     min-height: 400px;
   }
   .il-gedung { width: 42%; }
-  .il-display { display: block; align-self: stretch; aspect-ratio: auto; margin: -36px -40px -32px 0; }
+  .il-display {
+    display: block;
+    align-self: stretch;
+    aspect-ratio: auto;
+    /* sampai ke tepi atas, kanan, bawah banner; sedikit masuk ke celah
+       kartu supaya pudar kirinya jatuh di ruang kosong, bukan di produk */
+    margin: -36px -40px -32px -24px;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.55) 9%, #000 22%);
+    mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.55) 9%, #000 22%);
+  }
+  .il-display img { object-position: 100% 60%; }
   .il-kartu { max-width: 230px; }
   .il-merek { font-size: 42px; }
 }
