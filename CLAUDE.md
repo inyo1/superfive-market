@@ -229,8 +229,36 @@ lib/
   penjualPublik.ts   identitas penjual dari view penjual_publik
   kontak.ts          normalisasi WA/IG/link + pesan pembuka Hubungi Penjual
   config.ts          MODE_TRANSAKSI
+  sambutan.ts        aturan halaman Selamat Datang (Wave 3) — fungsi murni
+  kartuPengingat.ts  Kartu Pengingat Akun PNG (canvas, HANYA email)
   format.ts, foto.ts helper kecil
 ```
+
+## Wave 3: Periksa Akun & Selamat Datang
+
+**Status sambutan disimpan di metadata Supabase Auth, bukan kolom baru.**
+signUp mengirim `sambutan: 'baru'` di `options.data` (kanal yang sama dengan
+`nama`); setelah sambutan diselesaikan/dilewati, klien menulis
+`sambutan_selesai` lewat `supabase.auth.updateUser`. Akun lama tidak punya
+kuncinya, jadi tidak pernah melihat sambutan — tanpa migration, tanpa
+backfill. Metadata ini bisa diubah pemiliknya; **jangan pernah memakai
+metadata auth untuk hak akses**. Aturan lengkap di [lib/sambutan.ts](lib/sambutan.ts).
+
+- Sambutan dipicu di dua tempat saja: login sukses di `/auth` (membawa tujuan
+  semula sebagai `?lanjut=`), dan [PemanduSambutan](app/components/sambutan/PemanduSambutan.tsx)
+  yang **hanya** bekerja di `/` — jalur tautan konfirmasi email. Tautan
+  langsung ke halaman lain tidak pernah dibelokkan
+- Isinya dari status akun yang sebenarnya; `ditolak` tidak diajak daftar
+  ulang, institusi tidak ditawari verifikasi alumni
+- Pendaftaran: [TinjauAkun](app/components/auth/TinjauAkun.tsx) menggantikan
+  dialog konfirmasi angkatan (satu layar, peringatan angkatan terkunci ikut
+  di sana). Pengiriman sebenarnya tetap lewat `<form>` (`requestSubmit`) supaya
+  pengelola kata sandi peramban mengenalinya
+- **Kata sandi tidak pernah masuk kartu PNG, storage, URL, atau log.**
+  `buatKartuPengingat()` sengaja hanya menerima email
+- Kirim ulang konfirmasi ([CekEmail](app/components/auth/CekEmail.tsx)):
+  `supabase.auth.resend`, jeda 60 detik, dan pesan yang sama untuk semua
+  keadaan akun — jangan dibedakan
 
 ## Skema Database
 

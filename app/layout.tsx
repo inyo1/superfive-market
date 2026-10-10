@@ -5,6 +5,7 @@ import { CartProvider } from "./context/CartContext";
 import { ChatProvider } from "./context/ChatContext";
 import { ToastProvider } from "./context/ToastContext";
 import BottomNav from "./components/BottomNav";
+import PemanduSambutan from "./components/sambutan/PemanduSambutan";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -105,6 +106,7 @@ export default function RootLayout({
             <ChatProvider>
               {children}
               <BottomNav />
+              <PemanduSambutan />
             </ChatProvider>
           </CartProvider>
         </ToastProvider>
