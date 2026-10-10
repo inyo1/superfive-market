@@ -844,53 +844,65 @@ main {
   .b-kepala { flex-direction: column; align-items: flex-start; gap: 4px; }
 }
 
-/* ── Kategori ── */
+/* ── Kategori — kartu fotografis (Oktober 2026) ──
+   Foto 4:3 memenuhi kartu (cover, titik fokus per kategori di page.tsx),
+   gradien navy di bawah untuk nama kategori. Desktop 6 kolom, tablet 3,
+   HP 2. Rasio dipegang aspect-ratio, jadi tidak ada layout shift. */
 .b-kategori {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 12px;
 }
+@media (min-width: 640px) { .b-kategori { grid-template-columns: repeat(3, 1fr); gap: 14px; } }
 @media (min-width: 1024px) { .b-kategori { grid-template-columns: repeat(6, 1fr); gap: 16px; } }
 .b-kategori-kartu {
+  position: relative;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 18px 12px 20px;
-  background: #fff;
-  border: 1px solid var(--sf-garis);
+  align-items: flex-end;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
   border-radius: 16px;
+  background: var(--sf-navy);
   text-decoration: none;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  isolation: isolate;
+  box-shadow: 0 6px 16px rgba(6, 47, 89, 0.12);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
-.b-kategori-ikon {
-  width: 64px;
-  height: 64px;
-  border-radius: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--sf-biru);
-  transition: background 0.18s ease;
+.b-kategori-kartu img { transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1); }
+/* Gradien navy di belakang nama + rona biru tipis supaya keenam foto
+   terasa satu keluarga */
+.b-kategori-kartu::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(6, 47, 89, 0) 38%, rgba(6, 47, 89, 0.55) 70%, rgba(4, 30, 60, 0.9) 100%),
+    linear-gradient(0deg, rgba(7, 88, 159, 0.12), rgba(7, 88, 159, 0.12));
+  pointer-events: none;
 }
-.b-kategori-ikon svg { width: 34px; height: 34px; }
-.b-kategori-nama { font-size: 15px; font-weight: 700; color: var(--sf-teks); line-height: 1.2; }
+.b-kategori-nama {
+  position: relative;
+  z-index: 1;
+  padding: 0 14px 12px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #fff;
+  letter-spacing: 0.1px;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
+}
 .b-kategori-kartu:hover {
   transform: translateY(-3px);
-  border-color: #c3dbf1;
-  box-shadow: 0 10px 24px rgba(6, 47, 89, 0.08);
+  box-shadow: 0 14px 28px rgba(6, 47, 89, 0.2);
 }
-.b-kategori-kartu:hover .b-kategori-ikon { background: var(--sf-biru-muda); }
+.b-kategori-kartu:hover img { transform: scale(1.05); }
+.beranda .b-kategori-kartu:focus-visible { outline-offset: 3px; }
 @media (max-width: 479px) {
-  .b-kategori { gap: 8px; }
-  .b-kategori-kartu { padding: 14px 8px 16px; gap: 6px; }
-  .b-kategori-ikon { width: 48px; height: 48px; }
-  .b-kategori-ikon svg { width: 28px; height: 28px; }
-  .b-kategori-nama { font-size: 13px; }
+  .b-kategori { gap: 10px; }
+  .b-kategori-nama { padding: 0 12px 10px; font-size: 15px; }
 }
 
 /* ── Banner Official Merchandise IniLima: SATU LATAR + HTML OVERLAY ──
@@ -1512,6 +1524,7 @@ main {
   .il-titik span, .il-kartu-foto img, .b-produk-foto img { transition: none !important; }
   .il-kartu:hover .il-kartu-foto img, .b-produk-kartu:hover .b-produk-foto img { transform: none !important; }
   .b-tombol:hover, .b-kategori-kartu:hover, .prod-card:hover { transform: none !important; }
+  .b-kategori-kartu img, .b-kategori-kartu:hover img { transition: none !important; transform: none !important; }
 }
 
 /* ══════════════════════════════════════════════════════════════════════

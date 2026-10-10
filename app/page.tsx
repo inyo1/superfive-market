@@ -13,12 +13,12 @@ import BadgeTersedia from './components/BadgeTersedia'
 import LapakSegeraDibuka from './components/LapakSegeraDibuka'
 import { IkonProduk, IkonToko, IkonAlumni } from './components/IkonStatistik'
 import {
-  IKON_KATEGORI, IkonPanah, IkonCari, IkonOrang, IkonPerisai, IkonPetak, IkonGrafik,
+  IkonPanah, IkonCari, IkonOrang, IkonPerisai, IkonPetak, IkonGrafik,
 } from './components/beranda/Ikon'
 import SiteFooter from './components/beranda/SiteFooter'
 import AjakanJual, { tujuanJual, labelJual } from './components/beranda/AjakanJual'
 import { janjiKirim } from '../lib/preorder'
-import { KATEGORI } from '../lib/kategori'
+import { KATEGORI, type Kategori } from '../lib/kategori'
 import { ambilPenjualPublik, type PenjualPublik } from '../lib/penjualPublik'
 import NamaPenjual from './components/NamaPenjual'
 
@@ -50,6 +50,20 @@ type Produk = {
 }
 
 type Stats = { produk: number; toko: number; alumni: number }
+
+// Foto kartu "Jelajahi Kategori" — visual representatif kategori, BUKAN
+// produk yang dijual. Record<Kategori, …> supaya kategori ketujuh tanpa
+// fotonya ditolak tsc (pola yang sama dengan IKON_KATEGORI dan
+// EMOJI_KATEGORI). `posisi` dipatok ke subjek tiap foto supaya tidak
+// terpotong di rasio kartu yang lebih pendek dari fotonya (4:3).
+const FOTO_KATEGORI: Record<Kategori, { src: string; alt: string; posisi: string }> = {
+  Teknologi: { src: '/kategori/kategori-teknologi.webp', alt: 'Laptop, ponsel, dan earbud di meja kerja', posisi: '45% 45%' },
+  Fashion:   { src: '/kategori/kategori-fashion.webp',   alt: 'Kemeja, sepatu sneakers, dan tumpukan baju terlipat', posisi: '55% 55%' },
+  Kuliner:   { src: '/kategori/kategori-kuliner.webp',   alt: 'Brownies cokelat dan secangkir kopi latte', posisi: '68% 50%' },
+  Properti:  { src: '/kategori/kategori-properti.webp',  alt: 'Rumah modern dua lantai di sore hari', posisi: '40% 55%' },
+  Jasa:      { src: '/kategori/kategori-jasa.webp',      alt: 'Konsultasi bisnis di meja dengan dokumen dan laptop', posisi: '55% 60%' },
+  UMKM:      { src: '/kategori/kategori-umkm.webp',      alt: 'Produk usaha kecil: makanan kemasan, kerajinan, dan kain', posisi: '60% 70%' },
+}
 
 
 function fmt(n: number | null | undefined) {
@@ -278,11 +292,23 @@ export default function Home() {
 
           <ul className="b-kategori" role="list">
             {KATEGORI.map(k => {
-              const Ikon = IKON_KATEGORI[k]
+              const foto = FOTO_KATEGORI[k]
               return (
                 <li key={k}>
-                  <Link href={`/produk?kategori=${encodeURIComponent(k)}`} className="b-kategori-kartu">
-                    <span className="b-kategori-ikon"><Ikon size={28} /></span>
+                  {/* aria-label memberi nama tautan yang ringkas; alt foto tetap
+                      menjelaskan isi gambarnya untuk pembaca layar */}
+                  <Link
+                    href={`/produk?kategori=${encodeURIComponent(k)}`}
+                    className="b-kategori-kartu"
+                    aria-label={`Jelajahi kategori ${k}`}
+                  >
+                    <Image
+                      src={foto.src}
+                      alt={foto.alt}
+                      fill
+                      sizes="(max-width: 639px) 50vw, (max-width: 1023px) 33vw, 200px"
+                      style={{ objectFit: 'cover', objectPosition: foto.posisi }}
+                    />
                     <span className="b-kategori-nama">{k}</span>
                   </Link>
                 </li>
