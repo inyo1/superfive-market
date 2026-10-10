@@ -23,19 +23,27 @@ export function labelJual(penjualAktif: boolean): string {
   return penjualAktif ? 'Tambah Produk' : 'Buka Toko Gratis'
 }
 
-// Foto di sisi kanan banner. Konsepnya foto tangan bertumpuk sebagai simbol
-// kebersamaan — tapi foto itu BELUM ADA di repository, dan foto stok merek
-// lain sengaja tidak dipakai. Sampai fotonya tersedia, yang tampil foto
-// gedung SMPN 5 yang sama dengan hero: aset asli, bukan ilustrasi generik.
-// Mengganti foto cukup di sini (taruh berkasnya di /public, mis.
-// /cta-kebersamaan.jpg, lalu ubah src dan posisinya).
-const FOTO_CTA = { src: '/smpn5-hero.png', posisi: 'center 35%' }
+// Foto tangan bertumpuk — simbol kebersamaan, aset resmi CTA (Oktober 2026).
+// Di desktop foto di KIRI dan teks di kanan; di HP foto jadi pita di atas
+// teks. Posisinya dipatok ke tumpukan tangan (sedikit kanan-bawah dari
+// tengah bingkai asli) supaya tangan tidak terpotong di rasio mana pun.
+const FOTO_CTA = { src: '/superfive-community-hands.webp', posisi: '55% 58%' }
 
 export default function AjakanJual({ label, onClick }: { label: string; onClick: () => void }) {
   return (
     <section className="b-seksi" aria-labelledby="judul-jual" style={{ paddingBottom: '64px' }}>
       <div className="b-wadah">
         <div className="b-cta">
+          {/* Dekoratif: maknanya sudah dibawa judul, jadi alt kosong */}
+          <div className="b-cta-foto" aria-hidden>
+            <Image
+              src={FOTO_CTA.src}
+              alt=""
+              fill
+              sizes="(max-width: 899px) 100vw, 640px"
+              style={{ objectFit: 'cover', objectPosition: FOTO_CTA.posisi }}
+            />
+          </div>
           <div className="b-cta-teks">
             <h2 id="judul-jual" className="b-cta-judul">
               <span className="b-cta-tanya">Punya usaha atau jasa?</span>
@@ -54,15 +62,6 @@ export default function AjakanJual({ label, onClick }: { label: string; onClick:
                 <li><IkonCentang size={14} tebal={2.4} /> Untuk Alumni</li>
               </ul>
             </div>
-          </div>
-          <div className="b-cta-foto" aria-hidden>
-            <Image
-              src={FOTO_CTA.src}
-              alt=""
-              fill
-              sizes="(max-width: 899px) 100vw, 480px"
-              style={{ objectFit: 'cover', objectPosition: FOTO_CTA.posisi }}
-            />
           </div>
         </div>
       </div>

@@ -1228,9 +1228,11 @@ main {
 }
 
 /* ── Ajakan berjualan ──
-   Teks di kiri, foto di kanan (horizontal mulai 900px; di bawahnya foto jadi
-   pita di atas teks). Konsep fotonya tangan bertumpuk — sampai foto itu
-   tersedia, AjakanJual memakai foto gedung SMPN 5 (lihat FOTO_CTA). */
+   Foto tangan bertumpuk di KIRI, teks di kanan (horizontal mulai 900px; di
+   bawahnya foto jadi pita di atas teks). Fotonya dilebur ke latar navy lewat
+   mask, bukan lapisan warna: tepinya memudar ke gradien panel sehingga tidak
+   terbaca sebagai kotak tempelan. Latarnya navy pekat di sisi foto dan tetap
+   gelap di sisi teks, supaya teks putih dan tombol emas kontras. */
 .b-cta {
   position: relative;
   overflow: hidden;
@@ -1238,21 +1240,18 @@ main {
   border-radius: 24px;
   color: #fff;
   background:
-    radial-gradient(80% 120% at 0% 100%, rgba(255, 181, 27, 0.14) 0%, rgba(255, 181, 27, 0) 50%),
-    linear-gradient(120deg, var(--sf-navy) 0%, var(--sf-biru) 100%);
+    radial-gradient(70% 90% at 100% 0%, rgba(8, 126, 245, 0.22) 0%, rgba(8, 126, 245, 0) 60%),
+    linear-gradient(180deg, #05284D 0%, var(--sf-navy) 45%, #08467F 100%);
   display: grid;
   box-shadow: 0 20px 48px rgba(6, 47, 89, 0.18);
 }
-.b-cta-teks { position: relative; z-index: 1; padding: 28px 24px 32px; order: 2; }
-/* Foto dilebur ke latar lewat mask, bukan lapisan warna: latarnya gradien,
-   jadi lapisan berwarna tetap akan meninggalkan sambungan yang terlihat */
 .b-cta-foto {
   position: relative;
-  order: 1;
-  aspect-ratio: 16 / 7;
-  -webkit-mask-image: linear-gradient(180deg, #000 55%, transparent 100%);
-  mask-image: linear-gradient(180deg, #000 55%, transparent 100%);
+  aspect-ratio: 16 / 9;
+  -webkit-mask-image: linear-gradient(180deg, #000 50%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 50%, transparent 100%);
 }
+.b-cta-teks { position: relative; z-index: 1; padding: 4px 24px 32px; }
 .b-cta-tanya { display: block; font-size: 16px; font-weight: 600; color: #FFD27A; letter-spacing: 0; margin-bottom: 8px; }
 .b-cta-judul {
   margin: 0 0 12px;
@@ -1277,16 +1276,30 @@ main {
 .b-cta-label li { display: inline-flex; align-items: center; gap: 6px; }
 .b-cta-label svg { color: var(--sf-emas); }
 @media (max-width: 479px) { .b-cta-aksi .b-tombol { width: 100%; } }
-@media (min-width: 900px) {
-  .b-cta { grid-template-columns: 1.25fr 1fr; align-items: stretch; }
-  .b-cta-teks { order: 1; padding: 52px 40px 52px 52px; align-self: center; }
+/* HP: pita foto lebih tinggi dan fade lebih bawah, supaya tumpukan tangan
+   tetap jadi fokus, bukan potongan lengan */
+@media (max-width: 599px) {
   .b-cta-foto {
-    order: 2;
-    aspect-ratio: auto;
-    min-height: 320px;
-    -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 45%);
-    mask-image: linear-gradient(90deg, transparent 0%, #000 45%);
+    aspect-ratio: 5 / 4;
+    -webkit-mask-image: linear-gradient(180deg, #000 68%, transparent 100%);
+    mask-image: linear-gradient(180deg, #000 68%, transparent 100%);
   }
+}
+@media (min-width: 900px) {
+  .b-cta {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+    align-items: stretch;
+    background:
+      radial-gradient(60% 90% at 100% 0%, rgba(8, 126, 245, 0.2) 0%, rgba(8, 126, 245, 0) 60%),
+      linear-gradient(90deg, #05284D 0%, var(--sf-navy) 40%, #07457F 100%);
+  }
+  .b-cta-foto {
+    aspect-ratio: auto;
+    min-height: 340px;
+    -webkit-mask-image: linear-gradient(90deg, #000 60%, transparent 100%);
+    mask-image: linear-gradient(90deg, #000 60%, transparent 100%);
+  }
+  .b-cta-teks { align-self: center; padding: 52px 52px 52px 8px; }
 }
 
 /* ── Footer ── */
