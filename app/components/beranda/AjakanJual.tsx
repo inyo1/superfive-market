@@ -1,6 +1,6 @@
 'use client'
 import Image from 'next/image'
-import { IkonPanah, IkonCentang } from './Ikon'
+import { IkonPanah } from './Ikon'
 
 // Banner "Punya usaha atau jasa?" — dipakai beranda dan /produk.
 //
@@ -24,9 +24,9 @@ export function labelJual(penjualAktif: boolean): string {
 }
 
 // Foto tangan bertumpuk — simbol kebersamaan, aset resmi CTA (Oktober 2026).
-// Di desktop foto di KIRI dan teks di kanan; di HP foto jadi pita di atas
-// teks. Posisinya dipatok ke tumpukan tangan (sedikit kanan-bawah dari
-// tengah bingkai asli) supaya tangan tidak terpotong di rasio mana pun.
+// Banner tipis (revisi Oktober 2026): foto hanya AKSEN di kiri (±21%),
+// memudar ke biru; teks di tengah; tombol + label di kanan. Di HP foto
+// jadi pita pendek di atas, lalu teks dan tombol bertumpuk.
 const FOTO_CTA = { src: '/superfive-community-hands.webp', posisi: '55% 58%' }
 
 export default function AjakanJual({ label, onClick }: { label: string; onClick: () => void }) {
@@ -40,28 +40,28 @@ export default function AjakanJual({ label, onClick }: { label: string; onClick:
               src={FOTO_CTA.src}
               alt=""
               fill
-              sizes="(max-width: 899px) 100vw, 640px"
+              sizes="(max-width: 899px) 100vw, 280px"
               style={{ objectFit: 'cover', objectPosition: FOTO_CTA.posisi }}
             />
           </div>
           <div className="b-cta-teks">
             <h2 id="judul-jual" className="b-cta-judul">
               <span className="b-cta-tanya">Punya usaha atau jasa?</span>
-              Bawa ke keluarga besar <span className="b-cta-merek">SUPERFIVE</span>.
+              Bawa ke keluarga besar SUPERFIVE.
             </h2>
             <p className="b-cta-desk">
               Jual produk, tawarkan jasa, perluas jaringan, dan tumbuh bersama alumni SMPN 5 Bandung.
             </p>
-            <div className="b-cta-aksi">
-              <button type="button" onClick={onClick} className="b-tombol b-tombol-emas">
-                {label} <IkonPanah size={18} tebal={2} />
-              </button>
-              <ul className="b-cta-label" role="list">
-                <li><IkonCentang size={14} tebal={2.4} /> Mudah</li>
-                <li><IkonCentang size={14} tebal={2.4} /> Gratis</li>
-                <li><IkonCentang size={14} tebal={2.4} /> Untuk Alumni</li>
-              </ul>
-            </div>
+          </div>
+          <div className="b-cta-aksi">
+            <button type="button" onClick={onClick} className="b-tombol b-tombol-emas">
+              {label} <IkonPanah size={16} tebal={2} />
+            </button>
+            <ul className="b-cta-label" role="list">
+              <li>Mudah</li>
+              <li>Gratis</li>
+              <li>Untuk Alumni</li>
+            </ul>
           </div>
         </div>
       </div>
