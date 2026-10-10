@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { unduhKartuPengingat } from '../../../lib/kartuPengingat'
 import { IkonSurat } from '../beranda/Ikon'
@@ -35,6 +35,7 @@ export default function CekEmail({
   const [mengirim, setMengirim] = useState(false)
   const [kabar, setKabar] = useState<{ nada: 'ok' | 'galat'; teks: string } | null>(null)
   const [kartu, setKartu] = useState('')
+  const terkunci = useRef(false)
 
   useEffect(() => {
     if (sisa <= 0) return
@@ -43,11 +44,17 @@ export default function CekEmail({
   }, [sisa])
 
   async function kirimUlang() {
-    if (sisa > 0 || mengirim) return
+    // Ref, bukan state: dua klik cepat sama-sama melihat state lama
+    if (sisa > 0 || terkunci.current) return
+    terkunci.current = true
     setMengirim(true)
     setKabar(null)
     try {
-      const { error } = await supabase.auth.resend({ type: 'signup', email })
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+        options: { emailRedirectTo: `${window.location.origin}/` },   // sama dengan signUp
+      })
       const s = (error as { status?: number } | null)?.status
       if (error && (s === 429 || /rate|too many|security purposes/i.test(error.message))) {
         setKabar({ nada: 'galat', teks: 'Permintaan terlalu sering. Tunggu beberapa menit, lalu coba lagi.' })
@@ -57,6 +64,7 @@ export default function CekEmail({
     } catch {
       setKabar({ nada: 'galat', teks: 'Gagal mengirim. Periksa koneksi internetmu, lalu coba lagi.' })
     } finally {
+      terkunci.current = false
       setMengirim(false)
       setSisa(JEDA)
     }

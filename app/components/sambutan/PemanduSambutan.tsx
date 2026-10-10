@@ -2,7 +2,7 @@
 import { useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '../../../lib/supabase'
-import { perluSambutan } from '../../../lib/sambutan'
+import { alamatSambutan, perluSambutan } from '../../../lib/sambutan'
 
 // Membawa akun baru Wave 3 ke /selamat-datang saat ia mendarat di BERANDA
 // dengan sesi baru — jalur yang ditempuh tautan konfirmasi email, yang tidak
@@ -26,7 +26,7 @@ export default function PemanduSambutan() {
     if (pathname !== '/') return
     let aktif = true
     const cek = (meta: Record<string, unknown> | undefined) => {
-      if (aktif && !dilewatiDiTabIni && perluSambutan(meta)) router.replace('/selamat-datang')
+      if (aktif && !dilewatiDiTabIni && perluSambutan(meta)) router.replace(alamatSambutan('/'))
     }
     supabase.auth.getSession().then(({ data }) => cek(data.session?.user?.user_metadata))
     const { data: dengar } = supabase.auth.onAuthStateChange((_e, sesi) => cek(sesi?.user?.user_metadata))

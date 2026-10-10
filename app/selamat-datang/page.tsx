@@ -2,7 +2,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
-import { isiSambutan, metadataSelesai, perluSambutan, tujuanAman, type IsiSambutan } from '../../lib/sambutan'
+import { alamatSambutan, isiSambutan, metadataSelesai, perluSambutan, tujuanAman, type IsiSambutan } from '../../lib/sambutan'
 import Navbar from '../components/Navbar'
 import SambutanIsi from '../components/sambutan/SambutanIsi'
 import { tandaiSambutanDilewatiLokal } from '../components/sambutan/PemanduSambutan'
@@ -25,6 +25,8 @@ function SambutanKonten() {
 
   const [isi, setIsi] = useState<IsiSambutan | null>(null)
   const [sibuk, setSibuk] = useState(false)
+  // Tujuan yang tertunda karena penanda selesai gagal disimpan
+  const [tertunda, setTertunda] = useState<string | null>(null)
 
   useEffect(() => {
     let aktif = true
@@ -32,7 +34,7 @@ function SambutanKonten() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!aktif) return
       if (!user) {
-        router.replace('/auth?msg=' + encodeURIComponent('Masuk untuk melanjutkan.') + '&redirect=' + encodeURIComponent('/selamat-datang' + (lanjut !== '/' ? `?lanjut=${encodeURIComponent(lanjut)}` : '')))
+        router.replace('/auth?msg=' + encodeURIComponent('Masuk untuk melanjutkan.') + '&redirect=' + encodeURIComponent(alamatSambutan(lanjut)))
         return
       }
       // Sekali saja: akun lama atau yang sudah selesai tidak melihatnya lagi
@@ -57,26 +59,51 @@ function SambutanKonten() {
     return () => { aktif = false }
   }, [router, lanjut])
 
-  // Tandai selesai di metadata auth (lintas perangkat). Kalau gagal, pengguna
-  // TIDAK ditahan: ia tetap diteruskan, dan sambutan mungkin muncul sekali
-  // lagi di login berikutnya — lebih baik daripada terkunci di halaman ini.
+  // Tandai selesai di metadata auth (lintas perangkat) dan PASTIKAN berhasil:
+  // yang dianggap selesai hanya jawaban server yang memuat sambutan_selesai.
+  // Kalau gagal atau lewat 8 detik, pengguna diberi tahu dan bisa mencoba
+  // lagi — atau lanjut saja tanpa menyimpan, supaya tidak pernah terkunci di
+  // halaman ini (sambutannya mungkin muncul sekali lagi di login berikutnya).
+  async function simpanSelesai(): Promise<boolean> {
+    try {
+      const hasil = await Promise.race([
+        supabase.auth.updateUser({ data: metadataSelesai() }),
+        new Promise<'habis'>(r => setTimeout(() => r('habis'), 8000)),
+      ])
+      if (hasil === 'habis') return false
+      return !hasil.error && Boolean(hasil.data.user?.user_metadata?.sambutan_selesai)
+    } catch {
+      return false
+    }
+  }
+
   async function selesaiLalu(href: string) {
     setSibuk(true)
+    setTertunda(null)
+    if (await simpanSelesai()) {
+      router.replace(href)
+      return
+    }
+    setSibuk(false)
+    setTertunda(href)
+  }
+
+  function lanjutTanpaSimpan() {
+    if (!tertunda) return
+    // Hanya di memori tab ini: Beranda tidak membelokkan balik ke sambutan
     tandaiSambutanDilewatiLokal()
-    try {
-      await Promise.race([
-        supabase.auth.updateUser({ data: metadataSelesai() }),
-        new Promise(r => setTimeout(r, 6000)),
-      ])
-    } catch { /* lihat komentar di atas */ }
-    router.replace(href)
+    router.replace(tertunda)
   }
 
   return (
     <main style={{ minHeight: '100vh', background: 'var(--sf-latar)' }}>
       <Navbar />
       {isi ? (
-        <SambutanIsi isi={isi} lanjut={lanjut} sibuk={sibuk} onPilih={selesaiLalu} onLewati={() => selesaiLalu(lanjut)} />
+        <SambutanIsi
+          isi={isi} lanjut={lanjut} sibuk={sibuk}
+          onPilih={selesaiLalu} onLewati={() => selesaiLalu(lanjut)}
+          galat={tertunda ? { onCobaLagi: () => selesaiLalu(tertunda), onLanjutSaja: lanjutTanpaSimpan } : null}
+        />
       ) : (
         <div className="sd-memuat" role="status" aria-live="polite">Menyiapkan sambutanmu…</div>
       )}

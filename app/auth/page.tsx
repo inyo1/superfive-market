@@ -3,7 +3,7 @@ import Image from 'next/image'
 import { Suspense, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
-import { METADATA_SAMBUTAN, alamatSambutan, perluSambutan } from '../../lib/sambutan'
+import { METADATA_SAMBUTAN, alamatSambutan, jalurInternal, perluSambutan } from '../../lib/sambutan'
 import Navbar from '../components/Navbar'
 import InputPassword from '../components/InputPassword'
 import PilihAngkatan, { labelOpsiAngkatan } from '../components/PilihAngkatan'
@@ -30,8 +30,9 @@ function AuthContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
 
-  const rawRedirect = searchParams.get('redirect') ?? ''
-  const redirectTo = rawRedirect.startsWith('/') && !rawRedirect.startsWith('//') ? rawRedirect : '/'
+  // Hanya path internal. jalurInternal juga menolak `/\host`, yang lolos dari
+  // pemeriksaan `//` lama padahal dibaca peramban sebagai situs lain
+  const redirectTo = jalurInternal(searchParams.get('redirect'))
   const msg = searchParams.get('msg')
 
   // ?mode=daftar membuka tab Daftar langsung — dipakai CTA direktori alumni
@@ -70,11 +71,18 @@ function AuthContent() {
   // pengelola kata sandi peramban sebagai pendaftaran
   const siapKirim = useRef(false)
   const formRef = useRef<HTMLFormElement>(null)
+  // Penjaga kirim ganda yang SINKRON. State `loading` baru berlaku di render
+  // berikutnya, jadi dua klik cepat bisa sama-sama melihat loading=false dan
+  // mengirim signUp dua kali; ref ini langsung berlaku.
+  const sedangKirim = useRef(false)
 
   async function handleLogin() {
     if (!email.trim() || !password) { setPesan('Isi email dan kata sandi dulu.'); return }
+    if (sedangKirim.current) return
+    sedangKirim.current = true
     setLoading(true)
     const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
+      .finally(() => { sedangKirim.current = false })
     if (error) {
       const kode = (error as { code?: string }).code
       if (kode === 'email_not_confirmed' || /not confirmed/i.test(error.message)) {
@@ -98,7 +106,7 @@ function AuthContent() {
 
   function kirimFormulir(e: React.FormEvent) {
     e.preventDefault()
-    if (loading) return
+    if (loading || sedangKirim.current) return
     if (mode === 'login') { handleLogin(); return }
     if (siapKirim.current) { siapKirim.current = false; handleRegister(); return }
     mintaDaftar()
@@ -112,7 +120,8 @@ function AuthContent() {
   }, [hitungMundur])
 
   async function handleKirimReset() {
-    if (!emailReset.trim() || hitungMundur > 0) return
+    if (!emailReset.trim() || hitungMundur > 0 || sedangKirim.current) return
+    sedangKirim.current = true
     setLoading(true)
 
     // Hasilnya sengaja tidak diperiksa: pesan ke pengguna harus sama persis
@@ -120,8 +129,9 @@ function AuthContent() {
     // daftar email alumni ke siapa pun yang mau menebak.
     await supabase.auth.resetPasswordForEmail(emailReset.trim(), {
       redirectTo: `${window.location.origin}/auth/reset`,
-    })
+    }).catch(() => null)
 
+    sedangKirim.current = false
     setLoading(false)
     setResetTerkirim(true)
     setHitungMundur(60)
@@ -161,6 +171,8 @@ function AuthContent() {
   }
 
   async function handleRegister() {
+    if (sedangKirim.current) return
+    sedangKirim.current = true
     setLoading(true)
     try {
       // Baris public.users dibuat trigger trg_buat_profil_baru di auth.users,
@@ -176,6 +188,10 @@ function AuthContent() {
         email: email.trim(),
         password,
         options: {
+          // Tautan konfirmasi kembali ke situs tempat mendaftar. Kalau alamat
+          // ini tidak ada di daftar Redirect URL Supabase, Supabase memakai
+          // Site URL — sama seperti sebelumnya. Konfigurasi Auth tidak diubah.
+          emailRedirectTo: `${window.location.origin}/`,
           data: {
             nama: nama.trim(),
             // Penanda akun baru Wave 3 → halaman sambutan sekali setelah
@@ -213,6 +229,7 @@ function AuthContent() {
       }
       setRegistered(true)
     } finally {
+      sedangKirim.current = false
       setTinjau(false)
       setLoading(false)
     }
@@ -535,10 +552,19 @@ function AuthContent() {
   )
 }
 
+// Tab awal dibaca dari ?mode= hanya saat dipasang. Dengan key ini, pindah
+// antara /auth dan /auth?mode=daftar lewat navigasi klien (mis. tombol Masuk
+// di navbar saat tab Daftar terbuka) memasang ulang formulirnya, jadi tab yang
+// tampil selalu sesuai tautan yang ditekan.
+function AuthMenurutMode() {
+  const searchParams = useSearchParams()
+  return <AuthContent key={searchParams.get('mode') === 'daftar' ? 'daftar' : 'masuk'} />
+}
+
 export default function AuthPage() {
   return (
     <Suspense>
-      <AuthContent />
+      <AuthMenurutMode />
     </Suspense>
   )
 }

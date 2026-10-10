@@ -1,6 +1,6 @@
 'use client'
 import Image from 'next/image'
-import type { ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import type { IsiSambutan, KunciIkon } from '../../../lib/sambutan'
 import { IkonCari, IkonOrang, IkonCentang, IkonEtalase, IkonPetak, IkonLencana, IkonGrafik, IkonPanah } from '../beranda/Ikon'
 
@@ -26,10 +26,19 @@ type Props = {
   sibuk: boolean
   onPilih: (href: string) => void
   onLewati: () => void
+  /** Penanda selesai gagal disimpan — tawarkan coba lagi atau lanjut saja */
+  galat?: { onCobaLagi: () => void; onLanjutSaja: () => void } | null
 }
 
-export default function SambutanIsi({ isi, lanjut, sibuk, onPilih, onLewati }: Props) {
+export default function SambutanIsi({ isi, lanjut, sibuk, onPilih, onLewati, galat }: Props) {
   const adaTujuan = lanjut !== '/'
+  const galatRef = useRef<HTMLDivElement>(null)
+
+  // Pesan gagal bisa muncul jauh dari tombol yang ditekan (kartu di bawah
+  // layar HP): fokus dipindah ke sana supaya terlihat dan terbaca pembaca layar
+  useEffect(() => {
+    if (galat) galatRef.current?.focus()
+  }, [galat])
 
   return (
     <div className="sd">
@@ -52,6 +61,23 @@ export default function SambutanIsi({ isi, lanjut, sibuk, onPilih, onLewati }: P
 
       <section className="sd-badan" aria-label="Pilihan untuk memulai">
         <h2 className="sd-kepala">{adaTujuan ? 'Atau mulai dari sini' : 'Mulai dari sini'}</h2>
+        {/* Di bawah judul: judul putihnya harus tetap di atas latar navy */}
+        {galat && (
+          <div ref={galatRef} className="sd-galat" role="alert" tabIndex={-1}>
+            <p style={{ margin: '0 0 10px' }}>
+              <strong>Pilihanmu belum tersimpan.</strong> Periksa koneksi internet, lalu coba lagi.
+              Kalau dilanjutkan tanpa menyimpan, halaman ini mungkin muncul sekali lagi saat kamu masuk berikutnya.
+            </p>
+            <div className="sd-galat-aksi">
+              <button type="button" className="sd-galat-coba" onClick={galat.onCobaLagi} disabled={sibuk}>
+                {sibuk ? 'Menyimpan…' : 'Coba lagi'}
+              </button>
+              <button type="button" className="sd-galat-lanjut" onClick={galat.onLanjutSaja} disabled={sibuk}>
+                Lanjut tanpa menyimpan
+              </button>
+            </div>
+          </div>
+        )}
         <ul className="sd-grid" role="list">
           {isi.pilihan.map(p => {
             const Ikon = IKON[p.ikon]

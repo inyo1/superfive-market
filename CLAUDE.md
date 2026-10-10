@@ -259,6 +259,24 @@ metadata auth untuk hak akses**. Aturan lengkap di [lib/sambutan.ts](lib/sambuta
 - Kirim ulang konfirmasi ([CekEmail](app/components/auth/CekEmail.tsx)):
   `supabase.auth.resend`, jeda 60 detik, dan pesan yang sama untuk semua
   keadaan akun — jangan dibedakan
+- **Penjaga kirim ganda pakai `useRef`, bukan state.** signUp, login, reset
+  sandi, dan resend: dua klik cepat sama-sama melihat `loading=false` dari
+  render lama — terbukti saat QA (resend terkirim dua kali sebelum diperbaiki)
+- **Selesai = jawaban server memuat `sambutan_selesai`.** Gagal/lewat 8 detik
+  → pesan + "Coba lagi" / "Lanjut tanpa menyimpan"; tidak pernah terkunci
+- **`alamatSambutan()` SELALU menyertakan `?lanjut=`, termasuk `%2F`.** Router
+  Next.js 16 memulihkan URL `/selamat-datang` polos dari kunjungan sebelumnya
+  di tab yang sama, lengkap dengan `?lanjut=` lamanya
+- `?redirect=` di `/auth` dan `?lanjut=` disaring `jalurInternal()` — menolak
+  `//host`, `/\host`, dan karakter kontrol. Pemeriksaan `//` saja tidak cukup
+- Client memakai alur **PKCE** (signUp mengirim `code_challenge`). Tautan
+  konfirmasi hanya langsung memasukkan pengguna di peramban yang sama tempat
+  ia mendaftar; di perangkat lain emailnya tetap terkonfirmasi, pengguna
+  tinggal masuk — dan sambutan muncul lewat login di `/auth`
+- Uji tanpa akun: `supabase-js` memanggil `fetch` global saat dipakai, jadi
+  `window.fetch` bisa di-mock di peramban `localhost`. Bersihkan
+  `localStorage` sesudahnya — sesi mock yang tertinggal mengirim token palsu
+  ke Supabase sungguhan (ditolak 401, tapi mengotori konsol)
 
 ## Skema Database
 

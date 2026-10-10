@@ -40,22 +40,38 @@ export function perluSambutan(meta: Metadata): boolean {
 }
 
 /**
- * Tujuan lanjutan yang aman. Hanya path internal; tidak boleh kembali ke
- * /selamat-datang atau /auth (akan berputar), dan tidak boleh `//host`
- * maupun `/\host` yang dibaca peramban sebagai alamat situs lain.
+ * Path internal yang aman untuk dialihkan ke sana, atau '/' kalau tidak.
+ * Menolak `//host` dan `/\host` (peramban membaca keduanya sebagai situs
+ * lain), alamat absolut, serta karakter kontrol yang bisa menyelundupkan
+ * keduanya (`/\t/host`). Dipakai ?redirect= di /auth dan ?lanjut= di sambutan.
  */
-export function tujuanAman(lanjut: string | null | undefined): string {
-  if (!lanjut) return '/'
-  if (!lanjut.startsWith('/')) return '/'
-  if (lanjut.startsWith('//') || lanjut.startsWith('/\\')) return '/'
-  if (/^\/(selamat-datang|auth)(\/|\?|#|$)/.test(lanjut)) return '/'
-  return lanjut
+export function jalurInternal(tujuan: string | null | undefined): string {
+  if (!tujuan || !tujuan.startsWith('/')) return '/'
+  if (/[\u0000-\u001f\\]/.test(tujuan)) return '/'
+  if (tujuan.startsWith('//')) return '/'
+  return tujuan
 }
 
-/** Alamat halaman sambutan yang membawa tujuan semula */
+/**
+ * Tujuan lanjutan halaman sambutan: path internal, dan tidak boleh kembali
+ * ke /selamat-datang atau /auth (akan berputar).
+ */
+export function tujuanAman(lanjut: string | null | undefined): string {
+  const t = jalurInternal(lanjut)
+  if (/^\/(selamat-datang|auth)(\/|\?|#|$)/.test(t)) return '/'
+  return t
+}
+
+/**
+ * Alamat halaman sambutan yang membawa tujuan semula.
+ *
+ * SELALU dengan ?lanjut=, termasuk untuk '/'. Router Next.js 16 menyimpan
+ * halaman statis ini per pathname: navigasi ke `/selamat-datang` polos
+ * memulihkan URL kunjungan sebelumnya di tab yang sama, lengkap dengan
+ * ?lanjut= lamanya (terbukti saat QA Wave 3). Query eksplisit menghindarinya.
+ */
 export function alamatSambutan(lanjut: string | null | undefined): string {
-  const t = tujuanAman(lanjut)
-  return t === '/' ? '/selamat-datang' : `/selamat-datang?lanjut=${encodeURIComponent(t)}`
+  return `/selamat-datang?lanjut=${encodeURIComponent(tujuanAman(lanjut))}`
 }
 
 // ── Isi menurut status akun ──
