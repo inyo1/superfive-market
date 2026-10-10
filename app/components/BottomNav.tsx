@@ -134,7 +134,10 @@ export default function BottomNav() {
         { href: '/about', label: 'Tentang Kami', ikon: 'ℹ️' },
       ]
 
-  const akunAktif = sheetTerbuka || ['/profil', '/toko/saya', '/dashboard', '/jual', '/verifikasi', '/alumni', '/about', '/admin', '/auth']
+  // Akun hanya menyala di halaman akun pribadi dan alur autentikasi.
+  // /alumni dan /about bukan halaman akun — di sana tidak ada tab yang menyala
+  // meski tautannya ada di sheet Akun.
+  const akunAktif = sheetTerbuka || ['/profil', '/toko/saya', '/dashboard', '/jual', '/verifikasi', '/admin', '/auth']
     .some(p => pathname.startsWith(p))
 
   // Di dalam percakapan, bar ketik pesan yang menempati dasar layar —
