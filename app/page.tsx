@@ -5,7 +5,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabase'
 import Navbar from './components/Navbar'
-import FotoProduk from './components/FotoProduk'
+import FotoBeranda from './components/beranda/FotoBeranda'
 import SkeletonCard from './components/SkeletonCard'
 import SectionOfficial from './components/SectionOfficial'
 import BadgePreorder, { WARNA_PO_TUA } from './components/BadgePreorder'
@@ -31,6 +31,8 @@ import NamaPenjual from './components/NamaPenjual'
 //   - tombol jualan mengikuti status_penjual, bukan sekadar login
 // Urutan section: hero → statistik → kategori → IniLima → Produk Terbaru →
 // Kenapa Superfive → ajakan berjualan → footer.
+// Redesain homepage (fitur/homepage-redesign): panel IniLima satu kartu,
+// kartu Produk Terbaru berfoto 1:1, Kenapa lebih ringkas, CTA berfoto.
 
 type Produk = {
   id: string
@@ -331,10 +333,10 @@ export default function Home() {
             </div>
           </div>
           <ul className="b-kenapa-daftar" role="list">
-            <AlasanItem ikon={<IkonOrang size={24} />} judul="Komunitas Terpercaya" isi="Penjual berasal dari komunitas alumni." />
-            <AlasanItem ikon={<IkonPerisai size={24} />} judul="Dukung Sesama Alumni" isi="Setiap transaksi memperkuat jaringan dan peluang." />
-            <AlasanItem ikon={<IkonPetak size={24} />} judul="Kategori Lengkap" isi="Produk, jasa, dan bisnis dalam satu platform." />
-            <AlasanItem ikon={<IkonGrafik size={24} />} judul="Peluang Lebih Luas" isi="Bisnis alumni dapat ditemukan lebih banyak orang." />
+            <AlasanItem ikon={<IkonOrang size={22} />} judul="Komunitas Terpercaya" isi="Penjual berasal dari komunitas alumni." />
+            <AlasanItem ikon={<IkonPerisai size={22} />} judul="Dukung Sesama Alumni" isi="Setiap transaksi memperkuat jaringan dan peluang." />
+            <AlasanItem ikon={<IkonPetak size={22} />} judul="Kategori Lengkap" isi="Produk, jasa, dan bisnis dalam satu platform." />
+            <AlasanItem ikon={<IkonGrafik size={22} />} judul="Peluang Lebih Luas" isi="Bisnis alumni dapat ditemukan lebih banyak orang." />
           </ul>
         </div>
       </section>
@@ -359,20 +361,33 @@ function AlasanItem({ ikon, judul, isi }: { ikon: React.ReactNode; judul: string
   )
 }
 
-// Kartu produk lapak alumni. Tidak ada tombol keranjang maupun wishlist:
-// keranjang dibekukan mode katalog, dan wishlist tidak pernah ada. Satu-satunya
-// aksi adalah membuka detailnya, tempat tombol Hubungi Penjual berada.
+// Kartu produk lapak alumni — redesain homepage Oktober 2026.
+//
+// Foto asli produk dalam bingkai 1:1 (rasio dipegang CSS, jadi tidak ada
+// layout shift), nama maksimal dua baris, lalu kategori, harga, dan
+// ketersediaan. Perubahan ini lokal beranda: KartuPasar milik /produk dan
+// detail produk tidak disentuh.
+//
+// Tidak ada tombol keranjang maupun wishlist: keranjang dibekukan mode
+// katalog, dan wishlist tidak pernah ada. Satu-satunya aksi adalah membuka
+// detailnya, tempat tombol Hubungi Penjual berada.
 function KartuProduk({ p }: { p: Produk }) {
+  const jasa = p.kategori === 'Jasa'
   return (
     <Link href={`/produk/${p.id}`} className="prod-card b-produk-kartu">
-      <div style={{ position: 'relative' }}>
+      <div className="b-produk-foto">
         <BadgePreorder aktif={p.is_preorder} bentuk="pita" />
-        <FotoProduk src={p.foto_url} kategori={p.kategori} height={160} fontSize={44} />
+        <FotoBeranda
+          src={p.foto_url}
+          kategori={p.kategori}
+          alt={p.nama}
+          sizes="(max-width: 639px) 50vw, (max-width: 899px) 33vw, (max-width: 1199px) 25vw, 200px"
+        />
       </div>
-      <div style={{ padding: '12px 12px 14px', display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
-        <span style={{ fontSize: '12px', color: '#617B95', fontWeight: 500 }}>{p.kategori}</span>
+      <div className="b-produk-isi">
+        <span className="b-produk-kategori">{p.kategori}</span>
         <span className="b-produk-nama">{p.nama}</span>
-        <span style={{ fontSize: '16px', fontWeight: 800, color: '#07589F' }}>{fmt(p.harga)}</span>
+        <span className="b-produk-harga">{fmt(p.harga)}</span>
         {/* Stok produk PO selalu 0 karena trg_kurangi_stok sengaja
             melewatinya — produk PO memakai janji kirim, bukan lencana stok */}
         {p.is_preorder ? (
@@ -384,11 +399,12 @@ function KartuProduk({ p }: { p: Produk }) {
         )}
         {/* Nama · Superfive 92. Tidak ada cabang OFFICIAL di sini: rak ini
             menyaring toko resmi, jadi semua penjualnya alumni perorangan */}
-        {p.penjual && (
-          <div style={{ marginTop: 'auto', paddingTop: '8px', borderTop: '1px solid #EAF4FC' }}>
+        <div className="b-produk-kaki">
+          {p.penjual && (
             <NamaPenjual nama={p.penjual.nama} label={p.penjual.label_angkatan} angkatan={p.penjual.angkatan} institusi={p.penjual.is_institusi} kecil />
-          </div>
-        )}
+          )}
+          <span className="b-produk-aksi">{jasa ? 'Lihat Jasa' : 'Lihat Detail'} <IkonPanah size={14} tebal={2.2} /></span>
+        </div>
       </div>
     </Link>
   )

@@ -447,42 +447,6 @@ main {
   to   { transform: translateY(0); }
 }
 
-/* ── Official Merchandise ──
-   Dipakai untuk skeleton dan untuk mode mobile. Geseran desktop/tablet
-   ditangani transform di SectionOfficial, bukan di sini. */
-.merch-track {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-}
-
-@media (min-width: 768px) and (max-width: 1023px) {
-  .merch-track { grid-template-columns: repeat(3, 1fr); }
-}
-
-@media (max-width: 767px) {
-  .merch-track {
-    display: flex;
-    gap: 12px;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    /* tarik ke tepi layar supaya geserannya terasa penuh, padding dikembalikan
-       lewat scroll-padding agar kartu pertama tetap sejajar konten */
-    margin: 0 -16px;
-    padding: 2px 16px 10px;
-    scroll-padding-left: 16px;
-  }
-
-  .merch-track::-webkit-scrollbar { display: none; }
-
-  .merch-item {
-    flex: 0 0 72%;
-    scroll-snap-align: start;
-  }
-}
-
 /* ── Tabel varian di form produk ──
    Di layar sempit kolomnya dipadatkan supaya lima kolom tetap muat tanpa
    menggeser modal ke samping. */
@@ -590,8 +554,8 @@ main {
 
 /* ══════════════════════════════════════════════════════════════════════
    BERANDA — redesain Oktober 2026
-   Kelas berawalan b- dan inilima- hanya dipakai app/page.tsx,
-   SectionOfficial, dan SiteFooter. Token warnanya di :root (--sf-*).
+   Kelas berawalan b- dan il- hanya dipakai app/page.tsx,
+   SectionOfficial, AjakanJual (juga dipakai /produk), dan SiteFooter. Token warnanya di :root (--sf-*).
    Spasi mengikuti skala 4·8·12·16·24·32·48·64·96.
    ══════════════════════════════════════════════════════════════════════ */
 .beranda {
@@ -929,98 +893,190 @@ main {
   .b-kategori-nama { font-size: 13px; }
 }
 
-/* ── Panel IniLima ──
-   Dibaca sebagai kampanye bermerek, bukan karosel dalam kotak biru:
-   logo dan nama IniLima yang memimpin, lingkaran tipis dan cahaya lembut
-   sebagai latar — semuanya CSS, tanpa aset gambar tambahan. */
-.inilima-panel {
+/* ── Panel Official Merchandise IniLima ──
+   Redesain homepage: tiga kolom di desktop — identitas · satu kartu produk
+   yang berganti sendiri · foto merchandise asli + janji. Tablet: identitas di
+   atas, kartu dan samping berdampingan. HP: bertumpuk, galeri disembunyikan
+   (titik indikator cukup). Kelas il- hanya dipakai SectionOfficial. */
+.il-panel {
   position: relative;
   overflow: hidden;
   isolation: isolate;
   border-radius: 24px;
   background:
-    radial-gradient(70% 90% at 85% 15%, rgba(8, 126, 245, 0.42) 0%, rgba(8, 126, 245, 0) 60%),
-    radial-gradient(50% 60% at 0% 100%, rgba(255, 181, 27, 0.12) 0%, rgba(255, 181, 27, 0) 60%),
-    linear-gradient(135deg, #04254A 0%, var(--sf-navy) 40%, #0A4A8A 100%);
+    radial-gradient(60% 80% at 55% 40%, rgba(8, 126, 245, 0.38) 0%, rgba(8, 126, 245, 0) 65%),
+    radial-gradient(45% 55% at 0% 100%, rgba(255, 181, 27, 0.12) 0%, rgba(255, 181, 27, 0) 60%),
+    linear-gradient(135deg, #04254A 0%, var(--sf-navy) 45%, #0A4A8A 100%);
   color: #fff;
-  padding: 32px 20px;
+  padding: 28px 20px;
   display: grid;
-  gap: 32px;
+  gap: 28px;
 }
-/* Cincin konsentris tipis di sudut kanan atas */
-.inilima-panel::before {
+/* Cincin konsentris tipis di belakang kartu */
+.il-panel::before {
   content: '';
   position: absolute;
   z-index: -1;
-  width: 560px;
-  height: 560px;
-  right: -180px;
-  top: -260px;
+  width: 520px;
+  height: 520px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow:
-    0 0 0 70px rgba(255, 255, 255, 0.025),
-    0 0 0 71px rgba(255, 255, 255, 0.06),
-    0 0 0 150px rgba(255, 255, 255, 0.018),
-    0 0 0 151px rgba(255, 255, 255, 0.045);
+    0 0 0 64px rgba(255, 255, 255, 0.02),
+    0 0 0 65px rgba(255, 255, 255, 0.05),
+    0 0 0 140px rgba(255, 255, 255, 0.015),
+    0 0 0 141px rgba(255, 255, 255, 0.04);
   pointer-events: none;
 }
-.inilima-info, .inilima-rak { min-width: 0; position: relative; }
-.inilima-identitas { display: flex; align-items: center; gap: 20px; }
-.inilima-logo { width: 88px; flex-shrink: 0; filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.35)); }
-.inilima-eyebrow {
+.il-info, .il-panggung, .il-samping { min-width: 0; position: relative; }
+.il-logo { width: 72px; filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.35)); margin-bottom: 16px; }
+.il-judul { margin: 0; color: #fff; }
+.il-eyebrow {
   display: block;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 2px;
   text-transform: uppercase;
   color: #FFD27A;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
-.inilima-merek {
+.il-merek {
   display: inline-flex;
   align-items: center;
   gap: 12px;
-  font-size: clamp(40px, 4.6vw, 58px);
+  font-size: clamp(36px, 4.2vw, 52px);
   font-weight: 800;
-  letter-spacing: -1.4px;
+  letter-spacing: -1.2px;
   line-height: 1;
 }
-.inilima-resmi {
+.il-resmi {
   background: var(--sf-emas);
   color: #3d2600;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 1.2px;
-  padding: 5px 9px;
+  padding: 5px 8px;
   border-radius: 6px;
   line-height: 1.2;
 }
-.inilima-rak::before {
-  content: '';
-  position: absolute;
-  z-index: -1;
-  inset: 10% 5% 0;
-  background: radial-gradient(closest-side, rgba(126, 192, 255, 0.28), rgba(126, 192, 255, 0));
-  filter: blur(8px);
-  pointer-events: none;
+.il-desk { font-size: 16px; color: #C4DCF2; line-height: 1.65; margin: 16px 0 24px; max-width: 400px; }
+.il-aksi { display: flex; flex-wrap: wrap; gap: 12px; }
+
+/* Kartu tunggal. Semua slide ditumpuk di satu sel grid sehingga tinggi
+   panggung ditentukan slide tertinggi — tidak ada lompatan saat berganti. */
+.il-tumpuk { display: grid; }
+.il-slide {
+  grid-area: 1 / 1;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(8px) scale(0.985);
+  transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), visibility 0s linear 0.5s;
 }
-.inilima-janji {
-  list-style: none;
-  margin: 28px 0 0;
-  padding: 24px 0 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.14);
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
+.il-slide.aktif {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), visibility 0s;
 }
-.inilima-janji li { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.inilima-janji li > span:last-child { display: flex; flex-direction: column; min-width: 0; }
-.inilima-janji strong { font-size: 14px; color: #fff; }
-.inilima-janji li > span:last-child span { font-size: 13px; color: #A9CBEB; }
-.inilima-janji-ikon {
-  width: 40px;
-  height: 40px;
+.il-kartu {
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 20px;
+  overflow: hidden;
+  text-decoration: none;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.32);
+  max-width: 360px;
+  margin: 0 auto;
+  width: 100%;
+}
+.il-kartu-foto { position: relative; aspect-ratio: 1 / 1; background: #F2F7FC; overflow: hidden; }
+.il-kartu-foto img { transition: transform 0.4s ease; }
+.il-kartu:hover .il-kartu-foto img { transform: scale(1.03); }
+.il-kartu-isi { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 8px; }
+.il-kartu-skeleton .il-kartu-isi { gap: 10px; }
+.il-kartu-nama {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--sf-teks);
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 43px;
+}
+.il-kartu-bawah { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.il-kartu-harga { font-size: 19px; font-weight: 800; color: var(--sf-biru); }
+.il-kartu-lihat { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; color: var(--sf-aksi); }
+
+.il-kontrol { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 18px; }
+.il-panah, .il-jeda {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.il-panah { width: 40px; height: 40px; }
+.il-jeda { width: 32px; height: 32px; margin-left: 4px; }
+.il-panah:hover, .il-jeda:hover { background: rgba(255, 255, 255, 0.16); border-color: #fff; }
+.il-titik { display: flex; align-items: center; }
+.il-titik button {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.il-titik span {
+  display: block;
+  width: 7px;
+  height: 7px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.38);
+  transition: width 0.25s ease, background 0.25s ease;
+}
+.il-titik button[aria-current="true"] span { width: 20px; background: var(--sf-emas); }
+
+.il-galeri { list-style: none; margin: 0 0 24px; padding: 0; display: none; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.il-galeri button {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  padding: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.2s ease, border-color 0.2s ease;
+}
+.il-galeri button:hover { opacity: 0.9; }
+.il-galeri button.aktif { opacity: 1; border-color: var(--sf-emas); }
+.il-galeri .bf-kosong span { display: none; }
+
+.il-janji { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.il-janji li { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.il-janji li > span:last-child { display: flex; flex-direction: column; min-width: 0; }
+.il-janji strong { font-size: 14px; color: #fff; }
+.il-janji li > span:last-child span { font-size: 13px; color: #A9CBEB; }
+.il-janji-ikon {
+  width: 38px;
+  height: 38px;
   flex-shrink: 0;
   border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, 0.25);
@@ -1029,22 +1085,44 @@ main {
   align-items: center;
   justify-content: center;
 }
-.merch-panah:focus-visible { opacity: 1 !important; pointer-events: auto !important; outline: 2px solid var(--sf-emas); }
+.beranda .il-panel a:focus-visible,
+.beranda .il-panel button:focus-visible { outline-color: var(--sf-emas); }
+
+@media (max-width: 479px) {
+  .il-janji { grid-template-columns: 1fr; gap: 12px; }
+  .il-aksi .b-tombol { flex: 1 1 100%; }
+}
 @media (min-width: 768px) {
-  .inilima-panel { padding: 40px; }
-  .inilima-logo { width: 104px; }
+  .il-panel { grid-template-columns: 1fr 1fr; padding: 40px; gap: 32px 40px; align-items: center; }
+  .il-info { grid-column: 1 / -1; }
+  .il-galeri { display: grid; }
+  .il-janji { grid-template-columns: 1fr; gap: 12px; }
 }
 @media (min-width: 1024px) {
-  .inilima-panel { grid-template-columns: minmax(320px, 0.85fr) 1.6fr; align-items: center; gap: 48px; padding: 56px 48px; }
-  .inilima-identitas { flex-direction: column; align-items: flex-start; gap: 20px; }
-  .inilima-logo { width: 120px; }
-  /* kolom info di desktop terlalu sempit untuk dua janji berdampingan */
-  .inilima-janji { grid-template-columns: 1fr; gap: 12px; }
+  .il-panel {
+    grid-template-columns: minmax(0, 1.05fr) minmax(300px, 340px) minmax(0, 0.8fr);
+    gap: 40px;
+    padding: 48px;
+  }
+  .il-info { grid-column: auto; }
+  .il-logo { width: 88px; }
 }
-@media (max-width: 479px) {
-  .inilima-janji { grid-template-columns: 1fr; }
-  .inilima-logo { width: 76px; }
-  .inilima-identitas { gap: 16px; }
+
+/* Foto belum tersedia — ikon garis kategori, bukan emoji */
+.bf-kosong {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #EEF4FA;
+  color: #7FA3C6;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  padding: 8px;
 }
 
 /* ── Produk Terbaru ── */
@@ -1064,7 +1142,13 @@ main {
   border-radius: 16px;
   overflow: hidden;
   text-decoration: none;
+  height: 100%;
 }
+.b-produk-foto { position: relative; aspect-ratio: 1 / 1; background: #F2F7FC; overflow: hidden; }
+.b-produk-foto img { transition: transform 0.35s ease; }
+.b-produk-kartu:hover .b-produk-foto img { transform: scale(1.04); }
+.b-produk-isi { padding: 12px 12px 14px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.b-produk-kategori { font-size: 12px; font-weight: 600; color: var(--sf-teks-2); }
 .b-produk-nama {
   font-size: 14px;
   font-weight: 600;
@@ -1076,14 +1160,24 @@ main {
   overflow: hidden;
   min-height: 39px;
 }
+.b-produk-harga { font-size: 16px; font-weight: 800; color: var(--sf-biru); }
+.b-produk-kaki {
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid #EAF4FC;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.b-produk-aksi { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; color: var(--sf-aksi); }
 
 /* ── Kenapa Superfive ──
-   Kepalanya sama dengan section lain (b-kepala), lalu empat alasan dalam
-   satu kartu putih berpemisah tipis — bukan blok judul yang menyempit. */
+   Empat alasan dalam satu kartu putih berpemisah tipis. Dibuat ringkas:
+   ikon kecil di samping teks di semua lebar, tidak ditumpuk ke atas. */
 .b-kenapa-daftar {
   list-style: none;
   margin: 0;
-  padding: 8px 0;
+  padding: 4px 0;
   display: grid;
   background: #fff;
   border: 1px solid var(--sf-garis);
@@ -1092,8 +1186,8 @@ main {
 .b-alasan {
   display: flex;
   align-items: flex-start;
-  gap: 16px;
-  padding: 20px;
+  gap: 14px;
+  padding: 18px 20px;
   position: relative;
 }
 .b-alasan + .b-alasan::before {
@@ -1105,83 +1199,71 @@ main {
   height: 1px;
   background: #E8F0F8;
 }
-.b-alasan > span:last-child { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.b-alasan strong { font-size: 17px; color: var(--sf-teks); line-height: 1.3; }
-.b-alasan > span:last-child span { font-size: 15px; line-height: 1.6; color: var(--sf-teks-2); }
+.b-alasan > span:last-child { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.b-alasan strong { font-size: 16px; color: var(--sf-teks); line-height: 1.3; }
+.b-alasan > span:last-child span { font-size: 14px; line-height: 1.55; color: var(--sf-teks-2); }
 .b-alasan-ikon {
-  width: 56px;
-  height: 56px;
+  width: 44px;
+  height: 44px;
   flex-shrink: 0;
-  border-radius: 16px;
+  border-radius: 12px;
   background: var(--sf-biru-muda);
   color: var(--sf-biru);
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.b-alasan-ikon svg { width: 28px; height: 28px; }
 @media (min-width: 640px) {
   .b-kenapa-daftar { grid-template-columns: 1fr 1fr; padding: 0; }
-  .b-alasan { padding: 28px 24px; }
+  .b-alasan { padding: 22px 24px; }
   .b-alasan + .b-alasan::before { display: none; }
   .b-alasan:nth-child(n + 3) { border-top: 1px solid #E8F0F8; }
   .b-alasan:nth-child(even) { border-left: 1px solid #E8F0F8; }
 }
 @media (min-width: 1024px) {
-  .b-kenapa-daftar { grid-template-columns: repeat(4, 1fr); padding: 8px 0; }
-  .b-alasan { flex-direction: column; gap: 16px; padding: 28px 32px; }
+  .b-kenapa-daftar { grid-template-columns: repeat(4, 1fr); }
+  .b-alasan { padding: 24px; }
   .b-alasan:nth-child(n + 3) { border-top: none; }
-  .b-alasan:nth-child(even) { border-left: none; }
-  .b-alasan + .b-alasan::before {
-    display: block;
-    top: 28px;
-    bottom: 28px;
-    left: 0;
-    right: auto;
-    width: 1px;
-    height: auto;
-  }
+  .b-alasan + .b-alasan { border-left: 1px solid #E8F0F8; }
 }
 
 /* ── Ajakan berjualan ──
-   Foto gedung yang sama dengan hero, sangat samar di sisi kanan, ditimpa
-   gradien navy. Aset yang sudah ada — tidak ada gambar baru. */
+   Teks di kiri, foto di kanan (horizontal mulai 900px; di bawahnya foto jadi
+   pita di atas teks). Konsep fotonya tangan bertumpuk — sampai foto itu
+   tersedia, AjakanJual memakai foto gedung SMPN 5 (lihat FOTO_CTA). */
 .b-cta {
   position: relative;
   overflow: hidden;
   isolation: isolate;
   border-radius: 24px;
-  padding: 40px 24px;
   color: #fff;
   background:
-    radial-gradient(80% 120% at 0% 100%, rgba(255, 181, 27, 0.16) 0%, rgba(255, 181, 27, 0) 50%),
+    radial-gradient(80% 120% at 0% 100%, rgba(255, 181, 27, 0.14) 0%, rgba(255, 181, 27, 0) 50%),
     linear-gradient(120deg, var(--sf-navy) 0%, var(--sf-biru) 100%);
   display: grid;
-  gap: 32px;
   box-shadow: 0 20px 48px rgba(6, 47, 89, 0.18);
 }
+.b-cta-teks { position: relative; z-index: 1; padding: 28px 24px 32px; order: 2; }
+/* Foto dilebur ke latar lewat mask, bukan lapisan warna: latarnya gradien,
+   jadi lapisan berwarna tetap akan meninggalkan sambungan yang terlihat */
 .b-cta-foto {
-  position: absolute;
-  z-index: -1;
-  top: 0;
-  bottom: 0;
-  right: 0;
-  width: 70%;
-  opacity: 0.15;
-  filter: grayscale(1) contrast(1.1);
-  mix-blend-mode: luminosity;
-  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 55%);
-  mask-image: linear-gradient(90deg, transparent 0%, #000 55%);
-  pointer-events: none;
+  position: relative;
+  order: 1;
+  aspect-ratio: 16 / 7;
+  -webkit-mask-image: linear-gradient(180deg, #000 55%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 55%, transparent 100%);
 }
+.b-cta-tanya { display: block; font-size: 16px; font-weight: 600; color: #FFD27A; letter-spacing: 0; margin-bottom: 8px; }
 .b-cta-judul {
-  margin: 8px 0 12px;
-  font-size: clamp(26px, 3.4vw, 38px);
+  margin: 0 0 12px;
+  font-size: clamp(26px, 3.2vw, 36px);
   font-weight: 800;
   letter-spacing: -0.6px;
-  line-height: 1.15;
+  line-height: 1.18;
 }
-.b-cta-aksi { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 16px; }
+.b-cta-merek { color: var(--sf-emas); }
+.b-cta-desk { margin: 0 0 24px; font-size: 16px; line-height: 1.65; color: #D3E5F5; max-width: 520px; }
+.b-cta-aksi { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 24px; }
 .b-cta-label {
   list-style: none;
   margin: 0;
@@ -1194,10 +1276,17 @@ main {
 }
 .b-cta-label li { display: inline-flex; align-items: center; gap: 6px; }
 .b-cta-label svg { color: var(--sf-emas); }
-@media (max-width: 479px) { .b-cta-aksi .b-tombol { width: 100%; } .b-cta-foto { width: 100%; } }
+@media (max-width: 479px) { .b-cta-aksi .b-tombol { width: 100%; } }
 @media (min-width: 900px) {
-  .b-cta { grid-template-columns: 1fr auto; align-items: center; padding: 56px; }
-  .b-cta-aksi { align-items: center; }
+  .b-cta { grid-template-columns: 1.25fr 1fr; align-items: stretch; }
+  .b-cta-teks { order: 1; padding: 52px 40px 52px 52px; align-self: center; }
+  .b-cta-foto {
+    order: 2;
+    aspect-ratio: auto;
+    min-height: 320px;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 45%);
+    mask-image: linear-gradient(90deg, transparent 0%, #000 45%);
+  }
 }
 
 /* ── Footer ── */
@@ -1244,6 +1333,9 @@ main {
 
 @media (prefers-reduced-motion: reduce) {
   .b-tombol, .b-kategori-kartu, .prod-card { transition: none !important; }
+  .il-slide, .il-slide.aktif { transition: none !important; transform: none !important; }
+  .il-titik span, .il-kartu-foto img, .b-produk-foto img { transition: none !important; }
+  .il-kartu:hover .il-kartu-foto img, .b-produk-kartu:hover .b-produk-foto img { transform: none !important; }
   .b-tombol:hover, .b-kategori-kartu:hover, .prod-card:hover { transform: none !important; }
 }
 

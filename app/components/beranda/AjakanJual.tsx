@@ -23,30 +23,46 @@ export function labelJual(penjualAktif: boolean): string {
   return penjualAktif ? 'Tambah Produk' : 'Buka Toko Gratis'
 }
 
+// Foto di sisi kanan banner. Konsepnya foto tangan bertumpuk sebagai simbol
+// kebersamaan — tapi foto itu BELUM ADA di repository, dan foto stok merek
+// lain sengaja tidak dipakai. Sampai fotonya tersedia, yang tampil foto
+// gedung SMPN 5 yang sama dengan hero: aset asli, bukan ilustrasi generik.
+// Mengganti foto cukup di sini (taruh berkasnya di /public, mis.
+// /cta-kebersamaan.jpg, lalu ubah src dan posisinya).
+const FOTO_CTA = { src: '/smpn5-hero.png', posisi: 'center 35%' }
+
 export default function AjakanJual({ label, onClick }: { label: string; onClick: () => void }) {
   return (
     <section className="b-seksi" aria-labelledby="judul-jual" style={{ paddingBottom: '64px' }}>
       <div className="b-wadah">
         <div className="b-cta">
-          <div className="b-cta-foto" aria-hidden>
-            <Image src="/smpn5-hero.png" alt="" fill sizes="(max-width: 899px) 100vw, 800px" style={{ objectFit: 'cover', objectPosition: 'center 35%' }} />
-          </div>
-          <div style={{ position: 'relative', zIndex: 1 }}>
-            <p style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#C4DCF2' }}>Punya usaha atau jasa?</p>
-            <h2 id="judul-jual" className="b-cta-judul">Bawa ke keluarga besar SUPERFIVE.</h2>
-            <p style={{ margin: 0, fontSize: '16px', lineHeight: 1.65, color: '#C4DCF2', maxWidth: '520px' }}>
+          <div className="b-cta-teks">
+            <h2 id="judul-jual" className="b-cta-judul">
+              <span className="b-cta-tanya">Punya usaha atau jasa?</span>
+              Bawa ke keluarga besar <span className="b-cta-merek">SUPERFIVE</span>.
+            </h2>
+            <p className="b-cta-desk">
               Jual produk, tawarkan jasa, perluas jaringan, dan tumbuh bersama alumni SMPN 5 Bandung.
             </p>
+            <div className="b-cta-aksi">
+              <button type="button" onClick={onClick} className="b-tombol b-tombol-emas">
+                {label} <IkonPanah size={18} tebal={2} />
+              </button>
+              <ul className="b-cta-label" role="list">
+                <li><IkonCentang size={14} tebal={2.4} /> Mudah</li>
+                <li><IkonCentang size={14} tebal={2.4} /> Gratis</li>
+                <li><IkonCentang size={14} tebal={2.4} /> Untuk Alumni</li>
+              </ul>
+            </div>
           </div>
-          <div className="b-cta-aksi">
-            <button type="button" onClick={onClick} className="b-tombol b-tombol-emas">
-              {label} <IkonPanah size={18} tebal={2} />
-            </button>
-            <ul className="b-cta-label" role="list">
-              <li><IkonCentang size={14} tebal={2.4} /> Mudah</li>
-              <li><IkonCentang size={14} tebal={2.4} /> Gratis</li>
-              <li><IkonCentang size={14} tebal={2.4} /> Untuk Alumni</li>
-            </ul>
+          <div className="b-cta-foto" aria-hidden>
+            <Image
+              src={FOTO_CTA.src}
+              alt=""
+              fill
+              sizes="(max-width: 899px) 100vw, 480px"
+              style={{ objectFit: 'cover', objectPosition: FOTO_CTA.posisi }}
+            />
           </div>
         </div>
       </div>
