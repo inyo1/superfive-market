@@ -1145,8 +1145,9 @@ main {
 .il-jeda { width: 24px; height: 24px; }
 .il-panah:hover, .il-jeda:hover { background: rgba(255, 255, 255, 0.16); border-color: #fff; }
 .il-titik { display: flex; align-items: center; }
+/* area sentuh 24x24 (WCAG 2.5.8); titik visualnya tetap 7px */
 .il-titik button {
-  width: 18px;
+  width: 24px;
   height: 24px;
   padding: 0;
   background: none;
@@ -1266,6 +1267,11 @@ main {
   .il-nilai strong { font-size: 12.5px; }
   .il-nilai li + li { padding-left: 10px; }
 }
+
+/* Keterangan kampanye di bawah banner IniLima: kecil tapi terbaca
+   (kontras teks-2 di latar halaman), tidak menimpa banner */
+.il-catatan { margin: 10px 4px 0; font-size: 12.5px; line-height: 1.5; color: #4F6A85; }
+@media (min-width: 1024px) { .il-catatan { text-align: right; } }
 
 /* Foto belum tersedia — ikon garis kategori, bukan emoji */
 .bf-kosong {

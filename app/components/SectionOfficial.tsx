@@ -321,6 +321,12 @@ export default function SectionOfficial() {
             <Image src={VISUAL_HP} alt="" fill sizes="(max-width: 1023px) 100vw, 1px" style={{ objectFit: 'cover' }} />
           </div>
         </div>
+        {/* Di luar banner supaya tidak menimpa logo, merchandise, atau
+            carousel. Gambar latar/visual memuat barang yang belum ada di
+            katalog; kartu tengah satu-satunya sumber produk yang tersedia. */}
+        <p className="il-catatan">
+          Visual merchandise merupakan ilustrasi kampanye. Lihat koleksi untuk produk yang tersedia.
+        </p>
       </div>
     </section>
   )
