@@ -189,6 +189,8 @@ export default function Navbar() {
       : statusAlumni !== null && !institusi && (statusAlumni === 'umum' || statusAlumni === 'menunggu')
         ? '/verifikasi'
         : null
+  const tampilMasuk = sesiSiap && !user
+  const adaAksi = Boolean(tujuanGabung) || tampilMasuk
 
   const initials = userName
     ? userName.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase()
@@ -250,10 +252,16 @@ export default function Navbar() {
               <IkonCari />
             </button>
             {/* Ikon keranjang dihapus di mode katalog — lihat lib/config.ts */}
-            {tujuanGabung && (
-              <Link href={tujuanGabung} className="nav-gabung">
-                <IkonTambahOrang /> Gabung Alumni
-              </Link>
+            {/* Gabung Alumni + Masuk: satu kelompok, lebar mengikuti isi */}
+            {adaAksi && (
+              <div className="nav-aksi">
+                {tujuanGabung && (
+                  <Link href={tujuanGabung} className="nav-gabung">
+                    <IkonTambahOrang /> Gabung Alumni
+                  </Link>
+                )}
+                {tampilMasuk && <Link href="/auth" className="nav-masuk">Masuk</Link>}
+              </div>
             )}
 
             {user && (
@@ -332,27 +340,32 @@ export default function Navbar() {
                   </div>
                 )}
               </div>
-            ) : sesiSiap ? (
-              <Link href="/auth" className="nav-masuk">Masuk</Link>
             ) : null}
           </div>
 
           {/* Kontrol ringkas di bawah 1024px — sisanya ditangani bottom nav */}
-          <div className="nav-ringkas" style={{ alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+          <div className={`nav-ringkas${!sesiSiap || adaAksi ? ' ada-aksi' : ''}`} style={{ alignItems: 'center', gap: '4px', flexShrink: 0 }}>
             <button
               type="button"
+              className="nav-ringkas-cari"
               onClick={() => setSearchOpen(true)}
               style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#fff', borderRadius: '8px', minWidth: '44px', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               aria-label="Cari"
             >
               <IkonCari />
             </button>
-            {/* HP: satu tombol ringkas saja — Masuk tetap lewat tab Akun di
-                bottom nav, supaya baris atas tidak dijejali dua tombol besar */}
-            {tujuanGabung && (
-              <Link href={tujuanGabung} className="nav-gabung nav-gabung-ringkas" aria-label="Gabung Alumni">
-                <IkonTambahOrang /> <span>Gabung</span>
-              </Link>
+            {/* HP: Gabung + Masuk versi ringkas. Di layar <= 479px ikon cari
+                menyingkir selama kelompok ini tampil (pencarian tetap di hero
+                dan /produk) — lihat globals.css */}
+            {adaAksi && (
+              <div className="nav-aksi">
+                {tujuanGabung && (
+                  <Link href={tujuanGabung} className="nav-gabung nav-gabung-ringkas" aria-label="Gabung Alumni">
+                    <IkonTambahOrang /> <span>Gabung</span>
+                  </Link>
+                )}
+                {tampilMasuk && <Link href="/auth" className="nav-masuk nav-masuk-ringkas">Masuk</Link>}
+              </div>
             )}
             {user && (
               <Link

@@ -309,28 +309,42 @@ main {
   transition: background 0.15s ease;
 }
 .nav-akun:hover, .nav-akun[aria-expanded="true"] { background: rgba(255, 255, 255, 0.1); color: #fff; }
+/* Kelompok Gabung Alumni + Masuk di kanan navbar. Lebar tiap tombol
+   mengikuti isinya (tidak pernah flex: 1); tinggi keduanya sama. */
+.nav-aksi {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.nav-utilitas .nav-aksi { margin-left: 4px; }
+/* Masuk: outline putih di atas navy (teks putih, kontras 13:1) */
 .nav-masuk {
   display: inline-flex;
   align-items: center;
-  min-height: 42px;
-  padding: 0 20px;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 0 22px;
   border-radius: 10px;
-  background: var(--sf-aksi);
+  border: 1.5px solid rgba(255, 255, 255, 0.6);
+  background: transparent;
   color: #fff;
   font-size: 14px;
   font-weight: 600;
+  white-space: nowrap;
   text-decoration: none;
-  transition: background 0.15s ease;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
-.nav-masuk:hover { background: #0670dc; }
-/* Gabung Alumni: emas #FFB71B + teks navy (kontras 7,7:1) — CTA utama.
-   Masuk tetap biru aksi seperti semula. */
+.nav-masuk:hover { background: rgba(255, 255, 255, 0.1); border-color: #fff; }
+/* Gabung Alumni: emas #FFB71B + teks navy (kontras 7,7:1) — CTA utama */
 .nav-gabung {
   display: inline-flex;
   align-items: center;
+  box-sizing: border-box;
   gap: 7px;
-  min-height: 42px;
-  padding: 0 18px 0 15px;
+  min-height: 44px;
+  padding: 0 16px 0 14px;
   border-radius: 10px;
   background: #FFB71B;
   color: var(--sf-navy);
@@ -345,7 +359,7 @@ main {
 .nav-gabung svg { flex-shrink: 0; }
 /* Versi HP: lebih kecil, cukup "Gabung" — label lengkap ada di aria-label */
 .nav-gabung-ringkas {
-  min-height: 36px;
+  min-height: 38px;
   padding: 0 11px 0 9px;
   gap: 5px;
   font-size: 13px;
@@ -353,6 +367,8 @@ main {
   box-shadow: none;
 }
 .nav-gabung-ringkas svg { width: 15px; height: 15px; }
+.nav-masuk-ringkas { min-height: 38px; padding: 0 13px; font-size: 13px; border-radius: 9px; }
+.nav-ringkas .nav-aksi { gap: 8px; }
 .nav-dropdown {
   position: absolute;
   right: 0;
@@ -403,20 +419,31 @@ main {
   .nav-pengisi { display: none; }
   .nav-ringkas { margin-left: auto; }
 }
-/* HP sempit (<= 399px): brand sedikit dipadatkan supaya ikon cari dan
-   Gabung muat tanpa terpotong di 375px; gutter 16px tetap */
+/* HP (<= 479px): Gabung + Masuk harus muat tanpa terpotong, jadi subjudul
+   brand menyingkir, dan ikon cari menyingkir selama kelompok tombol tampil
+   (.ada-aksi) — pencarian tetap di hero beranda dan /produk. Gutter 16px tetap */
+@media (max-width: 479px) {
+  .nav-brand-teks > span:last-child { display: none !important; }
+  .nav-ringkas.ada-aksi .nav-ringkas-cari { display: none !important; }
+}
 @media (max-width: 399px) {
+  .nav-dalam { gap: 8px; }
   .nav-brand { gap: 8px; }
   .nav-brand img { width: 42px !important; height: 42px !important; }
-  .nav-brand-teks > span:last-child { letter-spacing: 0.5px !important; }
-  .nav-gabung-ringkas { padding: 0 10px 0 8px; }
+  .nav-brand-teks > span:first-child { font-size: 15px !important; }
+  /* ikon tambah-orang menyingkir; label "Gabung" tetap */
+  .nav-gabung-ringkas svg { display: none; }
+  .nav-gabung-ringkas { padding: 0 12px; }
+  .nav-masuk-ringkas { padding: 0 12px; }
 }
-/* <= 349px: subjudul menyingkir dan Gabung jadi ikon saja (aria-label
-   tetap "Gabung Alumni"); nama platform tetap utuh */
-@media (max-width: 349px) {
-  .nav-brand-teks > span:last-child { display: none !important; }
-  .nav-gabung-ringkas span { display: none; }
-  .nav-gabung-ringkas { padding: 0 10px; }
+/* 360–369px (Android umum): nama platform sedikit lebih kecil supaya muat */
+@media (max-width: 369px) {
+  .nav-brand-teks > span:first-child { font-size: 14px !important; }
+}
+/* <= 359px: nama platform menyingkir, logo (yang memuat tulisan SUPERFIVE)
+   tetap; kedua tombol tetap berlabel */
+@media (max-width: 359px) {
+  .nav-brand-teks { display: none; }
 }
 
 @media (min-width: 1024px) {
@@ -2347,8 +2374,8 @@ main {
   .detail .nav-brand img { width: 48px !important; height: 48px !important; }
   .detail .nav-brand-teks > span:first-child { font-size: 15.5px !important; }
   .detail .nav-tautan { font-size: 14px; padding: 0 11px; }
-  .detail .nav-gabung { min-height: 38px; padding: 0 16px 0 13px; font-size: 13.5px; }
-  .detail .nav-masuk { min-height: 38px; padding: 0 18px; font-size: 13.5px; }
+  .detail .nav-gabung { min-height: 42px; padding: 0 15px 0 13px; font-size: 13.5px; }
+  .detail .nav-masuk { min-height: 42px; padding: 0 20px; font-size: 13.5px; }
   .detail .nav-ikon { min-width: 40px; min-height: 40px; }
 
   .d-remah { padding: 10px 0; font-size: 12.5px; }
