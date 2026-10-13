@@ -96,9 +96,13 @@ export default function SearchOverlay({ open, onClose }: { open: boolean; onClos
         .eq('toko.is_official', false)
         .or(cocok)
         .limit(8),
+      // produk!inner: toko tanpa produk yang terlihat publik tidak ikut —
+      // halaman tokonya kosong, dan penjual yang baru disetujui biasanya
+      // belum mengisinya. Embed dibatasi 1 baris; isinya tidak dipakai.
       supabase.from('toko')
-        .select('id, nama_toko, kategori, seller_id, is_official')
+        .select('id, nama_toko, kategori, seller_id, is_official, produk!inner(id)')
         .ilike('nama_toko', `%${q}%`)
+        .limit(1, { referencedTable: 'produk' })
         .limit(4),
     ])
 

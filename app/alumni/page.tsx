@@ -82,7 +82,12 @@ export default function AlumniPage() {
       const { data: aktif } = await supabase.from('penjual_publik').select('id').in('id', ids)
       const aktifIds = (aktif ?? []).map(p => p.id as string)
       if (aktifIds.length === 0) return jumlah
-      const { data: toko } = await supabase.from('toko').select('id, seller_id').in('seller_id', aktifIds)
+      // produk!inner: toko tanpa produk tidak dihitung sebagai "Punya toko" —
+      // "Punya toko · 0 produk" mengajak ke halaman kosong
+      const { data: toko } = await supabase
+        .from('toko').select('id, seller_id, produk!inner(id)')
+        .in('seller_id', aktifIds)
+        .limit(1, { referencedTable: 'produk' })
       const tokoKe: Record<string, string> = {}
       for (const t of toko ?? []) { tokoKe[t.id] = t.seller_id; jumlah[t.seller_id] = 0 }
       const tokoIds = Object.keys(tokoKe)

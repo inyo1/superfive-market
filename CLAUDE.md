@@ -775,6 +775,24 @@ terlihat sudah RLS, jadi `count` polos memang angka yang benar.
 Kalau menambah permukaan daftar produk baru, penyaring ini ikut — dan
 sebutkan di tabel ini.
 
+### Toko tanpa produk disembunyikan dari daftar publik (sejak 13 Oktober 2026)
+
+Penjual yang baru disetujui umumnya belum mengisi tokonya. Toko seperti itu
+**tidak tampil di daftar publik mana pun**, disaring di query dengan
+`produk!inner(id)` (embed dibatasi `.limit(1, { referencedTable: 'produk' })`,
+isinya tidak dipakai). Karena embed ikut RLS `produk`, yang dihitung hanya
+produk yang memang terlihat pembacanya.
+
+| Permukaan | Disaring |
+|---|---|
+| hasil toko di [SearchOverlay](app/components/SearchOverlay.tsx) | ya |
+| hitungan TOKO di hero beranda | ya — `count` dengan `!inner` tetap menghitung baris toko (dicek lewat REST) |
+| "Punya toko · N produk" di [/alumni](app/alumni/page.tsx) | ya |
+| kartu toko di [/alumni/[id]](app/alumni/[id]/page.tsx) | ya |
+| [/toko/[id]](app/toko/[id]/page.tsx) | **tidak** — tautan langsung tetap terbuka, dengan state kosong |
+
+Permukaan daftar toko baru ikut aturan ini.
+
 #### Kosongnya harus terbaca sengaja
 
 Sekarang **seluruh produk di database milik toko resmi**, jadi semua daftar
