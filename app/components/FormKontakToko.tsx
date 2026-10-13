@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToast } from '../context/ToastContext'
 import {
-  normalisasiWA, normalisasiIG, normalisasiLink, tampilkanWA, PESAN_LINK_TIDAK_VALID,
+  normalisasiWA, normalisasiUsernameIG, normalisasiLink, tampilkanWA, pesanPelanggaranKontak,
 } from '../../lib/kontak'
 
 type Kontak = {
@@ -44,6 +44,8 @@ export default function FormKontakToko({ tokoId }: { tokoId: string }) {
   const [menyimpan, setMenyimpan] = useState(false)
   const [galatWa, setGalatWa] = useState<string | null>(null)
   const [galatLink, setGalatLink] = useState<string | null>(null)
+  const [galatIg, setGalatIg] = useState<string | null>(null)
+  const adaGalatKolom = Boolean(galatWa || galatIg || galatLink)
 
   useEffect(() => {
     let hidup = true
@@ -79,34 +81,45 @@ export default function FormKontakToko({ tokoId }: { tokoId: string }) {
     setNilai(prev => ({ ...prev, [kunci]: v }))
     if (kunci === 'no_wa') setGalatWa(null)
     if (kunci === 'link_lain') setGalatLink(null)
+    if (kunci === 'ig_username') setGalatIg(null)
   }
 
   async function simpan() {
     if (menyimpan) return
 
     const waMentah = (nilai.no_wa ?? '').trim()
-    const ig = normalisasiIG(nilai.ig_username ?? '')
 
     // Nomor boleh dikosongkan sepenuhnya — penjual yang hanya memakai
     // Instagram tidak dipaksa punya WhatsApp. Yang divalidasi hanya nomor
     // yang benar-benar diisi.
     let waBersih: string | null = null
+    let adaGalat = false
     if (waMentah) {
       const hasil = normalisasiWA(waMentah)
-      if (!hasil.ok) { setGalatWa(hasil.pesan); return }
-      waBersih = hasil.nomor
+      if (!hasil.ok) { setGalatWa(hasil.pesan); adaGalat = true }
+      else waBersih = hasil.nomor
     }
+
+    // Aturannya sama persis dengan CHECK toko_kontak_ig_format. Kosong → NULL,
+    // karena '' gagal {1,30} di database.
+    const hasilIg = normalisasiUsernameIG(nilai.ig_username)
+    if (!hasilIg.ok) { setGalatIg(hasilIg.pesan); adaGalat = true }
+    const ig = hasilIg.ok ? hasilIg.username : null
+
+    // Aturannya sama persis dengan CHECK toko_kontak_link_format. Ditolak di
+    // sini supaya penjual membaca kalimat, bukan bunyi constraint Postgres.
+    const hasilLink = normalisasiLink(nilai.link_lain)
+    if (!hasilLink.ok) { setGalatLink(hasilLink.pesan); adaGalat = true }
+    const linkBersih = hasilLink.ok ? hasilLink.link : null
+
+    // Semua kolom diperiksa dulu sebelum berhenti, supaya penjual melihat
+    // seluruh kesalahannya sekaligus, bukan satu per satu tiap menekan Simpan
+    if (adaGalat) return
 
     if (!waBersih && !ig) {
       toast.peringatan('Isi minimal salah satu: nomor WhatsApp atau username Instagram.')
       return
     }
-
-    // Aturannya sama persis dengan CHECK toko_kontak_link_format. Ditolak di
-    // sini supaya penjual membaca kalimat, bukan bunyi constraint Postgres.
-    const hasilLink = normalisasiLink(nilai.link_lain)
-    if (!hasilLink.ok) { setGalatLink(hasilLink.pesan); return }
-    const linkBersih = hasilLink.link
 
     setMenyimpan(true)
     try {
@@ -117,7 +130,7 @@ export default function FormKontakToko({ tokoId }: { tokoId: string }) {
         .upsert({
           toko_id: tokoId,
           no_wa: waBersih,
-          ig_username: ig || null,
+          ig_username: ig,
           link_lain: linkBersih,
           pesan_awal: (nilai.pesan_awal ?? '').trim() || null,
         }, { onConflict: 'toko_id' })
@@ -125,9 +138,13 @@ export default function FormKontakToko({ tokoId }: { tokoId: string }) {
       if (error) {
         // Jaring pengaman kalau validasi klien meleset dari constraint-nya
         // (mis. spasi Unicode yang dianggap berbeda oleh JS dan Postgres).
-        // Pesannya ditaruh di sebelah kolom link, bukan toast generik.
-        if (error.message?.includes('toko_kontak_link_format')) {
-          setGalatLink(PESAN_LINK_TIDAK_VALID)
+        // Pesannya ditaruh di bawah kolomnya; bunyi Postgres tidak ditampilkan.
+        const pelanggaran = pesanPelanggaranKontak(error)
+        if (pelanggaran) {
+          if (pelanggaran.kolom === 'ig') setGalatIg(pelanggaran.pesan)
+          else if (pelanggaran.kolom === 'wa') setGalatWa(pelanggaran.pesan)
+          else if (pelanggaran.kolom === 'link') setGalatLink(pelanggaran.pesan)
+          else toast.error(pelanggaran.pesan)
           return
         }
         toast.error('Gagal menyimpan kontak: ' + error.message)
@@ -137,7 +154,7 @@ export default function FormKontakToko({ tokoId }: { tokoId: string }) {
       // Nilai yang sudah dinormalkan dikembalikan ke kolomnya, supaya penjual
       // melihat bentuk yang benar-benar tersimpan — bukan yang tadi diketik
       setNilai(prev => ({
-        ...prev, no_wa: waBersih ?? '', ig_username: ig, link_lain: linkBersih ?? '',
+        ...prev, no_wa: waBersih ?? '', ig_username: ig ?? '', link_lain: linkBersih ?? '',
       }))
       toast.sukses('Kontak toko tersimpan.')
     } finally {
@@ -188,11 +205,18 @@ export default function FormKontakToko({ tokoId }: { tokoId: string }) {
           value={nilai.ig_username ?? ''}
           onChange={e => ubah('ig_username', e.target.value)}
           placeholder="tokokamu"
-          style={gayaInput}
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          style={{ ...gayaInput, borderColor: galatIg ? '#f09595' : '#c5d9ef' }}
         />
-        <div style={gayaBantuan}>
-          Dipakai sebagai cadangan kalau nomor WhatsApp kosong. Tanpa @.
-        </div>
+        {galatIg ? (
+          <div style={{ ...gayaBantuan, color: '#c62828' }}>{galatIg}</div>
+        ) : (
+          <div style={gayaBantuan}>
+            Dipakai sebagai cadangan kalau nomor WhatsApp kosong. Tanpa @, tanpa spasi — boleh juga tempel link profil IG.
+          </div>
+        )}
       </div>
 
       <div style={{ marginBottom: '12px' }}>
@@ -231,11 +255,11 @@ export default function FormKontakToko({ tokoId }: { tokoId: string }) {
 
       <button
         onClick={simpan}
-        disabled={menyimpan}
+        disabled={menyimpan || adaGalatKolom}
         style={{
-          width: '100%', background: menyimpan ? '#7fa8c9' : '#0C447C', color: '#fff',
+          width: '100%', background: menyimpan || adaGalatKolom ? '#7fa8c9' : '#0C447C', color: '#fff',
           border: 'none', padding: '12px', borderRadius: '8px', fontSize: '13px',
-          fontWeight: '600', cursor: menyimpan ? 'not-allowed' : 'pointer', minHeight: '44px',
+          fontWeight: '600', cursor: menyimpan || adaGalatKolom ? 'not-allowed' : 'pointer', minHeight: '44px',
         }}
       >
         {menyimpan ? 'Menyimpan…' : 'Simpan Kontak'}
