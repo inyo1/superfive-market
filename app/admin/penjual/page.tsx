@@ -9,6 +9,8 @@ import Skeleton, { SkeletonPanel } from '../../components/Skeleton'
 import { useTampilSkeleton } from '../../hooks/useSkeleton'
 import { adminPenuh } from '../../../lib/peran'
 import { tanggalPeristiwa } from '../../../lib/format'
+import { formatNomorWA, normalisasiWAOpsional, pesanKabarPenjual, urlWhatsApp } from '../../../lib/kontak'
+import { IkonWhatsApp } from '../../components/beranda/Ikon'
 
 // Panel pengajuan penjual — sengaja terpisah dari /admin/verifikasi.
 // Dua urusan berbeda: yang satu memutuskan siapa alumni, yang ini memutuskan
@@ -27,6 +29,8 @@ type Penjual = {
   status_penjual: string
   is_institusi: boolean | null
   kota: string | null
+  /** Nomor WA pribadi untuk dikabari admin — tidak tampil publik */
+  no_hp: string | null
   bank_nama: string | null
   bank_rekening: string | null
   bank_atas_nama: string | null
@@ -85,6 +89,42 @@ function Baris({ label, isi }: { label: string; isi: React.ReactNode }) {
   )
 }
 
+/**
+ * "Kabari via WA" ke nomor pribadi penjual (users.no_hp), dengan pesan sesuai
+ * keputusannya. Tidak tampil untuk yang masih menunggu — belum ada kabar.
+ *
+ * Nomor dinormalkan dulu: data lama "08…" belum tentu sudah 62…, dan wa.me
+ * hanya menerima bentuk 62. Nomor yang tidak bisa dinormalkan diperlakukan
+ * seperti kosong, bukan dikirim mentah ke wa.me.
+ */
+function TombolKabari({ p }: { p: Penjual }) {
+  const pesan = pesanKabarPenjual(p.nama, p.status_penjual, p.alasan_penjual)
+  if (!pesan) return null
+
+  const hasil = normalisasiWAOpsional(p.no_hp)
+  const nomor = hasil.ok ? hasil.nomor : null
+  const gaya: React.CSSProperties = {
+    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+    minHeight: '40px', borderRadius: '8px', fontSize: '12px', fontWeight: 600,
+    textDecoration: 'none', boxSizing: 'border-box', width: '100%',
+  }
+
+  return (
+    <div style={{ margin: '0 14px 12px' }}>
+      {nomor ? (
+        <a href={urlWhatsApp(nomor, pesan)} target="_blank" rel="noopener noreferrer"
+          style={{ ...gaya, background: '#25D366', color: '#fff' }}>
+          <IkonWhatsApp size={16} /> Kabari via WA
+        </a>
+      ) : (
+        <button type="button" disabled style={{ ...gaya, background: '#f0f5fb', color: '#9ab4cc', border: '0.5px solid #c5d9ef', cursor: 'not-allowed' }}>
+          {p.no_hp ? 'Nomor WA tidak valid' : 'Nomor WA belum diisi'}
+        </button>
+      )}
+    </div>
+  )
+}
+
 export default function PenjualAdminPage() {
   const router = useRouter()
   const [ready, setReady] = useState(false)
@@ -108,7 +148,7 @@ export default function PenjualAdminPage() {
   async function muat() {
     const { data, error } = await supabase
       .from('users')
-      .select('id, nama, email, angkatan, avatar_url, status_alumni, status_penjual, is_institusi, kota, bank_nama, bank_rekening, bank_atas_nama, ajukan_penjual_at, penjual_diputus_at, alasan_penjual, jml_telat_kirim, telat_terakhir_at')
+      .select('id, nama, email, angkatan, avatar_url, status_alumni, status_penjual, is_institusi, kota, no_hp, bank_nama, bank_rekening, bank_atas_nama, ajukan_penjual_at, penjual_diputus_at, alasan_penjual, jml_telat_kirim, telat_terakhir_at')
       .neq('status_penjual', 'belum_ajukan')
       .order('ajukan_penjual_at', { ascending: false })
 
@@ -286,6 +326,10 @@ export default function PenjualAdminPage() {
               {/* Kota asal & rekening. Kota asal dari /jual tersimpan di
                   users.kota — kolom yang sama dengan profil */}
               <div style={{ margin: '0 14px 12px', background: '#f0f5fb', borderRadius: '8px', padding: '12px' }}>
+                <Baris
+                  label="Nomor WA"
+                  isi={p.no_hp ? formatNomorWA(p.no_hp) : '— belum diisi —'}
+                />
                 <Baris label="Kota asal" isi={p.kota || '— belum diisi —'} />
                 <Baris
                   label="Rekening"
@@ -312,6 +356,11 @@ export default function PenjualAdminPage() {
                   <div style={{ fontSize: '12px', color: '#c62828', whiteSpace: 'pre-line' }}>{p.alasan_penjual}</div>
                 </div>
               )}
+
+              {/* Kabari via WA — hanya setelah ada keputusan. Status dan alasan
+                  dibaca dari state yang diperbarui putuskan(), jadi tombolnya
+                  langsung tersedia begitu admin memutuskan, tanpa muat ulang */}
+              <TombolKabari p={p} />
 
               {/* Aksi */}
               <div style={{ padding: '0 14px 14px' }}>
