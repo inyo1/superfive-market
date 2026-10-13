@@ -12,8 +12,9 @@ import { useTampilSkeleton } from '../hooks/useSkeleton'
 
 // Direktori alumni — Wave 2. DUA SUMBER, menurut siapa yang membuka:
 //
-// Belum login → `alumni_direktori`: HANYA alumni yang memilih tampil publik
-//               (users.tampil_publik, opt-in). Pengunjung bisa mencari,
+// Belum login → `alumni_direktori`: HANYA alumni dengan users.tampil_publik
+//               (bawaannya tampil sejak 13 Okt 2026; akun lama mulai dari
+//               false). Pengunjung bisa mencari,
 //               menyaring angkatan, dan membuka profilnya.
 // Sudah login → `alumni_publik`: semua alumni aktif, tanpa melihat pilihan
 //               tampil publik — sesama anggota memang boleh saling melihat.
@@ -273,7 +274,7 @@ export default function AlumniPage() {
               <div className="a-ajakan">
                 <span className="m-kosong-ikon a-ajakan-ikon"><IkonOrang size={24} /></span>
                 <div style={{ minWidth: 0 }}>
-                  <h2>Ini alumni yang memilih tampil publik</h2>
+                  <h2>Ini alumni yang profilnya tampil publik</h2>
                   <p>Masuk untuk melihat seluruh alumni yang sudah bergabung di Superfive.</p>
                 </div>
                 <Link href={TUJUAN_MASUK} className="b-tombol m-tombol-biru">Masuk</Link>
@@ -295,9 +296,9 @@ export default function AlumniPage() {
                 <span className="m-kosong-ikon"><IkonOrang size={26} /></span>
                 <h2>Direktori publik masih menunggu alumni pertamanya.</h2>
                 <p>
-                  Alumni yang memilih menampilkan profilnya akan muncul di sini.
+                  Alumni yang profilnya tampil publik akan muncul di sini.
                   Sudah bergabung? Masuk untuk melihat seluruh alumni — atau daftar
-                  dan tampilkan profilmu agar teman seangkatan bisa menemukanmu.
+                  agar teman seangkatan bisa menemukanmu.
                 </p>
                 <div className="a-kosong-aksi">
                   <Link href={TUJUAN_DAFTAR} className="b-tombol m-tombol-biru">Daftar Gratis</Link>

@@ -38,8 +38,9 @@ export default function ProfilPage() {
   const [pesan, setPesan] = useState('')
   const [statusAlumni, setStatusAlumni] = useState<string | null>(null)
   const [isInstitusi, setIsInstitusi] = useState(false)
-  // Pilihan tampil di Direktori Alumni publik (users.tampil_publik, opt-in)
-  const [tampilPublik, setTampilPublik] = useState(false)
+  // Tampil di Direktori Alumni publik (users.tampil_publik). Bawaannya tampil
+  // sejak 13 Oktober 2026; sakelar di layar adalah pilihan MENYEMBUNYIKAN
+  const [tampilPublik, setTampilPublik] = useState(true)
   const [simpanTampil, setSimpanTampil] = useState(false)
   const [pesanTampil, setPesanTampil] = useState<{ ok: boolean; teks: string } | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -115,7 +116,7 @@ export default function ProfilPage() {
       setPesanTampil({
         ok: tersimpan === nilai,
         teks: tersimpan === nilai
-          ? (tersimpan ? 'Profilmu sekarang tampil di Direktori Alumni publik.' : 'Profilmu tidak lagi tampil di Direktori Alumni publik.')
+          ? (tersimpan ? 'Profilmu tampil lagi di Direktori Alumni publik.' : 'Profilmu sekarang disembunyikan dari Direktori Alumni publik.')
           : 'Gagal menyimpan pilihan. Coba lagi.',
       })
     } catch (e) {
@@ -360,31 +361,34 @@ export default function ProfilPage() {
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div id="judul-tampil-publik" style={{ fontSize: '13px', fontWeight: '600', color: '#0C447C', marginBottom: '6px', lineHeight: '1.5' }}>
-                  Tampilkan profil saya di Direktori Alumni publik
+                  Sembunyikan profil saya dari Direktori Alumni publik
                 </div>
                 <div style={{ fontSize: '12px', color: '#5a7da0', lineHeight: '1.7' }}>
                   {tampilPublik
-                    ? 'Aktif: pengunjung yang belum masuk dapat menemukan kamu di Direktori Alumni dan membuka profil alumnimu, yang berisi nama, angkatan (Superfive NN), foto profil, dan lapakmu bila sedang aktif.'
-                    : 'Nonaktif: kamu tidak muncul di Direktori Alumni untuk pengunjung.'}
+                    ? 'Saat ini profilmu tampil di Direktori Alumni. Pengunjung yang belum masuk dapat menemukan kamu dan membuka profil alumnimu, yang berisi nama, angkatan (Superfive NN), foto profil, dan lapakmu bila sedang aktif.'
+                    : 'Profilmu tidak tampil di Direktori Alumni untuk pengunjung yang belum masuk.'}
                 </div>
               </div>
+              {/* Sakelar ini MENYEMBUNYIKAN: ON = tampil_publik false. Kolomnya
+                  tidak berubah arti — yang dibalik hanya tampilannya, sejak
+                  default-nya tampil (13 Oktober 2026) */}
               <button
                 type="button"
                 role="switch"
-                aria-checked={tampilPublik}
+                aria-checked={!tampilPublik}
                 aria-labelledby="judul-tampil-publik"
                 disabled={simpanTampil}
                 onClick={() => ubahTampilPublik(!tampilPublik)}
                 style={{
                   flexShrink: 0, position: 'relative', width: '48px', height: '28px', marginTop: '2px',
                   borderRadius: '14px', border: 'none', padding: 0,
-                  background: tampilPublik ? '#0C447C' : '#c5d9ef',
+                  background: !tampilPublik ? '#0C447C' : '#c5d9ef',
                   cursor: simpanTampil ? 'wait' : 'pointer', opacity: simpanTampil ? 0.6 : 1,
                   transition: 'background 0.15s',
                 }}
               >
                 <span aria-hidden style={{
-                  position: 'absolute', top: '3px', left: tampilPublik ? '23px' : '3px',
+                  position: 'absolute', top: '3px', left: !tampilPublik ? '23px' : '3px',
                   width: '22px', height: '22px', borderRadius: '50%', background: '#fff',
                   boxShadow: '0 1px 3px rgba(0,0,0,0.2)', transition: 'left 0.15s',
                 }} />

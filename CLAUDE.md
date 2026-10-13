@@ -321,9 +321,21 @@ Penonaktifan akun dan permintaan data ulang oleh admin:
 
 Persetujuan tampil di Direktori Alumni publik (sejak 10 Oktober 2026):
 
-`tampil_publik`✳ bool (default **false**)
+`tampil_publik`✳ bool (default **true** sejak 13 Oktober 2026; sebelumnya false)
 
-Opt-in milik pemiliknya sendiri — **sengaja tidak masuk `jaga_field_sensitif`**,
+**Sejak 13 Oktober 2026 bawaannya TAMPIL, dan UI-nya pilihan MENYEMBUNYIKAN**:
+sakelar /profil "Sembunyikan profil saya dari Direktori Alumni publik"
+(ON = `false`) dan centang /auth dengan bunyi yang sama. Arti kolomnya tidak
+berubah — `true` tetap berarti tampil.
+
+**Jebakan: default kolom TIDAK dipakai pendaftaran.** `trg_buat_profil_baru`
+menulis kolomnya secara eksplisit dari metadata (hanya `'true'` yang berarti
+tampil), jadi tanpa kunci `tampil_publik` di metadata hasilnya tetap `false`.
+Karena itu /auth SELALU mengirim `tampil_publik` (`true` kecuali alumni
+mencentang sembunyikan). Jalur daftar lain yang tidak mengirim kuncinya akan
+menghasilkan `false` sampai trigger-nya diubah (migrasi, dikerjakan Inyo).
+
+Pilihan milik pemiliknya sendiri — **sengaja tidak masuk `jaga_field_sensitif`**,
 karena ini pilihan privasi, bukan kewenangan; pemiliknya harus bisa
 mengubahnya kapan saja lewat `users_update_own`. Diisi trigger daftar dari
 metadata, diubah dari sakelar di [/profil](app/profil/page.tsx). Satu-satunya
@@ -2494,7 +2506,8 @@ kolom view plus toko kalau penjualnya ada di `penjual_publik` — "bergabung
 sejak" hanya untuk anggota. Tidak ada kota, kontak, profesi, atau lencana
 lain: datanya tidak ada di view publik mana pun. Sakelar opt-in ada di
 /profil (disimpan langsung, terpisah dari tombol Simpan), centangnya di
-/auth (hanya untuk pilihan "alumni", tidak tercentang bawaan).
+/auth (hanya untuk pilihan "alumni", tidak tercentang bawaan). Sejak 13
+Oktober 2026 keduanya berbunyi "Sembunyikan…" — bawaannya tampil.
 
 **`position: sticky` di bagian bawah tidak bekerja di project ini.** `html`
 dan `body` sama-sama `overflow-x: hidden`, sehingga `body` mendapat

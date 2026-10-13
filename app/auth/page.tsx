@@ -50,11 +50,12 @@ function AuthContent() {
   // memikirkannya — sama seperti pemilih status barang di EditorPreorder.
   const [jenis, setJenis] = useState<'' | 'alumni' | 'umum'>('')
   const [angkatan, setAngkatan] = useState('')
-  // Persetujuan tampil di Direktori Alumni publik. TIDAK tercentang secara
-  // bawaan, dan hanya dikirim kalau dicentang — trigger trg_buat_profil_baru
-  // membaca raw_user_meta_data->>'tampil_publik' dan hanya 'true' yang
-  // berarti setuju; tanpa kuncinya sama sekali, hasilnya false.
-  const [setujuPublik, setSetujuPublik] = useState(false)
+  // Pilihan MENYEMBUNYIKAN profil dari Direktori Alumni publik. Bawaannya
+  // tampil (sejak 13 Oktober 2026), jadi tidak tercentang. Metadata
+  // tampil_publik SELALU dikirim: trigger trg_buat_profil_baru menulis kolomnya
+  // secara eksplisit dari metadata (hanya 'true' yang berarti tampil), jadi
+  // default kolom tidak pernah terpakai — tanpa kuncinya hasilnya false.
+  const [sembunyikanPublik, setSembunyikanPublik] = useState(false)
   const [loading, setLoading] = useState(false)
   const [pesan, setPesan] = useState('')
   const [registered, setRegistered] = useState(false)
@@ -198,9 +199,10 @@ function AuthContent() {
             // login pertama. Akun lama tidak punya kunci ini. Lihat lib/sambutan.ts
             ...METADATA_SAMBUTAN,
             ...(jenis === 'alumni' ? { angkatan: parseInt(angkatan) } : {}),
-            // Hanya alumni, dan hanya kalau dicentang sendiri. Nilai false
-            // sengaja tidak dikirim: ketiadaan kunci sudah berarti tidak setuju.
-            ...(jenis === 'alumni' && setujuPublik === true ? { tampil_publik: true } : {}),
+            // Selalu dikirim (lihat catatan di state sembunyikanPublik). false
+            // hanya kalau alumni memilih menyembunyikan; pendaftar umum ikut
+            // bawaan, supaya kalau kelak mendaftar alumni ia tampil seperti yang lain.
+            tampil_publik: !(jenis === 'alumni' && sembunyikanPublik),
           },
         },
       })
@@ -469,7 +471,7 @@ function AuthContent() {
                       <input
                         type="radio" name="jenis-pendaftar" value={o.nilai}
                         checked={dipilih}
-                        onChange={()=>{ setJenis(o.nilai); if (o.nilai!=='alumni') setSetujuPublik(false) }}
+                        onChange={()=>{ setJenis(o.nilai); if (o.nilai!=='alumni') setSembunyikanPublik(false) }}
                         style={{accentColor:'#0C447C',width:'16px',height:'16px',flexShrink:0}}
                       />
                       <span style={{fontSize:'13px',color: dipilih ? '#0C447C' : '#1a1a1a',fontWeight: dipilih ? '600' : '400'}}>
@@ -490,22 +492,22 @@ function AuthContent() {
                     Pilih dengan teliti — setelah terdaftar, angkatan tidak bisa kamu ubah sendiri.
                   </div>
 
-                  {/* Opt-in Direktori Alumni publik — tidak tercentang secara
-                      bawaan. Hanya untuk alumni: teman/keluarga alumni memang
-                      tidak masuk direktori. */}
-                  <label style={{display:'flex',alignItems:'flex-start',gap:'10px',cursor:'pointer',marginTop:'12px',padding:'11px 12px',borderRadius:'8px',border:`1px solid ${setujuPublik ? '#0C447C' : '#c5d9ef'}`,background: setujuPublik ? '#E6F1FB' : '#fff'}}>
+                  {/* Direktori Alumni publik — bawaannya tampil, centang ini
+                      untuk menyembunyikan. Hanya untuk alumni: teman/keluarga
+                      alumni memang tidak masuk direktori. */}
+                  <label style={{display:'flex',alignItems:'flex-start',gap:'10px',cursor:'pointer',marginTop:'12px',padding:'11px 12px',borderRadius:'8px',border:`1px solid ${sembunyikanPublik ? '#0C447C' : '#c5d9ef'}`,background: sembunyikanPublik ? '#E6F1FB' : '#fff'}}>
                     <input
                       type="checkbox"
-                      checked={setujuPublik}
-                      onChange={e=>setSetujuPublik(e.target.checked)}
+                      checked={sembunyikanPublik}
+                      onChange={e=>setSembunyikanPublik(e.target.checked)}
                       style={{accentColor:'#0C447C',width:'16px',height:'16px',flexShrink:0,marginTop:'2px'}}
                     />
                     <span style={{minWidth:0}}>
                       <span style={{display:'block',fontSize:'13px',fontWeight:'600',color:'#0C447C',marginBottom:'4px'}}>
-                        Tampilkan profil saya di Direktori Alumni publik
+                        Sembunyikan profil saya dari Direktori Alumni publik
                       </span>
                       <span style={{display:'block',fontSize:'11px',color:'#5a7da0',lineHeight:'1.6'}}>
-                        Jika dicentang, pengunjung yang belum masuk dapat menemukan saya di Direktori Alumni dan
+                        Tanpa centang ini, pengunjung yang belum masuk dapat menemukan saya di Direktori Alumni dan
                         melihat nama, angkatan (Superfive NN), dan foto profil saya, serta lapak saya bila sedang
                         aktif. Direktori Alumni tidak menampilkan email, nomor HP, alamat, maupun rekening.
                         Pengaturan ini bisa diubah kapan saja di halaman Profil.
