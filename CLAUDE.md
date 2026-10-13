@@ -445,9 +445,9 @@ Yang perlu dipegang:
   ajakan verifikasi ada di [/profil](app/profil/page.tsx), sekali, bernada
   undangan
 - **Pintu berjualan hanya `status_penjual = 'aktif'`.** Itu yang diperiksa
-  [/produk/tambah](app/produk/tambah/page.tsx). Policy `toko_insert_own`
-  masih memakai `status_verifikasi` lama, jadi pagar itu **tidak cukup**
-  sendirian — alumni terverifikasi yang belum disetujui admin masih lolos RLS
+  [/produk/tambah](app/produk/tambah/page.tsx), dan sejak Oktober 2026 juga
+  policy `toko_insert_own` (`penjual_aktif(auth.uid())`) — pagar klien dan
+  RLS sekarang sepakat
 - **Lencana alumni hanya untuk `status_alumni = 'alumni'`.**
   [BadgeVerifikasi](app/components/BadgeVerifikasi.tsx) menerima boolean, bukan
   status mentah, supaya tidak ada pemanggil yang menebak nilai mana yang sah
@@ -749,8 +749,10 @@ pengunjung kalau `alumni_direktori` gagal dimuat; tampilan utamanya
 
 **Satu toko per penjual, dibuat saat pengajuan penjual disetujui** (sejak
 Oktober 2026). `putuskan_penjual` membuat barisnya dengan `nama_toko` = nama
-penjual dan `kategori` = `'UMKM'`; UNIQUE index di `toko.seller_id` menjaga
-satu-satunya. Sebelumnya toko baru dibuat saat produk pertama disimpan.
+penjual dan `kategori` = `'UMKM'`; UNIQUE index `toko_seller_id_unik` menjaga
+satu-satunya. Sebelumnya toko baru dibuat saat produk pertama disimpan;
+penjual aktif yang belum punya toko sudah di-backfill (3 toko kosong), jadi
+per migrasinya tidak ada penjual aktif tanpa toko.
 
 - [/produk/tambah](app/produk/tambah/page.tsx) mengambil tokonya lewat
   `ambilAtauBuatTokoSaya()` di [lib/toko.ts](lib/toko.ts): pakai yang ada,
@@ -2095,10 +2097,14 @@ tidak.
   adalah policy `produk`
 - INSERT/UPDATE/DELETE ketiganya hanya pemilik toko
   (`toko.seller_id = auth.uid()`) atau admin. Untuk `produk_varian`
-  kepemilikannya ditelusuri lewat `produk → toko`. `toko_insert_own` masih
-  memeriksa `status_verifikasi = 'terverifikasi'` — sumbu **lama**, jadi pagar
-  ini tidak setara dengan `status_penjual = 'aktif'` dan tidak boleh
-  diandalkan sendirian, lihat [Dua sumbu verifikasi](#dua-sumbu-verifikasi)
+  kepemilikannya ditelusuri lewat `produk → toko`. `toko_insert_own` (sejak
+  Oktober 2026): `seller_id = auth.uid() AND penjual_aktif(auth.uid())` —
+  sumbu **baru**, setara dengan `status_penjual = 'aktif'` (dan akun tidak
+  nonaktif). Dulu memeriksa `status_verifikasi = 'terverifikasi'`, sehingga
+  alumni yang belum disetujui bisa membuat baris toko lewat REST. Normalnya
+  toko dibuat `putuskan_penjual` (SECURITY DEFINER, tidak lewat policy ini);
+  policy ini hanya untuk cadangan di `ambilAtauBuatTokoSaya()`. Ditambah
+  UNIQUE index `toko_seller_id_unik`: satu toko per penjual
 - `keranjang` — pengguna hanya bisa menyentuh barisnya sendiri
 - `pesanan` — INSERT wajib `buyer_id = auth.uid()`. SELECT/UPDATE untuk pembeli
   (`buyer_id = auth.uid()`) **atau** penjual pemilik toko
@@ -2686,13 +2692,6 @@ lihat [Utang Teknis](#utang-teknis-yang-diketahui).
   daftar alumni dengan dan tanpa konfirmasi email, layar konfirmasi angkatan,
   /alumni sebagai anon dan login, "Kontak belum tersedia" di toko tanpa
   kontak, TombolLapor dengan `.env.local`, dan Alumni Terbaru + cabut.
-- **`toko_insert_own` masih memeriksa sumbu lama** (`status_verifikasi =
-  'terverifikasi'`), bukan `status_penjual = 'aktif'`. Untuk sekarang pagarnya
-  ditegakkan di klien ([/produk/tambah](app/produk/tambah/page.tsx)), yang
-  berarti alumni terverifikasi yang belum disetujui admin **masih bisa
-  membuat baris `toko` lewat REST langsung**. Produknya tidak akan tayang
-  (`produk_select_public` memakai `penjual_aktif`), tapi barisnya tetap
-  terbentuk. Perbaikan sebenarnya ada di policy-nya.
 - **Alur dua sumbu belum diuji manual di browser** (per 14 Agustus 2026).
   Dev server tidak menyala saat pekerjaan ini dikerjakan, jadi yang sudah
   dipastikan hanya `npx tsc --noEmit`, `npm run lint`, dan pengujian penjaga
