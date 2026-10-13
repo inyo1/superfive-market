@@ -346,8 +346,11 @@ metadata, diubah dari sakelar di [/profil](app/profil/page.tsx). Satu-satunya
 pembacanya `alumni_direktori` — kolomnya tidak ikut ke view lain mana pun.
 Lihat [`alumni_direktori`](#alumni_direktori-view--direktori-untuk-pengunjung-opt-in).
 
-**`no_hp` = nomor WhatsApp PRIBADI, tidak tampil publik** (sejak Oktober
-2026 dijaga CHECK `^62[0-9]{8,13}$`, sama dengan `toko_kontak.no_wa`). Dipakai
+**`no_hp` = nomor WhatsApp PRIBADI, tidak tampil publik.** Dijaga CHECK
+`users_no_hp_format`: `no_hp IS NULL OR no_hp ~ '^62[0-9]{8,13}$'`, sama
+dengan `toko_kontak.no_wa` (terpasang 14 Oktober 2026; 4 nomor lama "08…"
+sudah dinormalkan ke 62… sebelumnya). Klien yang menulis kolom ini **wajib**
+menormalkan dulu — nilai lain ditolak database dengan bunyi constraint. Dipakai
 admin mengabari hasil pengajuan penjual ("Kabari via WA" di
 [/admin/penjual](app/admin/penjual/page.tsx), pesannya `pesanKabarPenjual()`).
 Ditulis dari tiga tempat, semuanya dinormalkan ke 62… lewat

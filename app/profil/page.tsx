@@ -440,7 +440,12 @@ export default function ProfilPage() {
         {/* Kontak & Alamat */}
         <div style={{ background: '#fff', borderRadius: '16px', padding: '20px', border: '0.5px solid #c5d9ef', marginBottom: '12px' }}>
           <div style={{ fontSize: '13px', fontWeight: '600', color: '#0C447C', marginBottom: '4px' }}>Kontak & Alamat</div>
-          <div style={{ fontSize: '11px', color: '#9ab4cc', marginBottom: '16px' }}>Ditampilkan ke pembeli supaya tahu lokasimu</div>
+          {/* Satu-satunya isi bagian ini yang terlihat orang lain adalah kota
+              (info_toko_publik, hanya untuk penjual aktif). Jalan, kecamatan,
+              kelurahan, kode pos, dan nomor WA tidak tampil di mana pun */}
+          <div style={{ fontSize: '11px', color: '#9ab4cc', marginBottom: '16px', lineHeight: 1.6 }}>
+            Nomor WhatsApp hanya untuk admin. Dari alamat, hanya kota yang ditampilkan — di halaman tokomu, kalau kamu penjual.
+          </div>
 
           <div style={{ marginBottom: '14px' }}>
             <label htmlFor="no-hp" style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '6px' }}>Nomor HP / WhatsApp</label>
