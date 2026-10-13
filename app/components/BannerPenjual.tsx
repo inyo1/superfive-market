@@ -1,8 +1,9 @@
 'use client'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { IkonEtalase } from './beranda/Ikon'
+import { IkonEtalase, IkonWhatsApp } from './beranda/Ikon'
+import { normalisasiWA } from '../../lib/kontak'
 
 type Keadaan = 'belum_toko' | 'toko_kosong'
 
@@ -38,6 +39,11 @@ const ISI: Record<Keadaan, { judul: string; pesan: string; tombol: string }> = {
  *
  * `sembunyikan` dipakai dashboard untuk keadaan yang sudah punya layar
  * penuhnya sendiri, supaya ajakannya tidak muncul dua kali.
+ *
+ * Banner kedua, terpisah: penjual AKTIF atau MENUNGGU yang users.no_hp-nya
+ * kosong diminta melengkapi nomor WA langsung di banner (BannerNomor) —
+ * admin mengabari hasil pengajuan lewat nomor itu. Keduanya bisa tampil
+ * bersamaan.
  */
 const gayaKedua: React.CSSProperties = {
   background: '#fff', color: '#0C447C', border: '1px solid #0C447C', padding: '0 18px', minHeight: '44px',
@@ -54,6 +60,9 @@ export default function BannerPenjual({
   onPengaturan?: () => void
 }) {
   const [keadaan, setKeadaan] = useState<Keadaan | null>(null)
+  // Penjual aktif/menunggu tanpa users.no_hp: admin tidak bisa mengabarinya.
+  // Diisi id-nya supaya banner nomor bisa menyimpan langsung
+  const [perluNomor, setPerluNomor] = useState<string | null>(null)
 
   useEffect(() => {
     let hidup = true
@@ -62,8 +71,11 @@ export default function BannerPenjual({
       if (!user) return
       // Baris sendiri — satu-satunya baris users yang boleh dibaca klien
       const { data: saya } = await supabase
-        .from('users').select('status_penjual').eq('id', user.id).maybeSingle()
-      if (!hidup || saya?.status_penjual !== 'aktif') return
+        .from('users').select('status_penjual, no_hp').eq('id', user.id).maybeSingle()
+      if (!hidup) return
+      const status = saya?.status_penjual
+      if ((status === 'aktif' || status === 'menunggu') && !saya?.no_hp?.trim()) setPerluNomor(user.id)
+      if (status !== 'aktif') return
 
       const { data: toko } = await supabase
         .from('toko').select('id').eq('seller_id', user.id).limit(1).maybeSingle()
@@ -83,7 +95,20 @@ export default function BannerPenjual({
     return () => { hidup = false }
   }, [])
 
-  if (!keadaan || sembunyikan.includes(keadaan)) return null
+  const tampilToko = keadaan !== null && !sembunyikan.includes(keadaan)
+  if (!tampilToko && !perluNomor) return null
+
+  return (
+    <>
+      {perluNomor && (
+        <BannerNomor userId={perluNomor} lebarMaks={lebarMaks} onTersimpan={() => setPerluNomor(null)} />
+      )}
+      {tampilToko && <BannerToko keadaan={keadaan} lebarMaks={lebarMaks} onPengaturan={onPengaturan} />}
+    </>
+  )
+}
+
+function BannerToko({ keadaan, lebarMaks, onPengaturan }: { keadaan: Keadaan; lebarMaks: string; onPengaturan?: () => void }) {
   const isi = ISI[keadaan]
 
   return (
@@ -125,6 +150,97 @@ export default function BannerPenjual({
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+/**
+ * Lengkapi nomor WhatsApp (users.no_hp) langsung di banner, untuk penjual
+ * yang mendaftar sebelum /jual mewajibkannya. Normalisasinya sama dengan
+ * /jual dan /profil (62…). Hilang begitu tersimpan; sengaja tanpa tombol
+ * tutup, sama seperti banner toko.
+ */
+function BannerNomor({ userId, lebarMaks, onTersimpan }: { userId: string; lebarMaks: string; onTersimpan: () => void }) {
+  const [nomor, setNomor] = useState('')
+  const [galat, setGalat] = useState<string | null>(null)
+  const [menyimpan, setMenyimpan] = useState(false)
+  // Penjaga kirim ganda pakai ref, bukan state (lihat Wave 3 di CLAUDE.md)
+  const sedangKirim = useRef(false)
+
+  async function simpan(e: React.FormEvent) {
+    e.preventDefault()
+    if (sedangKirim.current) return
+    const hasil = normalisasiWA(nomor)
+    if (!hasil.ok) { setGalat(hasil.pesan); return }
+
+    sedangKirim.current = true
+    setMenyimpan(true)
+    setGalat(null)
+    try {
+      const { data, error } = await supabase
+        .from('users').update({ no_hp: hasil.nomor }).eq('id', userId).select('no_hp').maybeSingle()
+      if (error) throw new Error(error.message)
+      // RLS yang menolak UPDATE tidak melempar error — barisnya saja yang
+      // tidak kembali
+      if (data?.no_hp !== hasil.nomor) throw new Error('perubahan tidak tersimpan')
+      onTersimpan()
+    } catch (err) {
+      setGalat('Gagal menyimpan: ' + (err as Error).message)
+    } finally {
+      sedangKirim.current = false
+      setMenyimpan(false)
+    }
+  }
+
+  return (
+    <div style={{ padding: '12px 16px 0' }}>
+      <form
+        onSubmit={simpan}
+        style={{
+          maxWidth: lebarMaks, margin: '0 auto', boxSizing: 'border-box',
+          display: 'flex', alignItems: 'center', gap: '12px 14px', flexWrap: 'wrap',
+          background: '#fff8e1', border: '1px solid #ffe082', borderLeft: '4px solid #FFB51B',
+          borderRadius: '12px', padding: '14px 16px',
+        }}
+      >
+        <span aria-hidden style={{
+          width: '40px', height: '40px', borderRadius: '50%', background: '#fff', color: '#128C7E',
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+        }}>
+          <IkonWhatsApp size={22} />
+        </span>
+        <label htmlFor="banner-no-hp" style={{ flex: '1 1 220px', minWidth: 0, fontSize: '14px', fontWeight: 700, color: '#062F59', lineHeight: 1.4 }}>
+          Lengkapi nomor WhatsApp-mu supaya admin bisa menghubungimu
+          <span style={{ display: 'block', fontSize: '12px', fontWeight: 400, color: '#5a7da0', marginTop: '2px' }}>
+            Tidak ditampilkan ke publik.
+          </span>
+        </label>
+        <div style={{ display: 'flex', gap: '8px', flex: '1 1 260px' }}>
+          <input
+            id="banner-no-hp"
+            value={nomor}
+            onChange={ev => { setNomor(ev.target.value); setGalat(null) }}
+            type="tel" inputMode="tel" autoComplete="tel"
+            placeholder="081234567890"
+            aria-invalid={Boolean(galat)}
+            aria-describedby={galat ? 'banner-no-hp-galat' : undefined}
+            style={{
+              flex: 1, minWidth: 0, padding: '0 12px', minHeight: '44px', borderRadius: '9px', fontSize: '13px',
+              border: `1px solid ${galat ? '#f09595' : '#c5d9ef'}`, outline: 'none', boxSizing: 'border-box', background: '#fff',
+            }}
+          />
+          <button type="submit" disabled={menyimpan || !nomor.trim()} style={{
+            background: menyimpan || !nomor.trim() ? '#7fa8c9' : '#0C447C', color: '#fff', border: 'none',
+            padding: '0 18px', minHeight: '44px', borderRadius: '9px', fontSize: '13px', fontWeight: 600,
+            cursor: menyimpan || !nomor.trim() ? 'not-allowed' : 'pointer', flexShrink: 0,
+          }}>
+            {menyimpan ? 'Menyimpan…' : 'Simpan'}
+          </button>
+        </div>
+        {galat && (
+          <div id="banner-no-hp-galat" role="alert" style={{ flexBasis: '100%', fontSize: '12px', color: '#c62828' }}>{galat}</div>
+        )}
+      </form>
     </div>
   )
 }
