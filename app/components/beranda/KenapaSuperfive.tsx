@@ -47,7 +47,9 @@ export default function KenapaSuperfive({ alumni, toko }: { alumni: number; toko
     {
       ikon: <IkonPerisai size={28} />,
       judul: 'Komunitas Terpercaya',
-      isi: 'Setiap penjual sudah diverifikasi sebagai alumni SMPN 5 Bandung.',
+      // Bukan "diverifikasi sebagai alumni": status alumni didaftarkan sendiri
+      // (koreksi sosial), yang diperiksa pengurus adalah pengajuan penjualnya
+      isi: 'Setiap penjual disetujui pengurus dan berasal dari komunitas alumni SMPN 5 Bandung.',
       angka: alumni,
       label: 'alumni terverifikasi',
     },
