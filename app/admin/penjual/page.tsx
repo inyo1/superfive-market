@@ -27,7 +27,6 @@ type Penjual = {
   status_penjual: string
   is_institusi: boolean | null
   kota: string | null
-  alamat_lengkap: string | null
   bank_nama: string | null
   bank_rekening: string | null
   bank_atas_nama: string | null
@@ -109,7 +108,7 @@ export default function PenjualAdminPage() {
   async function muat() {
     const { data, error } = await supabase
       .from('users')
-      .select('id, nama, email, angkatan, avatar_url, status_alumni, status_penjual, is_institusi, kota, alamat_lengkap, bank_nama, bank_rekening, bank_atas_nama, ajukan_penjual_at, penjual_diputus_at, alasan_penjual, jml_telat_kirim, telat_terakhir_at')
+      .select('id, nama, email, angkatan, avatar_url, status_alumni, status_penjual, is_institusi, kota, bank_nama, bank_rekening, bank_atas_nama, ajukan_penjual_at, penjual_diputus_at, alasan_penjual, jml_telat_kirim, telat_terakhir_at')
       .neq('status_penjual', 'belum_ajukan')
       .order('ajukan_penjual_at', { ascending: false })
 
@@ -285,14 +284,9 @@ export default function PenjualAdminPage() {
               </div>
 
               {/* Kota asal & rekening. Kota asal dari /jual tersimpan di
-                  users.kota; sebelumnya masuk alamat_lengkap. Cadangan
-                  alamat_lengkap ini hanya untuk data lama yang belum
-                  dipindahkan — buang begitu pemindahannya selesai. */}
+                  users.kota — kolom yang sama dengan profil */}
               <div style={{ margin: '0 14px 12px', background: '#f0f5fb', borderRadius: '8px', padding: '12px' }}>
-                <Baris
-                  label="Kota asal"
-                  isi={p.kota || (p.alamat_lengkap ? `${p.alamat_lengkap} (data lama)` : '— belum diisi —')}
-                />
+                <Baris label="Kota asal" isi={p.kota || '— belum diisi —'} />
                 <Baris
                   label="Rekening"
                   isi={p.bank_nama
