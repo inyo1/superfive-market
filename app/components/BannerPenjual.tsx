@@ -30,16 +30,29 @@ const ISI: Record<Keadaan, { judul: string; pesan: string; tombol: string }> = {
  * Sengaja TANPA tombol tutup: banner ini hilang sendiri begitu kondisinya
  * terpenuhi, dan selama belum, memang itu langkah berikutnya penjualnya.
  *
- * Tidak ada halaman "buat toko". Toko dibuat otomatis saat produk pertama
- * disimpan di /produk/tambah — jadi kedua keadaan menuju halaman yang sama,
- * dan tokonya lahir bersama produk pertamanya.
+ * Sejak Oktober 2026 toko dibuat database saat pengajuan disetujui, jadi
+ * 'belum_toko' praktis hanya untuk penjual yang disetujui sebelum itu —
+ * logikanya dibiarkan sebagai cadangan, dan /produk/tambah tetap membuat
+ * tokonya kalau belum ada. 'toko_kosong' juga mengajak ke Pengaturan Toko,
+ * karena nama dan kategori bawaannya (nama penjual, UMKM) perlu diganti.
  *
  * `sembunyikan` dipakai dashboard untuk keadaan yang sudah punya layar
  * penuhnya sendiri, supaya ajakannya tidak muncul dua kali.
  */
+const gayaKedua: React.CSSProperties = {
+  background: '#fff', color: '#0C447C', border: '1px solid #0C447C', padding: '0 18px', minHeight: '44px',
+  borderRadius: '9px', fontSize: '13px', fontWeight: 600, textDecoration: 'none', cursor: 'pointer',
+  display: 'inline-flex', alignItems: 'center', boxSizing: 'border-box',
+}
+
 export default function BannerPenjual({
-  sembunyikan = [], lebarMaks = '660px',
-}: { sembunyikan?: Keadaan[]; lebarMaks?: string }) {
+  sembunyikan = [], lebarMaks = '660px', onPengaturan,
+}: {
+  sembunyikan?: Keadaan[]
+  lebarMaks?: string
+  /** Kalau diisi, tombol Pengaturan Toko memanggil ini alih-alih menaut ke /dashboard?tab=toko */
+  onPengaturan?: () => void
+}) {
   const [keadaan, setKeadaan] = useState<Keadaan | null>(null)
 
   useEffect(() => {
@@ -94,13 +107,23 @@ export default function BannerPenjual({
           <div style={{ fontSize: '14px', fontWeight: 700, color: '#062F59' }}>{isi.judul}</div>
           <div style={{ fontSize: '13px', color: '#33465a', lineHeight: 1.5, marginTop: '2px' }}>{isi.pesan}</div>
         </div>
-        <Link href="/produk/tambah" style={{
-          background: '#0C447C', color: '#fff', padding: '0 18px', minHeight: '44px', borderRadius: '9px',
-          fontSize: '13px', fontWeight: 600, textDecoration: 'none', flexShrink: 0,
-          display: 'inline-flex', alignItems: 'center',
-        }}>
-          {isi.tombol}
-        </Link>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', flexShrink: 0 }}>
+          <Link href="/produk/tambah" style={{
+            background: '#0C447C', color: '#fff', padding: '0 18px', minHeight: '44px', borderRadius: '9px',
+            fontSize: '13px', fontWeight: 600, textDecoration: 'none',
+            display: 'inline-flex', alignItems: 'center',
+          }}>
+            {isi.tombol}
+          </Link>
+          {/* Toko otomatis bernama penjual dan berkategori UMKM — ajak
+              penggantinya sekalian, sebelum produk pertama membuatnya tayang */}
+          {keadaan === 'toko_kosong' && (onPengaturan
+            // Di dashboard sendiri: tautan ke halaman yang sama tidak memuat
+            // ulang apa pun, jadi pemanggil yang memindah tabnya
+            ? <button type="button" onClick={onPengaturan} style={gayaKedua}>Pengaturan Toko</button>
+            : <Link href="/dashboard?tab=toko" style={gayaKedua}>Pengaturan Toko</Link>
+          )}
+        </div>
       </div>
     </div>
   )

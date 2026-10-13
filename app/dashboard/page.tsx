@@ -22,6 +22,7 @@ import EditorPreorder from '../components/EditorPreorder'
 import RekapPO, { type ProgresPO } from '../components/RekapPO'
 import TenggatKirim from '../components/TenggatKirim'
 import FormKontakToko from '../components/FormKontakToko'
+import PengaturanToko from '../components/PengaturanToko'
 import DaftarProspek from '../components/DaftarProspek'
 import BadgeTersedia from '../components/BadgeTersedia'
 import { FORM_PO_KOSONG, formPODari, validasiFormPO, formPOKeKolom, formPOAktif, janjiKirim, type FormPO, type DataPO } from '../../lib/preorder'
@@ -124,9 +125,13 @@ export default function DashboardPage() {
       setStatusPenjual(profil?.status_penjual ?? 'belum_ajukan')
       setAlasanPenjual(profil?.alasan_penjual ?? null)
 
-      const { data: tokoData } = await supabase.from('toko').select('id, nama_toko, kategori, is_official').eq('seller_id', user.id).single()
+      // Satu toko per penjual (dibuat saat persetujuan). maybeSingle: 0 baris
+      // itu keadaan sah untuk penjual lama, bukan error
+      const { data: tokoData } = await supabase.from('toko').select('id, nama_toko, kategori, is_official').eq('seller_id', user.id).limit(1).maybeSingle()
       if (!tokoData) { setNoToko(true); setLoading(false); return }
       setToko(tokoData)
+      // ?tab=toko — tautan dari BannerPenjual langsung ke Pengaturan Toko
+      if (new URLSearchParams(window.location.search).get('tab') === 'toko') setTab('kontak')
 
       // Toko resmi diurutkan sama seperti di beranda, supaya pengelola melihat
       // susunan yang sama dengan yang dilihat pengunjung
@@ -375,7 +380,7 @@ export default function DashboardPage() {
 
       {/* Onboarding: toko ada tapi belum berproduk. "Belum punya toko"
           disembunyikan karena sudah punya layar penuhnya sendiri (noToko) */}
-      <BannerPenjual sembunyikan={['belum_toko']} />
+      <BannerPenjual sembunyikan={['belum_toko']} onPengaturan={() => setTab('kontak')} />
 
       {/* Status penjual yang sedang bermasalah. Tokonya turun dari etalase,
           tapi pesanan yang sudah terlanjur masuk TETAP WAJIB diselesaikan —
@@ -606,7 +611,7 @@ export default function DashboardPage() {
             jalan — menutup tabnya berarti penjual tidak bisa menandai kirim,
             lalu pesanannya dibatalkan cron dan dananya dikembalikan. */}
         <div style={{ display: 'flex', background: '#fff', borderRadius: '10px', padding: '4px', border: '0.5px solid #c5d9ef', marginBottom: '16px' }}>
-          {([['ringkasan', '📊', 'Ringkasan'], ['produk', '📦', 'Produk'], ['kontak', '💬', 'Kontak'], ['prospek', '📇', 'Prospek'], ['pesanan', '🧾', 'Pesanan']] as const).map(([key, emoji, text]) => (
+          {([['ringkasan', '📊', 'Ringkasan'], ['produk', '📦', 'Produk'], ['kontak', '🏪', 'Toko'], ['prospek', '📇', 'Prospek'], ['pesanan', '🧾', 'Pesanan']] as const).map(([key, emoji, text]) => (
             <button key={key} onClick={() => setTab(key)}
               className="tab-label"
               style={{ flex: 1, padding: '8px 4px', border: 'none', borderRadius: '7px', fontSize: '12px', fontWeight: tab === key ? '600' : '400', cursor: 'pointer', background: tab === key ? '#0C447C' : 'transparent', color: tab === key ? '#fff' : '#5a7da0' }}>
@@ -734,7 +739,17 @@ export default function DashboardPage() {
         )}
 
         {/* ── TAB: KONTAK ── */}
-        {tab === 'kontak' && toko && <FormKontakToko tokoId={toko.id} />}
+        {/* Tab Toko: pengaturan toko (nama/kategori bawaan dari persetujuan
+            perlu diganti penjual) lalu kontak untuk Hubungi Penjual */}
+        {tab === 'kontak' && toko && (
+          <>
+            <PengaturanToko
+              tokoId={toko.id}
+              onTersimpan={t => setToko(prev => (prev ? { ...prev, ...t } : prev))}
+            />
+            <FormKontakToko tokoId={toko.id} />
+          </>
+        )}
 
         {/* ── TAB: PROSPEK ── */}
         {tab === 'prospek' && toko && <DaftarProspek tokoId={toko.id} />}
