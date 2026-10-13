@@ -98,7 +98,8 @@ export default function BottomNav() {
 
   // Halaman toko orang lain bagian dari Marketplace, jadi tab Produk yang
   // menyala; /toko/saya milik menu Akun.
-  const tokoPublik = pathname.startsWith('/toko/') && !pathname.startsWith('/toko/saya')
+  // Indeks /toko juga: daftar lapak bagian dari Marketplace yang sama.
+  const tokoPublik = (pathname === '/toko' || pathname.startsWith('/toko/')) && !pathname.startsWith('/toko/saya')
 
   function aktif(href: string) {
     if (href === '/') return pathname === '/'
@@ -126,10 +127,12 @@ export default function BottomNav() {
         { href: '/toko/saya', label: 'Toko Saya', ikon: '🏪' },
         { href: '/dashboard', label: 'Dashboard Seller', ikon: '📊' },
         { href: '/jual', label: 'Mulai Berjualan', ikon: '💼' },
+        { href: '/toko', label: 'Toko Alumni', ikon: '🛍️' },
         { href: '/alumni', label: 'Direktori Alumni', ikon: '🎓' },
         { href: '/about', label: 'Tentang Kami', ikon: 'ℹ️' },
       ]
     : [
+        { href: '/toko', label: 'Toko Alumni', ikon: '🛍️' },
         { href: '/alumni', label: 'Direktori Alumni', ikon: '🎓' },
         { href: '/about', label: 'Tentang Kami', ikon: 'ℹ️' },
       ]
@@ -184,21 +187,28 @@ export default function BottomNav() {
               </div>
             )}
 
-            {menuAkun.map(m => (
-              <Link
-                key={m.href}
-                href={m.href}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '12px',
-                  padding: '13px 12px', borderRadius: '10px',
-                  fontSize: '14px', color: '#1a1a1a', textDecoration: 'none',
-                  minHeight: '44px', boxSizing: 'border-box',
-                }}
-              >
-                <span style={{ fontSize: '18px' }}>{m.ikon}</span>
-                {m.label}
-              </Link>
-            ))}
+            {menuAkun.map(m => {
+              // Halaman yang sedang dibuka ditandai di sheet. Toko Alumni
+              // menyala di /toko dan /toko/[id], bukan /toko/saya
+              const disini = m.href === '/toko' ? tokoPublik : pathname.startsWith(m.href)
+              return (
+                <Link
+                  key={m.href}
+                  href={m.href}
+                  aria-current={disini ? 'page' : undefined}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '12px',
+                    padding: '13px 12px', borderRadius: '10px',
+                    fontSize: '14px', color: disini ? '#0C447C' : '#1a1a1a', textDecoration: 'none',
+                    fontWeight: disini ? 600 : 400, background: disini ? '#E6F1FB' : 'transparent',
+                    minHeight: '44px', boxSizing: 'border-box',
+                  }}
+                >
+                  <span style={{ fontSize: '18px' }}>{m.ikon}</span>
+                  {m.label}
+                </Link>
+              )
+            })}
 
             {(isAdmin || adminAngkatan) && (
               <>

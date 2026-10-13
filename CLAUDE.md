@@ -196,7 +196,8 @@ app/
   pesanan/           riwayat pesanan pembeli
   produk/            daftar produk + /produk/[id] detail + /produk/tambah
   profil/            profil & alamat pengguna
-  toko/              /toko/[id] halaman toko + /toko/saya
+  toko/              /toko indeks Toko Alumni (page.tsx server: metadata,
+                     DaftarToko.tsx klien) + /toko/[id] halaman toko + /toko/saya
   verifikasi/        daftar sebagai alumni — konfirmasi, lalu RPC ajukan_alumni
   components/
     Badge*           BadgeAngkatan, BadgeOfficial, BadgePreorder, BadgeVerifikasi
@@ -840,6 +841,14 @@ grep -rn "ETALASE-KLIMAX" app
 | "Punya toko · …" di [/alumni](app/alumni/page.tsx) | tampil, "Belum menambahkan produk" kalau 0 |
 | kartu toko di [/alumni/[id]](app/alumni/[id]/page.tsx) | tampil, "Belum menambahkan produk" di raknya |
 | [/toko/[id]](app/toko/[id]/page.tsx) | selalu terbuka, dengan state kosong |
+| indeks [/toko](app/toko/DaftarToko.tsx) dan seksi Toko Alumni di beranda | tampil lewat `ambilDaftarToko()` di [lib/toko.ts](lib/toko.ts), kartu [KartuToko](app/components/KartuToko.tsx) |
+
+`ambilDaftarToko()` mengambil semua toko yang terlihat dengan `produk(count)`
+dan mengurutkannya **di klien** (resmi dulu, produk terbanyak, terlama) —
+PostgREST tidak bisa mengurutkan menurut hitungan embed. Label jumlahnya dari
+`labelJumlahProduk()`, satu sumber untuk "N produk" / "Belum menambahkan
+produk". Chip kategori di /toko hanya untuk kategori yang berisi, dan hanya
+tampil kalau lebih dari satu.
 
 Untuk menyembunyikannya lagi (13–14 Oktober 2026 sempat begitu): kembalikan
 `produk!inner(id)` di query toko, dengan embed dibatasi
@@ -2500,7 +2509,10 @@ Palet warna:
 aksi `#087EF5`, emas `#FFB51B` — dan kelas berawalan `b-` / `nav-`. Halaman
 lain masih memakai palet di atas sampai giliran redesainnya. Navbar kini satu
 baris; Dashboard, Toko Saya, tautan pengurus, dan Keluar ada di menu akun
-(dropdown avatar) di >= 1024px.
+(dropdown avatar) di >= 1024px. Menu utama: Beranda · Produk · **Toko** ·
+Alumni · Tentang Kami. "Toko" menyala di `/toko` dan `/toko/[id]`, **tidak**
+di `/toko/saya` (milik menu akun) — aturannya di `isActive()`. Di 1024px
+sisa ruangnya ±36px sebelum ikon cari; menu keenam perlu dicek di lebar itu.
 
 **Gabung Alumni di navbar** (Oktober 2026) — tujuannya ditentukan
 `tujuanGabung` di [Navbar](app/components/Navbar.tsx), bukan dirangkai di
@@ -2522,8 +2534,10 @@ Tingginya token `--bnav-tinggi` (61px, tanpa safe area); padding `body` dan
 bilah fixed lain yang duduk di atasnya (`.d-cta-hp`, `.cta-bottom-bar`) wajib
 memakai token itu, jangan angka tetap. Tab Akun hanya menyala di halaman akun
 pribadi dan `/auth` — **tidak** di `/alumni` dan `/about`; halaman toko publik
-menyalakan Produk. BottomNav **tidak dirender di `/chat/[id]`**, karena bar
-ketik pesan di sana yang menempati dasar layar.
+(`/toko` dan `/toko/[id]`) menyalakan Produk. "Toko Alumni" ada di sheet Akun,
+di atas Direktori Alumni; item sheet menandai halaman yang sedang dibuka.
+BottomNav **tidak dirender di `/chat/[id]`**, karena bar ketik pesan di sana
+yang menempati dasar layar.
 
 **`/produk` (redesain fase 2)** memakai kelas `m-`. Cari, saring (kategori,
 status barang, hanya tersedia, rentang harga), dan urut semuanya di klien atas

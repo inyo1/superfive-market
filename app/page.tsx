@@ -22,6 +22,8 @@ import { KATEGORI, type Kategori } from '../lib/kategori'
 import { ambilPenjualPublik, type PenjualPublik } from '../lib/penjualPublik'
 import NamaPenjual from './components/NamaPenjual'
 import BannerPenjual from './components/BannerPenjual'
+import KartuToko from './components/KartuToko'
+import { ambilDaftarToko, type TokoRingkas } from '../lib/toko'
 
 // Beranda — redesain Oktober 2026.
 //
@@ -96,15 +98,17 @@ function useCountUp(target: number, duration = 900) {
 //
 // Keterangannya ditulis tetap, bukan dihitung: kalimatnya menjelaskan arti
 // angkanya, bukan melaporkan angka kedua yang harus ikut benar.
-function Statistik({ label, value, keterangan, ikon }: {
+function Statistik({ label, value, keterangan, ikon, href }: {
   label: string
   value: number
   keterangan: string
   ikon: React.ReactNode
+  /** Kalau diisi, kartunya jadi tautan (mis. "N Toko" → /toko) */
+  href?: string
 }) {
   const count = useCountUp(value)
-  return (
-    <div className="b-stat">
+  const isi = (
+    <>
       <span className="b-stat-ikon">{ikon}</span>
       <div style={{ minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', flexWrap: 'wrap' }}>
@@ -114,14 +118,19 @@ function Statistik({ label, value, keterangan, ikon }: {
         </div>
         <div className="b-stat-ket">{keterangan}</div>
       </div>
-    </div>
+    </>
   )
+  return href
+    ? <Link href={href} className="b-stat b-stat-tautan" aria-label={`${value} ${label} — lihat semua`}>{isi}</Link>
+    : <div className="b-stat">{isi}</div>
 }
 
 export default function Home() {
   const router = useRouter()
   const [stats, setStats] = useState<Stats>({ produk: 0, toko: 0, alumni: 0 })
   const [latest, setLatest] = useState<Produk[]>([])
+  // Maksimal 8, urutan dari ambilDaftarToko (resmi, produk terbanyak, terlama)
+  const [tokoBeranda, setTokoBeranda] = useState<TokoRingkas[]>([])
   const [loading, setLoading] = useState(true)
   const [loggedIn, setLoggedIn] = useState(false)
   // Hanya penjual aktif yang ditawari menambah produk saat raknya kosong
@@ -210,6 +219,15 @@ export default function Home() {
     load()
   }, [])
 
+  // Seksi Toko Alumni — query terpisah supaya rak produk tidak menunggunya.
+  // Gagal = kosong = seksinya tidak tampil; tidak ada pesan galat di beranda.
+  // ETALASE-KLIMAX: toko tanpa produk ikut tampil, tinjau setelah 17 Okt 2026
+  useEffect(() => {
+    let hidup = true
+    ambilDaftarToko().then(({ data }) => { if (hidup) setTokoBeranda(data.slice(0, 8)) })
+    return () => { hidup = false }
+  }, [])
+
   // Label tombol jualan mengikuti peran yang sama dengan tujuannya
   const labelTombolJual = labelJual(penjualAktif)
 
@@ -283,7 +301,7 @@ export default function Home() {
       <div className="b-wadah" style={{ position: 'relative', zIndex: 2 }}>
         <div className="b-stat-kartu">
           <Statistik label="Produk" value={stats.produk} keterangan="Siap dibeli hari ini" ikon={<IkonProduk size={24} />} />
-          <Statistik label="Toko" value={stats.toko} keterangan="Dikelola alumni" ikon={<IkonToko size={24} />} />
+          <Statistik label="Toko" value={stats.toko} keterangan="Dikelola alumni" ikon={<IkonToko size={24} />} href="/toko" />
           <Statistik label="Alumni" value={stats.alumni} keterangan="Terverifikasi" ikon={<IkonAlumni size={24} />} />
         </div>
       </div>
@@ -357,6 +375,28 @@ export default function Home() {
           )}
         </div>
       </section>
+
+      {/* ── Toko Alumni ── setelah Produk Terbaru: dari barang ke yang
+          menjualnya. Rak produk di atasnya sengaja tanpa merchandise resmi
+          dan sering masih kosong; seksi ini yang menunjukkan lapak alumni
+          memang sudah buka. Tidak tampil kalau kosong atau gagal dimuat. */}
+      {/* ETALASE-KLIMAX: toko tanpa produk ikut tampil, tinjau setelah 17 Okt 2026 */}
+      {tokoBeranda.length > 0 && (
+        <section className="b-seksi" aria-labelledby="judul-toko-alumni">
+          <div className="b-wadah">
+            <div className="b-kepala">
+              <div>
+                <h2 id="judul-toko-alumni" className="b-judul">Toko Alumni</h2>
+                <p className="b-sub">Lapak para alumni Superfive — kunjungi dan hubungi penjualnya langsung.</p>
+              </div>
+              <Link href="/toko" className="b-tautan">Lihat semua toko <IkonPanah size={16} tebal={2} /></Link>
+            </div>
+            <ul className="t-grid" role="list">
+              {tokoBeranda.map(t => <li key={t.id}><KartuToko t={t} /></li>)}
+            </ul>
+          </div>
+        </section>
+      )}
 
       {/* ── Kenapa Superfive ── */}
       <section className="b-seksi" aria-labelledby="judul-kenapa">

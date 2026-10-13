@@ -11,6 +11,7 @@ import { adminPenuh, bolehVerifikasiAlumni } from '../../lib/peran'
 const links = [
   { href: '/', label: 'Beranda' },
   { href: '/produk', label: 'Produk' },
+  { href: '/toko', label: 'Toko' },
   { href: '/alumni', label: 'Alumni' },
   { href: '/about', label: 'Tentang Kami' },
 ]
@@ -170,7 +171,10 @@ export default function Navbar() {
   }
 
   function isActive(href: string) {
-    return href === '/' ? pathname === '/' : pathname.startsWith(href)
+    if (href === '/') return pathname === '/'
+    // /toko dan /toko/[id] — tapi bukan /toko/saya, yang milik menu akun
+    if (href === '/toko') return (pathname === '/toko' || pathname.startsWith('/toko/')) && !pathname.startsWith('/toko/saya')
+    return pathname.startsWith(href)
   }
 
   // Ke mana Gabung Alumni membawa orang — null berarti tombolnya tidak ada.

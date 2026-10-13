@@ -53,3 +53,53 @@ export async function ambilAtauBuatTokoSaya(userId: string): Promise<HasilToko> 
   }
   return { ok: false, pesan: 'Gagal menyiapkan tokomu: ' + (baru.error?.message ?? 'tidak diketahui') }
 }
+
+/** Satu baris daftar toko publik (/toko dan seksi Toko Alumni di beranda). */
+export type TokoRingkas = {
+  id: string
+  nama_toko: string
+  deskripsi: string | null
+  kategori: string
+  foto_toko: string | null
+  is_official: boolean
+  /** null kalau hitungannya tidak terbaca — jangan dianggap 0 */
+  jumlahProduk: number | null
+  created_at: string
+}
+
+/**
+ * Semua toko yang terlihat pembacanya (RLS toko_select_public: hanya toko
+ * penjual aktif), beserta jumlah produknya.
+ *
+ * ETALASE-KLIMAX: toko tanpa produk ikut tampil, tinjau setelah 17 Okt 2026
+ *
+ * Urutan: toko resmi dulu, lalu yang produknya paling banyak, lalu yang
+ * paling lama. Diurutkan di sini karena PostgREST tidak bisa mengurutkan
+ * menurut hitungan embed `produk(count)`. Jumlah toko kecil, jadi aman
+ * diambil semua sekali jalan.
+ */
+export async function ambilDaftarToko(): Promise<{ data: TokoRingkas[]; galat: string | null }> {
+  const { data, error } = await supabase
+    .from('toko')
+    .select('id, nama_toko, deskripsi, kategori, foto_toko, is_official, created_at, produk(count)')
+  if (error) return { data: [], galat: error.message }
+
+  type Baris = Omit<TokoRingkas, 'jumlahProduk'> & { produk: { count: number }[] | null }
+  const daftar = ((data ?? []) as Baris[]).map(({ produk, ...t }) => ({
+    ...t,
+    is_official: Boolean(t.is_official),
+    jumlahProduk: produk?.[0]?.count ?? null,
+  }))
+
+  daftar.sort((a, b) =>
+    Number(b.is_official) - Number(a.is_official)
+    || (b.jumlahProduk ?? 0) - (a.jumlahProduk ?? 0)
+    || a.created_at.localeCompare(b.created_at))
+  return { data: daftar, galat: null }
+}
+
+/** "3 produk" atau label toko kosong yang sama dengan ETALASE-KLIMAX. */
+export function labelJumlahProduk(n: number | null): string | null {
+  if (n === null) return null
+  return n > 0 ? `${n.toLocaleString('id-ID')} produk` : 'Belum menambahkan produk'
+}
