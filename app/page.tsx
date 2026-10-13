@@ -158,11 +158,11 @@ export default function Home() {
         // hanya tampil kalau penjualnya aktif), jadi count polos ke tabelnya
         // memang sudah angka yang benar. Jangan menyaring lagi di sini.
         supabase.from('produk').select('*', { count: 'exact', head: true }),
-        // Toko dihitung hanya kalau punya produk yang terlihat (produk!inner).
-        // Penjual yang baru disetujui sering belum mengisi tokonya, dan toko
-        // kosong bukan bagian dari "seberapa ramai". count di sini menghitung
-        // baris toko, bukan baris hasil join — sudah dicek lewat REST.
-        supabase.from('toko').select('id, produk!inner(id)', { count: 'exact', head: true }),
+        // ETALASE-KLIMAX: toko tanpa produk sengaja ditampilkan menjelang 17 Okt 2026, tinjau ulang setelahnya
+        // Semua toko yang terlihat dihitung, termasuk yang belum berproduk.
+        // Untuk mengembalikan penyaringnya: select('id, produk!inner(id)', …)
+        // — count tetap menghitung baris toko, bukan hasil join (dicek lewat REST).
+        supabase.from('toko').select('*', { count: 'exact', head: true }),
         // Dijumlah dari angkatan_ringkas, BUKAN count ke alumni_publik: sejak
         // peluncuran reuni alumni_publik hanya bisa dibaca yang sudah login,
         // jadi untuk pengunjung angkanya jadi 0. angkatan_ringkas terbuka

@@ -25,6 +25,8 @@ type TokoResult = {
   kategori: string
   users: PenjualPublik | null
   is_official?: boolean
+  /** null kalau hitungannya gagal dimuat — jangan dianggap 0 */
+  jumlahProduk: number | null
 }
 
 
@@ -96,20 +98,19 @@ export default function SearchOverlay({ open, onClose }: { open: boolean; onClos
         .eq('toko.is_official', false)
         .or(cocok)
         .limit(8),
-      // produk!inner: toko tanpa produk yang terlihat publik tidak ikut —
-      // halaman tokonya kosong, dan penjual yang baru disetujui biasanya
-      // belum mengisinya. Embed dibatasi 1 baris; isinya tidak dipakai.
+      // ETALASE-KLIMAX: toko tanpa produk sengaja ditampilkan menjelang 17 Okt 2026, tinjau ulang setelahnya
+      // (sebelumnya produk!inner(id) menyembunyikannya). produk(count) hanya
+      // untuk label "Belum menambahkan produk" di kartunya.
       supabase.from('toko')
-        .select('id, nama_toko, kategori, seller_id, is_official, produk!inner(id)')
+        .select('id, nama_toko, kategori, seller_id, is_official, produk(count)')
         .ilike('nama_toko', `%${q}%`)
-        .limit(1, { referencedTable: 'produk' })
         .limit(4),
     ])
 
     // Identitas penjual dari penjual_publik — users tidak terbaca publik, dan
     // alumni_publik tertutup untuk pengunjung anon. Satu query untuk penjual
     // di hasil produk maupun hasil toko.
-    const tokoRows = (tokoRes.data ?? []) as { id: string; nama_toko: string; kategori: string; seller_id: string | null; is_official: boolean }[]
+    const tokoRows = (tokoRes.data ?? []) as { id: string; nama_toko: string; kategori: string; seller_id: string | null; is_official: boolean; produk: { count: number }[] | null }[]
     const produkRows = (memberRes.data ?? []) as unknown as ProdukResult[]
 
     const penjualById = await ambilPenjualPublik([
@@ -121,8 +122,9 @@ export default function SearchOverlay({ open, onClose }: { open: boolean; onClos
       ...p,
       penjual: p.toko?.seller_id ? penjualById[p.toko.seller_id] ?? null : null,
     })))
-    setToko(tokoRows.map(t => ({
+    setToko(tokoRows.map(({ produk, ...t }) => ({
       ...t,
+      jumlahProduk: produk?.[0]?.count ?? null,
       users: t.seller_id ? penjualById[t.seller_id] ?? null : null,
     })))
     setLoading(false)
@@ -354,6 +356,12 @@ export default function SearchOverlay({ open, onClose }: { open: boolean; onClos
                     {/* Toko resmi akun institusi, angkatan tidak ditampilkan */}
                     {!t.is_official && t.users && (
                       <NamaPenjual nama={t.users.nama} label={t.users.label_angkatan} angkatan={t.users.angkatan} institusi={t.users.is_institusi} style={{ fontSize: '11px', display: 'block' }} />
+                    )}
+                    {/* ETALASE-KLIMAX: toko tanpa produk sengaja ditampilkan menjelang 17 Okt 2026, tinjau ulang setelahnya */}
+                    {t.jumlahProduk === 0 && (
+                      <span style={{ fontSize: '11px', color: '#9ab4cc', display: 'block', marginTop: '1px' }}>
+                        Belum menambahkan produk
+                      </span>
                     )}
                   </div>
                   <span style={{

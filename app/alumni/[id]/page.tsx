@@ -112,13 +112,12 @@ export default function ProfilAlumniPage() {
 
       // Toko hanya ditampilkan kalau penjualnya aktif: RLS memperlihatkan
       // toko milik sendiri walau sedang dibekukan, padahal tidak tayang.
-      // Dan hanya kalau punya produk (produk!inner) — kartu "Kunjungi Toko"
-      // yang menuju halaman kosong tidak membantu siapa pun.
+      // ETALASE-KLIMAX: toko tanpa produk sengaja ditampilkan menjelang 17 Okt 2026, tinjau ulang setelahnya
+      // (sebelumnya produk!inner(id) menyembunyikan kartunya).
       if (!penjual[p.id]) return
       const { data: t } = await supabase
-        .from('toko').select('id, nama_toko, deskripsi, kategori, produk!inner(id)')
+        .from('toko').select('id, nama_toko, deskripsi, kategori')
         .eq('seller_id', p.id)
-        .limit(1, { referencedTable: 'produk' })
         .limit(1).maybeSingle()
       if (!aktif || !t) return
       setToko(t as Toko)
@@ -217,8 +216,8 @@ export default function ProfilAlumniPage() {
                     {produk.map(p => <li key={p.id}><KartuPasar p={p} /></li>)}
                   </ul>
                 ) : (
-                  // Toko tanpa produk tidak dibiarkan sebagai kotak kosong
-                  <p className="a-toko-kosong">Belum ada produk yang tayang di toko ini.</p>
+                  // ETALASE-KLIMAX: toko tanpa produk sengaja ditampilkan menjelang 17 Okt 2026, tinjau ulang setelahnya
+                  <p className="a-toko-kosong">Belum menambahkan produk</p>
                 )}
               </section>
             )}

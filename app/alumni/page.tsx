@@ -83,12 +83,12 @@ export default function AlumniPage() {
       const { data: aktif } = await supabase.from('penjual_publik').select('id').in('id', ids)
       const aktifIds = (aktif ?? []).map(p => p.id as string)
       if (aktifIds.length === 0) return jumlah
-      // produk!inner: toko tanpa produk tidak dihitung sebagai "Punya toko" —
-      // "Punya toko · 0 produk" mengajak ke halaman kosong
+      // ETALASE-KLIMAX: toko tanpa produk sengaja ditampilkan menjelang 17 Okt 2026, tinjau ulang setelahnya
+      // (sebelumnya produk!inner(id) membuangnya). Jumlah 0 tampil sebagai
+      // "Belum menambahkan produk", bukan "0 produk".
       const { data: toko } = await supabase
-        .from('toko').select('id, seller_id, produk!inner(id)')
+        .from('toko').select('id, seller_id')
         .in('seller_id', aktifIds)
-        .limit(1, { referencedTable: 'produk' })
       const tokoKe: Record<string, string> = {}
       for (const t of toko ?? []) { tokoKe[t.id] = t.seller_id; jumlah[t.seller_id] = 0 }
       const tokoIds = Object.keys(tokoKe)
@@ -356,7 +356,8 @@ function KartuAlumni({ a }: { a: Alumni }) {
         <span className="a-label a-label-kecil">{a.label_angkatan}</span>
         {a.jumlahProduk !== null && (
           <span className="a-kartu-toko">
-            <IkonEtalase size={14} tebal={2} /> Punya toko · {a.jumlahProduk} produk
+            {/* ETALASE-KLIMAX: toko tanpa produk sengaja ditampilkan menjelang 17 Okt 2026, tinjau ulang setelahnya */}
+            <IkonEtalase size={14} tebal={2} /> Punya toko · {a.jumlahProduk > 0 ? `${a.jumlahProduk} produk` : 'Belum menambahkan produk'}
           </span>
         )}
       </span>
