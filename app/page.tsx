@@ -21,6 +21,7 @@ import { janjiKirim } from '../lib/preorder'
 import { KATEGORI, type Kategori } from '../lib/kategori'
 import { ambilPenjualPublik, type PenjualPublik } from '../lib/penjualPublik'
 import NamaPenjual from './components/NamaPenjual'
+import BannerPenjual from './components/BannerPenjual'
 
 // Beranda — redesain Oktober 2026.
 //
@@ -215,6 +216,10 @@ export default function Home() {
   return (
     <main className="beranda">
       <Navbar />
+
+      {/* Onboarding penjual aktif yang lapaknya belum tayang. Null untuk
+          pengunjung, pembeli, dan penjual yang sudah punya produk. */}
+      <BannerPenjual lebarMaks="1200px" />
 
       {/* Banner verifikasi sengaja tidak ada di sini. Sejak pembeli tidak lagi
           diperiksa, banner itu akan menyala untuk hampir semua orang yang baru

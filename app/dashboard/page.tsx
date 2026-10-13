@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabase'
 import { uploadFotoProduk } from '../../lib/uploadFoto'
 import { aksiPenjual, bisaDibatalkan, warnaStatus, labelStatus, warnaPembayaran, labelPembayaran, AKSI_STATUS } from '../../lib/statusPesanan'
 import Navbar from '../components/Navbar'
+import BannerPenjual from '../components/BannerPenjual'
 import FotoProduk from '../components/FotoProduk'
 import Skeleton, { DaftarSkeletonPesanan } from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
@@ -352,11 +353,12 @@ export default function DashboardPage() {
         <div style={{ textAlign: 'center', padding: '60px 20px' }}>
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>{sudahPenjual ? '🏪' : '💼'}</div>
           <div style={{ fontSize: '16px', fontWeight: '500', color: '#333', marginBottom: '8px' }}>
-            {sudahPenjual ? 'Kamu belum punya toko' : 'Kamu belum terdaftar sebagai penjual'}
+            {sudahPenjual ? 'Pengajuanmu sudah disetujui!' : 'Kamu belum terdaftar sebagai penjual'}
           </div>
           <div style={{ fontSize: '13px', color: '#5a7da0', marginBottom: '24px' }}>
+            {/* Kalimatnya sama dengan BannerPenjual di beranda */}
             {sudahPenjual
-              ? 'Tambah produk pertama untuk membuat toko otomatis'
+              ? 'Buat tokomu sekarang — tokonya terbentuk otomatis begitu produk pertamamu disimpan.'
               : 'Ajukan diri jadi penjual dulu — setelah disetujui admin, tokomu bisa dibuka'}
           </div>
           <Link href={sudahPenjual ? '/produk/tambah' : '/jual'} style={{ background: '#0C447C', color: '#fff', padding: '12px 24px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none' }}>
@@ -370,6 +372,10 @@ export default function DashboardPage() {
   return (
     <main style={{ minHeight: '100vh', background: '#f0f5fb', fontFamily: 'sans-serif' }}>
       <Navbar />
+
+      {/* Onboarding: toko ada tapi belum berproduk. "Belum punya toko"
+          disembunyikan karena sudah punya layar penuhnya sendiri (noToko) */}
+      <BannerPenjual sembunyikan={['belum_toko']} />
 
       {/* Status penjual yang sedang bermasalah. Tokonya turun dari etalase,
           tapi pesanan yang sudah terlanjur masuk TETAP WAJIB diselesaikan —
