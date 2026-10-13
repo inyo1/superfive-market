@@ -7,6 +7,7 @@ import Navbar from '../components/Navbar'
 import Skeleton, { SkeletonPanel } from '../components/Skeleton'
 import Tombol from '../components/Tombol'
 import PilihWilayah from '../components/PilihWilayah'
+import { normalisasiWA } from '../../lib/kontak'
 import { useTampilSkeleton } from '../hooks/useSkeleton'
 
 // Pintu berjualan — satu-satunya pagar yang tersisa setelah verifikasi dipecah
@@ -50,6 +51,9 @@ export default function JualPage() {
   // lihat catatan di bagian Kota Asal
   const [kotaTersimpan, setKotaTersimpan] = useState<string | null>(null)
   const [pilihanKota, setPilihanKota] = useState<{ provinsi: string | null; kota: string | null }>({ provinsi: null, kota: null })
+  // users.no_hp — WAJIB di sini, untuk dikabari admin. Tidak tampil publik
+  const [noHp, setNoHp] = useState('')
+  const [galatHp, setGalatHp] = useState<string | null>(null)
   const [bankNama, setBankNama] = useState('')
   const [bankRekening, setBankRekening] = useState('')
   const [bankAtasNama, setBankAtasNama] = useState('')
@@ -68,7 +72,7 @@ export default function JualPage() {
 
       const { data } = await supabase
         .from('users')
-        .select('nama, status_alumni, status_penjual, alasan_penjual, bank_nama, bank_rekening, bank_atas_nama, kota')
+        .select('nama, status_alumni, status_penjual, alasan_penjual, bank_nama, bank_rekening, bank_atas_nama, kota, no_hp')
         .eq('id', user.id)
         .single()
 
@@ -80,6 +84,9 @@ export default function JualPage() {
         setAlasanPenjual(data.alasan_penjual ?? null)
         // Kota asal dipakai ulang dari profil supaya tidak diketik dua kali
         setKotaTersimpan(data.kota?.trim() || null)
+        // Diisi dari profil tapi tetap bisa diubah. Data lama "08…" ikut
+        // ditampilkan apa adanya; dinormalkan saat dikirim
+        setNoHp(data.no_hp ?? '')
         setBankNama(data.bank_nama ?? '')
         setBankRekening(data.bank_rekening ?? '')
         setBankAtasNama(data.bank_atas_nama ?? '')
@@ -90,33 +97,43 @@ export default function JualPage() {
   }, [])
 
   async function kirim() {
+    // Nomor WA wajib — admin mengabari hasil pengajuan lewat nomor ini.
+    // Dinormalkan ke 62… (CHECK users.no_hp) sebelum apa pun dikirim.
+    const hasilHp = normalisasiWA(noHp)
+    if (!hasilHp.ok) { setGalatHp(hasilHp.pesan); return }
+    setGalatHp(null)
+    if (!userId) return
+
     setMengirim(true)
     setPesan(null)
     try {
-      // Kota asal disimpan ke users.kota — kolom yang sama dengan form profil
-      // dan yang dibaca info_toko_publik untuk kartu toko. BUKAN lewat
-      // p_alamat: itu menulis alamat_lengkap, yang tidak dibaca siapa pun
-      // sebagai kota.
+      // Nomor WA dan kota asal disimpan ke users (no_hp, kota) dalam SATU
+      // UPDATE. Kota ke users.kota — kolom yang sama dengan form profil dan
+      // yang dibaca info_toko_publik. BUKAN lewat p_alamat: itu menulis
+      // alamat_lengkap, yang tidak dibaca siapa pun sebagai kota.
       //
-      // Ini dua permintaan, menyimpang dari aturan "satu tindakan = satu
-      // permintaan", karena ajukan_jadi_penjual belum punya parameter kota
-      // (perlu migrasi, dikerjakan Inyo). Urutannya disengaja: kota dulu.
-      // Kalau pengajuannya ditolak sesudahnya, yang tertinggal hanya kota di
-      // profil milik sendiri — data sah yang memang ingin ia simpan, bukan
-      // keadaan setengah jadi. Kebalikannya (pengajuan dulu, kota gagal)
-      // meninggalkan pengajuan tanpa kota tanpa ada yang tahu.
-      if (!kotaTersimpan && pilihanKota.kota && userId) {
-        const { data: tersimpan, error: galatKota } = await supabase
-          .from('users')
-          .update({ kota: pilihanKota.kota, provinsi: pilihanKota.provinsi })
-          .eq('id', userId)
-          .select('kota')
-        if (galatKota) throw new Error('Gagal menyimpan kota asal: ' + galatKota.message)
-        // RLS yang menolak UPDATE tidak melempar error — barisnya saja yang
-        // tidak kembali. Jangan anggap tersimpan tanpa melihatnya.
-        if (!tersimpan?.length) throw new Error('Gagal menyimpan kota asal. Coba lagi.')
-        setKotaTersimpan(pilihanKota.kota)
-      }
+      // Lalu ajukan_jadi_penjual: dua permintaan, menyimpang dari aturan "satu
+      // tindakan = satu permintaan", karena RPC itu belum punya parameter
+      // nomor maupun kota (perlu migrasi, dikerjakan Inyo). Urutannya
+      // disengaja: profil dulu. Kalau pengajuannya ditolak sesudahnya, yang
+      // tertinggal hanya nomor dan kota di profil sendiri — data sah, bukan
+      // keadaan setengah jadi. Kebalikannya meninggalkan pengajuan yang tidak
+      // bisa dikabari admin, tanpa ada yang tahu.
+      const isiKota = !kotaTersimpan && pilihanKota.kota
+        ? { kota: pilihanKota.kota, provinsi: pilihanKota.provinsi }
+        : {}
+      const { data: tersimpan, error: galatProfil } = await supabase
+        .from('users')
+        .update({ no_hp: hasilHp.nomor, ...isiKota })
+        .eq('id', userId)
+        .select('no_hp, kota')
+      if (galatProfil) throw new Error('Gagal menyimpan nomor WhatsApp dan kota: ' + galatProfil.message)
+      // RLS yang menolak UPDATE tidak melempar error — barisnya saja yang
+      // tidak kembali. Jangan anggap tersimpan tanpa melihatnya.
+      const baris = tersimpan?.[0]
+      if (!baris || baris.no_hp !== hasilHp.nomor) throw new Error('Gagal menyimpan nomor WhatsApp. Coba lagi.')
+      setNoHp(baris.no_hp)
+      if (isiKota.kota) setKotaTersimpan(baris.kota ?? null)
 
       // Mode katalog: tidak ada pembayaran lewat platform, jadi rekening
       // OPSIONAL. Isian kosong dikirim sebagai null — RPC-nya mempertahankan
@@ -248,8 +265,9 @@ export default function JualPage() {
 
   // 'belum_ajukan' dan 'ditolak' — keduanya boleh mengisi formulir
   const ditolak = statusPenjual === 'ditolak'
-  // Satu-satunya yang wajib: menyetujui aturan
-  const lengkap = setuju
+  // Yang wajib: nomor WhatsApp dan menyetujui aturan. Bentuk nomornya
+  // diperiksa saat dikirim, dengan galat di bawah kolomnya
+  const lengkap = setuju && noHp.trim() !== ''
 
   return (
     <Bingkai>
@@ -266,6 +284,28 @@ export default function JualPage() {
           </div>
         </div>
       )}
+
+      {/* Nomor WA → users.no_hp. WAJIB: satu-satunya jalan admin mengabari
+          hasil pengajuan. Terpisah dari nomor toko (toko_kontak.no_wa) yang
+          tampil publik — nomor ini tidak */}
+      <div style={KOTAK}>
+        <label htmlFor="no-hp" style={LABEL}>Nomor WhatsApp <span style={{ color: '#c62828' }}>*</span></label>
+        <div style={KETERANGAN}>
+          Dipakai admin untuk mengabari hasil pengajuanmu. Tidak ditampilkan ke publik.
+        </div>
+        <input
+          id="no-hp"
+          value={noHp}
+          onChange={e => { setNoHp(e.target.value); setGalatHp(null) }}
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
+          placeholder="081234567890"
+          aria-invalid={Boolean(galatHp)}
+          style={{ ...ISIAN, borderColor: galatHp ? '#f09595' : '#c5d9ef' }}
+        />
+        {galatHp && <div style={{ fontSize: '11px', color: '#c62828', marginTop: '4px' }}>{galatHp}</div>}
+      </div>
 
       {/* Kota asal → users.kota, dipilih dari tabel wilayah supaya bentuknya
           sama dengan profil ("Kota Bandung", bukan "Bandung").
