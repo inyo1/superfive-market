@@ -105,6 +105,21 @@ export function rapikanKota(kota: string | null | undefined): string | null {
       pemisah + huruf.toLocaleUpperCase('id-ID'))
 }
 
+/**
+ * rapikanKota versi ringkas untuk kartu yang sempit (KartuToko):
+ * "Kota Administrasi Jakarta Pusat" → "Jakarta Pusat",
+ * "Kabupaten Bandung" → "Kab. Bandung", "Kota Bandung" tetap.
+ * "Kabupaten Administrasi Kepulauan Seribu" ikut jadi "Kab. Kepulauan Seribu".
+ * Halaman toko dan produk (InfoToko) tetap memakai rapikanKota lengkap.
+ */
+export function rapikanKotaRingkas(kota: string | null | undefined): string | null {
+  const rapi = rapikanKota(kota)
+  if (!rapi) return null
+  return rapi
+    .replace(/^Kota Administrasi /, '')
+    .replace(/^Kabupaten (Administrasi )?/, 'Kab. ')
+}
+
 export const PESAN_IG_TIDAK_VALID =
   'Username Instagram cuma boleh huruf, angka, titik, dan underscore, tanpa spasi. Contoh: inilima.shop'
 
