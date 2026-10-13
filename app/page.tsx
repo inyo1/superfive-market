@@ -12,10 +12,9 @@ import BadgePreorder, { WARNA_PO_TUA } from './components/BadgePreorder'
 import BadgeTersedia from './components/BadgeTersedia'
 import LapakSegeraDibuka from './components/LapakSegeraDibuka'
 import { IkonProduk, IkonToko, IkonAlumni } from './components/IkonStatistik'
-import {
-  IkonPanah, IkonCari, IkonOrang, IkonPerisai, IkonPetak, IkonGrafik,
-} from './components/beranda/Ikon'
+import { IkonPanah, IkonCari } from './components/beranda/Ikon'
 import SiteFooter from './components/beranda/SiteFooter'
+import KenapaSuperfive from './components/beranda/KenapaSuperfive'
 import AjakanJual, { tujuanJual, labelJual } from './components/beranda/AjakanJual'
 import { janjiKirim } from '../lib/preorder'
 import { KATEGORI, type Kategori } from '../lib/kategori'
@@ -410,12 +409,8 @@ export default function Home() {
               <p className="b-sub">Lebih dari transaksi, ini tentang kebersamaan.</p>
             </div>
           </div>
-          <ul className="b-kenapa-daftar" role="list">
-            <AlasanItem ikon={<IkonOrang size={22} />} judul="Komunitas Terpercaya" isi="Penjual berasal dari komunitas alumni." />
-            <AlasanItem ikon={<IkonPerisai size={22} />} judul="Dukung Sesama Alumni" isi="Setiap transaksi memperkuat jaringan dan peluang." />
-            <AlasanItem ikon={<IkonPetak size={22} />} judul="Kategori Lengkap" isi="Produk, jasa, dan bisnis dalam satu platform." />
-            <AlasanItem ikon={<IkonGrafik size={22} />} judul="Peluang Lebih Luas" isi="Bisnis alumni dapat ditemukan lebih banyak orang." />
-          </ul>
+          {/* Angka dari statistik hero yang sudah dimuat — bukan query baru */}
+          <KenapaSuperfive alumni={stats.alumni} toko={stats.toko} />
         </div>
       </section>
 
@@ -427,17 +422,6 @@ export default function Home() {
   )
 }
 
-function AlasanItem({ ikon, judul, isi }: { ikon: React.ReactNode; judul: string; isi: string }) {
-  return (
-    <li className="b-alasan">
-      <span className="b-alasan-ikon">{ikon}</span>
-      <span>
-        <strong>{judul}</strong>
-        <span>{isi}</span>
-      </span>
-    </li>
-  )
-}
 
 // Kartu produk lapak alumni — redesain homepage Oktober 2026.
 //

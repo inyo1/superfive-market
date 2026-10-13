@@ -1455,60 +1455,149 @@ a.b-stat-tautan:focus-visible { outline: 2px solid var(--sf-aksi); outline-offse
 }
 .b-produk-aksi { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; color: var(--sf-aksi); }
 
-/* ── Kenapa Superfive ──
-   Empat alasan dalam satu kartu putih berpemisah tipis. Dibuat ringkas:
-   ikon kecil di samping teks di semua lebar, tidak ditumpuk ke atas. */
-.b-kenapa-daftar {
+/* ── Kenapa Superfive (redesain Oktober 2026) ──
+   Empat kartu terpisah, serumpun dengan KartuToko: kartu pertama navy dengan
+   pola titik dan aksen emas, tiga lainnya putih. Desktop satu baris 4 kolom
+   (kartu pertama lebih lebar), tablet 2×2, HP 1 kolom — di 375px dua kolom
+   berarti kartu ±165px dengan tile 56px dan deskripsi 3 baris, terlalu
+   sesak. Nomor 01–04 hanya watermark. */
+.kn-grid {
   list-style: none;
   margin: 0;
-  padding: 4px 0;
+  padding: 0;
   display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+@media (min-width: 640px) { .kn-grid { grid-template-columns: 1fr 1fr; gap: 16px; } }
+@media (min-width: 1024px) { .kn-grid { grid-template-columns: 1.35fr 1fr 1fr 1fr; gap: 18px; } }
+
+.kn-kartu {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 24px 22px 22px;
   background: #fff;
   border: 1px solid var(--sf-garis);
-  border-radius: 20px;
+  border-radius: 18px;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
 }
-.b-alasan {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-  padding: 18px 20px;
-  position: relative;
-}
-.b-alasan + .b-alasan::before {
-  content: '';
+/* Garis emas tipis di atas kartu — muncul saat hover */
+.kn-kartu::before {
+  content: "";
   position: absolute;
   top: 0;
-  left: 20px;
-  right: 20px;
-  height: 1px;
-  background: #E8F0F8;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--sf-emas);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s ease;
+  z-index: 1;
 }
-.b-alasan > span:last-child { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.b-alasan strong { font-size: 16px; color: var(--sf-teks); line-height: 1.3; }
-.b-alasan > span:last-child span { font-size: 14px; line-height: 1.55; color: var(--sf-teks-2); }
-.b-alasan-ikon {
-  width: 44px;
-  height: 44px;
+.kn-kartu:hover { transform: translateY(-4px); border-color: #b9d3ec; box-shadow: 0 18px 36px rgba(6, 47, 89, 0.12); }
+.kn-kartu:hover::before { transform: scaleX(1); }
+
+.kn-kartu.utama {
+  color: #fff;
+  border-color: transparent;
+  background:
+    radial-gradient(rgba(255, 255, 255, 0.09) 1px, transparent 1.4px) 0 0 / 14px 14px,
+    radial-gradient(120% 90% at 100% 0%, rgba(8, 126, 245, 0.35) 0%, rgba(8, 126, 245, 0) 60%),
+    linear-gradient(155deg, var(--sf-navy) 0%, #0A4A86 100%);
+  box-shadow: 0 14px 32px rgba(6, 47, 89, 0.22);
+}
+.kn-kartu.utama:hover { border-color: transparent; box-shadow: 0 22px 44px rgba(6, 47, 89, 0.3); }
+
+.kn-nomor {
+  position: absolute;
+  top: 6px;
+  right: 16px;
+  z-index: -1;
+  font-size: 64px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -3px;
+  font-variant-numeric: tabular-nums;
+  color: var(--sf-navy);
+  opacity: 0.06;
+  pointer-events: none;
+}
+.kn-kartu.utama .kn-nomor { color: #fff; opacity: 0.1; }
+
+.kn-ikon {
+  width: 60px;
+  height: 60px;
+  margin-bottom: 8px;
   flex-shrink: 0;
-  border-radius: 12px;
-  background: var(--sf-biru-muda);
-  color: var(--sf-biru);
+  border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
+  color: var(--sf-biru);
+  background: linear-gradient(145deg, var(--sf-biru-muda) 0%, #fff 100%);
+  border: 1px solid #DCEAF7;
+  transition: transform 0.25s ease;
 }
-@media (min-width: 640px) {
-  .b-kenapa-daftar { grid-template-columns: 1fr 1fr; padding: 0; }
-  .b-alasan { padding: 22px 24px; }
-  .b-alasan + .b-alasan::before { display: none; }
-  .b-alasan:nth-child(n + 3) { border-top: 1px solid #E8F0F8; }
-  .b-alasan:nth-child(even) { border-left: 1px solid #E8F0F8; }
+.kn-kartu:hover .kn-ikon { transform: scale(1.08); }
+.kn-kartu.utama .kn-ikon {
+  color: var(--sf-navy);
+  border: 0;
+  background: linear-gradient(145deg, #FFD36B 0%, var(--sf-emas) 55%, #E8930C 100%);
+  box-shadow: 0 8px 20px rgba(255, 181, 27, 0.3);
 }
-@media (min-width: 1024px) {
-  .b-kenapa-daftar { grid-template-columns: repeat(4, 1fr); }
-  .b-alasan { padding: 24px; }
-  .b-alasan:nth-child(n + 3) { border-top: none; }
-  .b-alasan + .b-alasan { border-left: 1px solid #E8F0F8; }
+
+.kn-judul { margin: 0; font-size: 17px; font-weight: 800; line-height: 1.3; color: var(--sf-teks); }
+.kn-isi { margin: 0; font-size: 14px; line-height: 1.6; color: var(--sf-teks-2); }
+.kn-kartu.utama .kn-judul { color: #fff; }
+.kn-kartu.utama .kn-isi { color: rgba(255, 255, 255, 0.78); }
+
+/* Angka nyata dari statistik hero, didorong ke dasar kartu */
+.kn-angka {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin: auto 0 0;
+  padding-top: 14px;
+}
+.kn-angka strong {
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -1px;
+  font-variant-numeric: tabular-nums;
+  color: var(--sf-biru);
+}
+.kn-angka span { font-size: 12.5px; font-weight: 600; color: var(--sf-teks-2); }
+.kn-kartu.utama .kn-angka strong { color: var(--sf-emas); }
+.kn-kartu.utama .kn-angka span { color: rgba(255, 255, 255, 0.75); }
+
+/* Animasi masuk — class dipasang JS (KenapaSuperfive), sekali saja. Tanpa JS
+   atau dengan reduced-motion, kartu tampil biasa */
+.kn-siap .kn-kartu { opacity: 0; transform: translateY(16px); }
+.kn-siap.kn-masuk .kn-kartu {
+  opacity: 1;
+  transform: none;
+  transition: opacity 0.5s ease, transform 0.5s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  transition-delay: calc(var(--kn-i, 0) * 90ms), calc(var(--kn-i, 0) * 90ms), 0s, 0s;
+}
+.kn-siap.kn-masuk .kn-kartu:hover { transform: translateY(-4px); transition-delay: 0s; }
+
+@media (max-width: 639px) {
+  .kn-kartu { padding: 20px 18px 18px; }
+  .kn-ikon { width: 54px; height: 54px; border-radius: 14px; margin-bottom: 4px; }
+  .kn-nomor { font-size: 52px; }
+  .kn-angka strong { font-size: 30px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .kn-kartu, .kn-kartu::before, .kn-ikon { transition: none; }
+  .kn-kartu:hover, .kn-kartu:hover .kn-ikon { transform: none; }
+  .kn-siap .kn-kartu { opacity: 1; transform: none; }
 }
 
 /* ── Ajakan berjualan — banner tipis (revisi Oktober 2026) ──
