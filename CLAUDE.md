@@ -747,13 +747,25 @@ pengunjung kalau `alumni_direktori` gagal dimuat; tampilan utamanya
 `produk.kategori` — lihat
 [Kategori ditulis di DUA tempat](#-kategori-ditulis-di-dua-tempat--ubah-keduanya-bersamaan).
 
-**Tidak ada form buat/edit toko.** Barisnya dibuat sekali secara otomatis saat
-produk pertama disimpan ([/produk/tambah](app/produk/tambah/page.tsx)), dan
-kategorinya diambil dari kategori produk itu — jadi pemeriksaan kategori di
-form tambah harus berjalan **sebelum** insert toko, bukan hanya sebelum insert
-produk. Satu-satunya penyuntingan toko dari UI ada di
-[/toko/[id]](app/toko/[id]/page.tsx), dan itu hanya menyentuh `nama_toko` dan
-`deskripsi`.
+**Satu toko per penjual, dibuat saat pengajuan penjual disetujui** (sejak
+Oktober 2026). `putuskan_penjual` membuat barisnya dengan `nama_toko` = nama
+penjual dan `kategori` = `'UMKM'`; UNIQUE index di `toko.seller_id` menjaga
+satu-satunya. Sebelumnya toko baru dibuat saat produk pertama disimpan.
+
+- [/produk/tambah](app/produk/tambah/page.tsx) mengambil tokonya lewat
+  `ambilAtauBuatTokoSaya()` di [lib/toko.ts](lib/toko.ts): pakai yang ada,
+  dan hanya **membuat sebagai cadangan** (penjual yang disetujui sebelum
+  migrasi), dengan bawaan yang sama. Cadangan yang mendapat 23505 (kalah
+  balapan dengan UNIQUE index) mengambil ulang toko yang ada, bukan gagal
+- **Jangan kembali ke `.single()` untuk mencari toko sendiri.** Versi lama
+  memakai `.single()` dan membaca error-nya sebagai "belum punya toko" — 0
+  baris maupun >1 baris sama-sama error, jadi penjual yang sudah punya dua
+  toko akan dibuatkan toko ketiga. Pakai `.limit(1).maybeSingle()`
+- Penyuntingan: **Pengaturan Toko** ([PengaturanToko](app/components/PengaturanToko.tsx))
+  di tab Toko dashboard (`/dashboard?tab=toko`) — nama, deskripsi, kategori,
+  foto (diunggah ke bucket `produk-foto`). UPDATE langsung, RLS
+  `toko_update_own`. [/toko/[id]](app/toko/[id]/page.tsx) masih punya sunting
+  cepat nama + deskripsi untuk pemilik
 
 `is_official` menandai toko resmi INILIMA. Pengaruhnya ke UI:
 
@@ -791,23 +803,30 @@ terlihat sudah RLS, jadi `count` polos memang angka yang benar.
 Kalau menambah permukaan daftar produk baru, penyaring ini ikut — dan
 sebutkan di tabel ini.
 
-### Toko tanpa produk disembunyikan dari daftar publik (sejak 13 Oktober 2026)
+### ⚠ ETALASE-KLIMAX: toko tanpa produk SENGAJA ditampilkan (sampai setelah 17 Oktober 2026)
 
-Penjual yang baru disetujui umumnya belum mengisi tokonya. Toko seperti itu
-**tidak tampil di daftar publik mana pun**, disaring di query dengan
-`produk!inner(id)` (embed dibatasi `.limit(1, { referencedTable: 'produk' })`,
-isinya tidak dipakai). Karena embed ikut RLS `produk`, yang dihitung hanya
-produk yang memang terlihat pembacanya.
+Sejak toko dibuat saat persetujuan, banyak toko tayang sebelum punya produk.
+Menjelang reuni 17 Oktober itu **sengaja ditampilkan** di daftar publik, dan
+kartunya berbunyi "Belum menambahkan produk" alih-alih "0 produk". Tiap
+lokasi ditandai komentar `ETALASE-KLIMAX` — cari itu untuk meninjau ulang:
 
-| Permukaan | Disaring |
+```bash
+grep -rn "ETALASE-KLIMAX" app
+```
+
+| Permukaan | Sekarang |
 |---|---|
-| hasil toko di [SearchOverlay](app/components/SearchOverlay.tsx) | ya |
-| hitungan TOKO di hero beranda | ya — `count` dengan `!inner` tetap menghitung baris toko (dicek lewat REST) |
-| "Punya toko · N produk" di [/alumni](app/alumni/page.tsx) | ya |
-| kartu toko di [/alumni/[id]](app/alumni/[id]/page.tsx) | ya |
-| [/toko/[id]](app/toko/[id]/page.tsx) | **tidak** — tautan langsung tetap terbuka, dengan state kosong |
+| hasil toko di [SearchOverlay](app/components/SearchOverlay.tsx) | tampil; `produk(count)` untuk label kosongnya |
+| hitungan TOKO di hero beranda | semua toko yang terlihat |
+| "Punya toko · …" di [/alumni](app/alumni/page.tsx) | tampil, "Belum menambahkan produk" kalau 0 |
+| kartu toko di [/alumni/[id]](app/alumni/[id]/page.tsx) | tampil, "Belum menambahkan produk" di raknya |
+| [/toko/[id]](app/toko/[id]/page.tsx) | selalu terbuka, dengan state kosong |
 
-Permukaan daftar toko baru ikut aturan ini.
+Untuk menyembunyikannya lagi (13–14 Oktober 2026 sempat begitu): kembalikan
+`produk!inner(id)` di query toko, dengan embed dibatasi
+`.limit(1, { referencedTable: 'produk' })`. `count` dengan `!inner` tetap
+menghitung baris toko, bukan hasil join (sudah dicek lewat REST). Karena
+embed ikut RLS `produk`, yang dihitung hanya produk yang terlihat pembacanya.
 
 #### Kosongnya harus terbaca sengaja
 
