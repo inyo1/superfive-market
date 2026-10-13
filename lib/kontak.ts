@@ -60,7 +60,66 @@ export function tampilkanWA(nomor: string | null | undefined): string {
   return `+62 ${bagian}`
 }
 
-/** Membuang '@' dan URL lengkap dari username Instagram yang ditempel orang. */
+export const PESAN_IG_TIDAK_VALID =
+  'Username Instagram cuma boleh huruf, angka, titik, dan underscore, tanpa spasi. Contoh: inilima.shop'
+
+export const PESAN_WA_TIDAK_VALID = 'Nomor WhatsApp tidak valid.'
+
+export type HasilIG =
+  | { ok: true; username: string | null }
+  | { ok: false; pesan: string }
+
+/**
+ * Menormalkan username Instagram ke bentuk yang diterima CHECK
+ * `toko_kontak_ig_format`: null, atau `^[A-Za-z0-9._]{1,30}$`.
+ *
+ * Link profil yang ditempel (instagram.com/x, instagr.am/x — dengan atau
+ * tanpa https://, www., garis miring akhir, query string) diambil segmen
+ * username-nya, lalu '@' di depan dibuang.
+ *
+ * Kosong jadi NULL, bukan '' — string kosong gagal `{1,30}` di database.
+ * Spasi di TENGAH sengaja tidak dibuang diam-diam: "INILIMA SHOP" bisa jadi
+ * "INILIMASHOP" atau "INILIMA_SHOP", dan menebak yang mana berarti menyimpan
+ * akun orang lain. Penjual diminta membetulkannya sendiri.
+ */
+export function normalisasiUsernameIG(masukan: string | null | undefined): HasilIG {
+  let teks = (masukan ?? '').trim()
+
+  const dariUrl = teks.match(
+    /^(?:https?:\/\/)?(?:www\.|m\.)?(?:instagram\.com|instagr\.am)\/([^/?#]*)/i,
+  )
+  if (dariUrl) teks = dariUrl[1]
+
+  teks = teks.replace(/^@/, '')
+  if (!teks) return { ok: true, username: null }
+
+  if (!/^[A-Za-z0-9._]{1,30}$/.test(teks)) {
+    return { ok: false, pesan: PESAN_IG_TIDAK_VALID }
+  }
+  return { ok: true, username: teks }
+}
+
+/**
+ * Pesan ramah untuk pelanggaran CHECK `toko_kontak` (kode 23514), supaya
+ * yang terbaca penjual kalimat, bukan bunyi constraint Postgres. Mengembalikan
+ * kolom yang salah supaya pesannya bisa ditaruh di bawah kolomnya.
+ */
+export function pesanPelanggaranKontak(
+  error: { code?: string; message?: string; details?: string } | null | undefined,
+): { kolom: 'ig' | 'wa' | 'link' | null; pesan: string } | null {
+  if (!error || error.code !== '23514') return null
+  const teks = `${error.message ?? ''} ${error.details ?? ''}`
+  if (teks.includes('toko_kontak_ig_format')) return { kolom: 'ig', pesan: PESAN_IG_TIDAK_VALID }
+  if (teks.includes('toko_kontak_wa_format')) return { kolom: 'wa', pesan: PESAN_WA_TIDAK_VALID }
+  if (teks.includes('toko_kontak_link_format')) return { kolom: 'link', pesan: 'Link tidak valid.' }
+  return { kolom: null, pesan: 'Ada isian kontak yang tidak valid. Periksa lagi, lalu simpan ulang.' }
+}
+
+/**
+ * Membuang '@' dan URL lengkap dari username Instagram yang ditempel orang.
+ * Hanya untuk MEMBACA nilai lama (urlInstagram). Form penyimpanan memakai
+ * normalisasiUsernameIG, yang juga memvalidasi.
+ */
 export function normalisasiIG(masukan: string): string {
   return (masukan ?? '')
     .trim()
