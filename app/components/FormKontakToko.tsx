@@ -45,6 +45,9 @@ export default function FormKontakToko({ tokoId }: { tokoId: string }) {
   const [galatWa, setGalatWa] = useState<string | null>(null)
   const [galatLink, setGalatLink] = useState<string | null>(null)
   const [galatIg, setGalatIg] = useState<string | null>(null)
+  // Nomor yang diisikan dari profil sebagai saran, belum tersimpan. Hilang
+  // begitu penjual mengubah kolomnya atau menyimpan
+  const [saranWa, setSaranWa] = useState<string | null>(null)
   const adaGalatKolom = Boolean(galatWa || galatIg || galatLink)
 
   useEffect(() => {
@@ -60,14 +63,28 @@ export default function FormKontakToko({ tokoId }: { tokoId: string }) {
 
       if (!hidup) return
       if (error) toast.error('Gagal memuat kontak toko: ' + error.message)
-      if (data) {
-        setNilai({
-          no_wa: data.no_wa ?? '',
-          ig_username: data.ig_username ?? '',
-          link_lain: data.link_lain ?? '',
-          pesan_awal: data.pesan_awal ?? '',
-        })
+      const isi: Kontak = {
+        no_wa: data?.no_wa ?? '',
+        ig_username: data?.ig_username ?? '',
+        link_lain: data?.link_lain ?? '',
+        pesan_awal: data?.pesan_awal ?? '',
       }
+
+      // Nomor toko masih kosong → SARANKAN nomor pribadi dari profil
+      // (users.no_hp). Hanya mengisi kolomnya; tidak ada yang tersimpan
+      // sampai penjual menekan Simpan Kontak, karena nomor toko TAMPIL
+      // publik sedangkan no_hp tidak — penjual yang memutuskan.
+      if (!error && !isi.no_wa) {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const { data: saya } = await supabase.from('users').select('no_hp').eq('id', user.id).maybeSingle()
+          if (!hidup) return
+          const saran = saya?.no_hp?.trim()
+          if (saran) { isi.no_wa = saran; setSaranWa(saran) }
+        }
+      }
+      if (!hidup) return
+      setNilai(isi)
       setMemuat(false)
     }
     muat()
@@ -79,7 +96,7 @@ export default function FormKontakToko({ tokoId }: { tokoId: string }) {
 
   function ubah<K extends keyof Kontak>(kunci: K, v: string) {
     setNilai(prev => ({ ...prev, [kunci]: v }))
-    if (kunci === 'no_wa') setGalatWa(null)
+    if (kunci === 'no_wa') { setGalatWa(null); setSaranWa(null) }
     if (kunci === 'link_lain') setGalatLink(null)
     if (kunci === 'ig_username') setGalatIg(null)
   }
@@ -156,6 +173,7 @@ export default function FormKontakToko({ tokoId }: { tokoId: string }) {
       setNilai(prev => ({
         ...prev, no_wa: waBersih ?? '', ig_username: ig ?? '', link_lain: linkBersih ?? '',
       }))
+      setSaranWa(null)
       toast.sukses('Kontak toko tersimpan.')
     } finally {
       setMenyimpan(false)
@@ -191,6 +209,11 @@ export default function FormKontakToko({ tokoId }: { tokoId: string }) {
         />
         {galatWa ? (
           <div style={{ ...gayaBantuan, color: '#c62828' }}>{galatWa}</div>
+        ) : saranWa ? (
+          // Saran dari profil, BELUM tersimpan — jadi bukan "Tersimpan sebagai"
+          <div style={{ ...gayaBantuan, color: '#8d6e26' }}>
+            Diisi dari nomor di profilmu. Nomor ini akan tampil di halaman toko.
+          </div>
         ) : (
           <div style={gayaBantuan}>
             Boleh ditulis 08…, +62…, atau 62… — nanti dirapikan otomatis.

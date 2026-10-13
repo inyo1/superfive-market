@@ -346,6 +346,20 @@ metadata, diubah dari sakelar di [/profil](app/profil/page.tsx). Satu-satunya
 pembacanya `alumni_direktori` — kolomnya tidak ikut ke view lain mana pun.
 Lihat [`alumni_direktori`](#alumni_direktori-view--direktori-untuk-pengunjung-opt-in).
 
+**`no_hp` = nomor WhatsApp PRIBADI, tidak tampil publik** (sejak Oktober
+2026 dijaga CHECK `^62[0-9]{8,13}$`, sama dengan `toko_kontak.no_wa`). Dipakai
+admin mengabari hasil pengajuan penjual ("Kabari via WA" di
+[/admin/penjual](app/admin/penjual/page.tsx), pesannya `pesanKabarPenjual()`).
+Ditulis dari tiga tempat, semuanya dinormalkan ke 62… lewat
+[lib/kontak.ts](lib/kontak.ts): /profil (`normalisasiWAOpsional`, kosong →
+null), /jual (`normalisasiWA`, WAJIB, satu UPDATE bersama kota sebelum
+`ajukan_jadi_penjual`), dan banner lengkapi-nomor di
+[BannerPenjual](app/components/BannerPenjual.tsx) untuk penjual aktif/menunggu
+yang belum mengisinya. **Jangan pernah menampilkannya di permukaan publik** —
+nomor publik toko adalah `toko_kontak.no_wa`. [FormKontakToko](app/components/FormKontakToko.tsx)
+hanya MENYARANKAN `no_hp` sebagai isi awal nomor toko yang masih kosong;
+tersimpan baru setelah penjual menekan Simpan Kontak.
+
 Alamat disimpan terpisah per bagian, lalu dirangkai jadi satu string saat checkout
 (lihat `buildAlamat` di [app/checkout/page.tsx](app/checkout/page.tsx)).
 
