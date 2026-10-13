@@ -38,6 +38,11 @@ type Props = {
   tersimpan?: { provinsi?: string | null; kota?: string | null; kecamatan?: string | null; kelurahan?: string | null }
   /** Dipanggil hanya kalau pengguna benar-benar mengubah pilihannya */
   onChange: (nilai: NilaiWilayah) => void
+  /**
+   * Berapa tingkat yang ditampilkan. 2 = sampai Kota/Kabupaten saja (dipakai
+   * /jual untuk kota asal); `kode` kelurahan karena itu selalu null.
+   */
+  tingkat?: 2 | 4
 }
 
 const LABEL = ['Provinsi', 'Kota / Kabupaten', 'Kecamatan', 'Kelurahan / Desa'] as const
@@ -58,7 +63,8 @@ function rantaiKode(kode: string): string[] {
   return bagian.map((_, i) => bagian.slice(0, i + 1).join('.'))
 }
 
-export default function PilihWilayah({ kodeAwal = null, tersimpan, onChange }: Props) {
+export default function PilihWilayah({ kodeAwal = null, tersimpan, onChange, tingkat = 4 }: Props) {
+  const daftarLabel = LABEL.slice(0, tingkat)
   // Indeks 0..3 = tingkat 1..4
   const [pilihan, setPilihan] = useState<(Baris | null)[]>([null, null, null, null])
   const [opsi, setOpsi] = useState<(Baris[] | null)[]>([null, null, null, null])
@@ -146,14 +152,14 @@ export default function PilihWilayah({ kodeAwal = null, tersimpan, onChange }: P
         </div>
       )}
 
-      {LABEL.map((label, i) => {
+      {daftarLabel.map((label, i) => {
         // Tingkat pertama selalu hidup; sisanya menunggu induknya dipilih
         const mati = i > 0 && !pilihan[i - 1]
         const daftar = opsi[i]
         const terpilih = pilihan[i]
 
         return (
-          <div key={label} style={{ marginBottom: i === LABEL.length - 1 ? 0 : '12px' }}>
+          <div key={label} style={{ marginBottom: i === daftarLabel.length - 1 ? 0 : '12px' }}>
             <label htmlFor={`wilayah-${i}`} style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '6px' }}>
               {label}
             </label>

@@ -88,7 +88,7 @@ Yang berubah bersamaan:
 | label angkatan | kolom `label_angkatan` ("Superfive 92") di view. **Jangan merangkainya di klien**, kecuali opsi dropdown di [PilihAngkatan](app/components/PilihAngkatan.tsx) |
 | `alumni_publik` | **hanya `authenticated`**. Permukaan publik pakai `penjual_publik`, `alumni_direktori`, atau `angkatan_ringkas` |
 | `/alumni` | dua sumber (sejak 10 Okt 2026): anon membaca `alumni_direktori` — hanya alumni yang opt-in lewat `users.tampil_publik` — yang login membaca `alumni_publik` (semua alumni) |
-| `/jual` | rekening dan "kota asal" (masuk ke `alamat_lengkap`) opsional; aturan penjual versi katalog |
+| `/jual` | rekening dan "kota asal" (masuk ke `users.kota`) opsional; aturan penjual versi katalog |
 
 `TombolLapor` **sengaja mati**: ia mengembalikan null selama
 `NEXT_PUBLIC_WA_LAPOR` kosong. `.env.local` berisi `9990000000` (kode negara
@@ -1641,7 +1641,7 @@ Pintu berjualan. Dipanggil dari [/jual](app/jual/page.tsx).
 
 ```ts
 const { error } = await supabase.rpc('ajukan_jadi_penjual', {
-  p_alamat:         kotaAsal || null,   // OPSIONAL — UI mengisinya dengan kota asal
+  p_alamat:         null,               // /jual SELALU null — kota asal ke users.kota
   p_bank_nama:      null,               // OPSIONAL
   p_bank_rekening:  null,               // OPSIONAL
   p_bank_atas_nama: null,               // OPSIONAL
@@ -1652,9 +1652,24 @@ const { error } = await supabase.rpc('ajukan_jadi_penjual', {
 
 **Rekening dan alamat tidak wajib** sejak mode katalog — tidak ada pembayaran
 maupun ekspedisi lewat platform. Isian kosong (NULL atau spasi) **tidak
-menimpa** nilai lama; RPC-nya memakai `coalesce`. UI menanyakan "kota asal",
-dan nilainya masuk ke `alamat_lengkap` karena RPC ini tidak punya kolom kota
-tersendiri — diterima apa adanya untuk peluncuran.
+menimpa** nilai lama; RPC-nya memakai `coalesce`.
+
+**Kota asal disimpan ke `users.kota`, bukan lewat `p_alamat`** (sejak 13
+Oktober 2026). `users.kota` itu kolom yang sama dengan form profil
+("Kota Bandung", dari tabel `wilayah`) dan yang dibaca `info_toko_publik`
+untuk kartu toko. Sebelumnya /jual mengirimnya lewat `p_alamat`, sehingga
+mendarat di `alamat_lengkap` dan tidak pernah tampil di mana pun sebagai
+kota. /jual hanya menampilkan pemilih Provinsi → Kota (`PilihWilayah
+tingkat={2}`) kalau kota profil masih kosong; kalau sudah ada, ditampilkan
+baca-saja dengan tautan ke /profil — mengganti kota dari /jual akan membuat
+kecamatan/kelurahan/`wilayah_kode` profil menunjuk kota lain.
+
+Penyimpanannya **dua permintaan** (UPDATE `users.kota`, lalu RPC), menyimpang
+dari [aturan satu permintaan](#aturan-satu-tindakan-pengguna--satu-permintaan),
+karena RPC ini belum punya parameter kota. Kota disimpan lebih dulu: kalau
+pengajuannya ditolak, yang tertinggal hanya kota di profil sendiri. Perbaikan
+sebenarnya: tambah `p_kota` ke RPC ini (migrasi, dikerjakan Inyo), lalu /jual
+kembali ke satu panggilan.
 
 Aturan yang disetujui penjual di [/jual](app/jual/page.tsx) adalah aturan
 katalog: kontak aktif, membalas calon pembeli dengan wajar, dan transaksi

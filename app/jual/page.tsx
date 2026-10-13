@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabase'
 import Navbar from '../components/Navbar'
 import Skeleton, { SkeletonPanel } from '../components/Skeleton'
 import Tombol from '../components/Tombol'
+import PilihWilayah from '../components/PilihWilayah'
 import { useTampilSkeleton } from '../hooks/useSkeleton'
 
 // Pintu berjualan — satu-satunya pagar yang tersisa setelah verifikasi dipecah
@@ -44,7 +45,11 @@ export default function JualPage() {
   const [statusPenjual, setStatusPenjual] = useState<string | null>(null)
   const [alasanPenjual, setAlasanPenjual] = useState<string | null>(null)
 
-  const [kotaAsal, setKotaAsal] = useState('')
+  const [userId, setUserId] = useState<string | null>(null)
+  // Kota dari profil (users.kota). Kalau sudah ada, /jual tidak mengubahnya —
+  // lihat catatan di bagian Kota Asal
+  const [kotaTersimpan, setKotaTersimpan] = useState<string | null>(null)
+  const [pilihanKota, setPilihanKota] = useState<{ provinsi: string | null; kota: string | null }>({ provinsi: null, kota: null })
   const [bankNama, setBankNama] = useState('')
   const [bankRekening, setBankRekening] = useState('')
   const [bankAtasNama, setBankAtasNama] = useState('')
@@ -67,13 +72,14 @@ export default function JualPage() {
         .eq('id', user.id)
         .single()
 
+      setUserId(user.id)
       if (data) {
         setNamaAkun(data.nama ?? '')
         setStatusAlumni(data.status_alumni ?? 'umum')
         setStatusPenjual(data.status_penjual ?? 'belum_ajukan')
         setAlasanPenjual(data.alasan_penjual ?? null)
         // Kota asal dipakai ulang dari profil supaya tidak diketik dua kali
-        setKotaAsal(data.kota ?? '')
+        setKotaTersimpan(data.kota?.trim() || null)
         setBankNama(data.bank_nama ?? '')
         setBankRekening(data.bank_rekening ?? '')
         setBankAtasNama(data.bank_atas_nama ?? '')
@@ -87,13 +93,37 @@ export default function JualPage() {
     setMengirim(true)
     setPesan(null)
     try {
-      // Mode katalog: tidak ada pembayaran lewat platform dan tidak ada
-      // ekspedisi, jadi kota asal dan rekening OPSIONAL. Isian kosong dikirim
-      // sebagai null — RPC-nya mempertahankan nilai lama untuk yang kosong.
-      // Kota asal masuk ke p_alamat (kolom alamat_lengkap); tidak ada kolom
-      // kota tersendiri di RPC ini.
+      // Kota asal disimpan ke users.kota — kolom yang sama dengan form profil
+      // dan yang dibaca info_toko_publik untuk kartu toko. BUKAN lewat
+      // p_alamat: itu menulis alamat_lengkap, yang tidak dibaca siapa pun
+      // sebagai kota.
+      //
+      // Ini dua permintaan, menyimpang dari aturan "satu tindakan = satu
+      // permintaan", karena ajukan_jadi_penjual belum punya parameter kota
+      // (perlu migrasi, dikerjakan Inyo). Urutannya disengaja: kota dulu.
+      // Kalau pengajuannya ditolak sesudahnya, yang tertinggal hanya kota di
+      // profil milik sendiri — data sah yang memang ingin ia simpan, bukan
+      // keadaan setengah jadi. Kebalikannya (pengajuan dulu, kota gagal)
+      // meninggalkan pengajuan tanpa kota tanpa ada yang tahu.
+      if (!kotaTersimpan && pilihanKota.kota && userId) {
+        const { data: tersimpan, error: galatKota } = await supabase
+          .from('users')
+          .update({ kota: pilihanKota.kota, provinsi: pilihanKota.provinsi })
+          .eq('id', userId)
+          .select('kota')
+        if (galatKota) throw new Error('Gagal menyimpan kota asal: ' + galatKota.message)
+        // RLS yang menolak UPDATE tidak melempar error — barisnya saja yang
+        // tidak kembali. Jangan anggap tersimpan tanpa melihatnya.
+        if (!tersimpan?.length) throw new Error('Gagal menyimpan kota asal. Coba lagi.')
+        setKotaTersimpan(pilihanKota.kota)
+      }
+
+      // Mode katalog: tidak ada pembayaran lewat platform, jadi rekening
+      // OPSIONAL. Isian kosong dikirim sebagai null — RPC-nya mempertahankan
+      // nilai lama untuk yang kosong. p_alamat sengaja null: alamat_lengkap
+      // tidak lagi diisi dari sini.
       const { error } = await supabase.rpc('ajukan_jadi_penjual', {
-        p_alamat: kotaAsal.trim() || null,
+        p_alamat: null,
         p_bank_nama: bankNama.trim() || null,
         p_bank_rekening: bankRekening.trim() || null,
         p_bank_atas_nama: bankAtasNama.trim() || null,
@@ -237,21 +267,31 @@ export default function JualPage() {
         </div>
       )}
 
-      {/* Kota asal — dulu alamat lengkap untuk penjemputan kurir. Sejak mode
-          katalog tidak ada ekspedisi lewat platform, jadi cukup kotanya. */}
+      {/* Kota asal → users.kota, dipilih dari tabel wilayah supaya bentuknya
+          sama dengan profil ("Kota Bandung", bukan "Bandung").
+
+          Kalau profil sudah punya kota, di sini hanya DITAMPILKAN. Mengganti
+          kota dari /jual akan membuat kecamatan, kelurahan, dan wilayah_kode
+          di profil menunjuk kota yang lain; tempat mengubah alamat utuh
+          tetap /profil. */}
       <div style={KOTAK}>
-        <label htmlFor="kota-asal" style={LABEL}>Kota Asal <span style={{ fontWeight: '400', color: '#9ab4cc' }}>(opsional)</span></label>
+        <div style={LABEL}>Kota Asal <span style={{ fontWeight: '400', color: '#9ab4cc' }}>(opsional)</span></div>
         <div style={KETERANGAN}>
-          Membantu pembeli memperkirakan ongkir saat menghubungimu.
+          Tampil di halaman tokomu, membantu pembeli memperkirakan ongkir.
         </div>
-        <input
-          id="kota-asal"
-          value={kotaAsal}
-          onChange={e => setKotaAsal(e.target.value)}
-          placeholder="Bandung"
-          autoComplete="address-level2"
-          style={ISIAN}
-        />
+        {kotaTersimpan ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', ...ISIAN, background: '#f8fbff' }}>
+            <span style={{ color: '#1a1a1a' }}>{kotaTersimpan}</span>
+            <Link href="/profil" style={{ fontSize: '12px', color: '#0C447C', fontWeight: '600', textDecoration: 'none', flexShrink: 0 }}>
+              Ubah di Profil
+            </Link>
+          </div>
+        ) : (
+          <PilihWilayah
+            tingkat={2}
+            onChange={n => setPilihanKota({ provinsi: n.provinsi, kota: n.kota })}
+          />
+        )}
       </div>
 
       {/* Rekening — opsional di mode katalog: pembayaran terjadi langsung
