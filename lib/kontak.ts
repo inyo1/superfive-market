@@ -52,6 +52,20 @@ export function normalisasiWA(masukan: string): HasilNomor {
   return { ok: true, nomor: n }
 }
 
+export type HasilNomorOpsional =
+  | { ok: true; nomor: string | null }
+  | { ok: false; pesan: string }
+
+/**
+ * normalisasiWA untuk kolom yang BOLEH kosong (`users.no_hp`): kosong → null,
+ * bukan galat dan bukan ''. Yang diisi dinormalkan ke 62…, sama persis
+ * dengan nomor toko, supaya keduanya lolos CHECK `^62[0-9]{8,13}$`.
+ */
+export function normalisasiWAOpsional(masukan: string | null | undefined): HasilNomorOpsional {
+  if (!(masukan ?? '').replace(/[\s\-().]/g, '')) return { ok: true, nomor: null }
+  return normalisasiWA(masukan ?? '')
+}
+
 /**
  * Tampilan nomor yang enak dibaca: `6281322305799` → `+62 813-2230-5799`.
  *
@@ -227,6 +241,29 @@ export function normalisasiLink(masukan: string | null | undefined): HasilLink {
     return { ok: false, pesan: PESAN_LINK_TIDAK_VALID }
   }
   return { ok: true, link }
+}
+
+/**
+ * Pesan admin ke penjual setelah pengajuannya diputuskan, untuk tombol
+ * "Kabari via WA" di /admin/penjual. null untuk status yang belum punya
+ * keputusan (menunggu) — tidak ada yang perlu dikabarkan.
+ */
+export function pesanKabarPenjual(
+  nama: string | null | undefined,
+  status: string,
+  alasan: string | null | undefined,
+): string | null {
+  const sapaan = nama?.trim() || 'Kak'
+  if (status === 'aktif') {
+    return `Halo ${sapaan}, pengajuanmu sebagai penjual di Superfive Market sudah DISETUJUI 🎉 Tokomu sudah dibuat otomatis. Langkah selanjutnya: masuk ke superfivemarket.com, buka Dashboard > tab Toko untuk ganti nama toko, kategori, foto, dan kontak WhatsApp, lalu tambahkan produk pertamamu. Tokomu akan tampil selama KLIMAX FEST 17 Oktober 2026. — Admin Superfive Market`
+  }
+  if (status === 'ditolak' || status === 'dibekukan') {
+    // Alasan wajib di putuskan_penjual untuk kedua status ini; cadangan
+    // supaya kalimatnya tidak berbunyi "pengajuan penjualmu: ."
+    const isi = alasan?.trim() || (status === 'ditolak' ? 'pengajuanmu belum bisa kami setujui' : 'akun penjualmu sedang dibekukan')
+    return `Halo ${sapaan}, terkait pengajuan penjualmu di Superfive Market: ${isi}. Kalau ada pertanyaan, balas pesan ini. — Admin Superfive Market`
+  }
+  return null
 }
 
 /** URL wa.me lengkap. Teksnya dienkode utuh, termasuk spasi dan tanda baca. */

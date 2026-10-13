@@ -10,6 +10,7 @@ import Tombol from '../components/Tombol'
 import PilihWilayah from '../components/PilihWilayah'
 import { useTampilSkeleton } from '../hooks/useSkeleton'
 import { JENIS_AVATAR, hapusAvatar, jalurAvatarDariUrl, unggahAvatar } from '../../lib/avatar'
+import { normalisasiWAOpsional } from '../../lib/kontak'
 
 export default function ProfilPage() {
   const router = useRouter()
@@ -18,6 +19,7 @@ export default function ProfilPage() {
   const [nama, setNama] = useState('')
   const [labelAngkatan, setLabelAngkatan] = useState<string | null>(null)
   const [noHp, setNoHp] = useState('')
+  const [galatHp, setGalatHp] = useState<string | null>(null)
   const [jalan, setJalan] = useState('')
   const [kelurahan, setKelurahan] = useState('')
   const [kecamatan, setKecamatan] = useState('')
@@ -135,6 +137,14 @@ export default function ProfilPage() {
   // benar, yang tertinggal hanya berkas lama di folder sendiri.
   async function handleSave() {
     if (!userId) return
+    // Nomor dinormalkan ke 62… sebelum apa pun disimpan (CHECK di
+    // users.no_hp). Kosong → null. Galatnya di bawah kolomnya, dan foto
+    // belum diunggah sama sekali kalau nomornya salah.
+    const hasilHp = normalisasiWAOpsional(noHp)
+    if (!hasilHp.ok) { setGalatHp(hasilHp.pesan); return }
+    setGalatHp(null)
+    const hpBersih = hasilHp.nomor
+
     setSaving(true)
     setPesan('')
 
@@ -160,7 +170,7 @@ export default function ProfilPage() {
           nama,
           // angkatan sengaja tidak ikut: hanya ajukan_alumni() yang mengisinya
           avatar_url: finalAvatarUrl,
-          no_hp: noHp || null,
+          no_hp: hpBersih,
           jalan: jalan || null,
           kelurahan: kelurahan || null,
           kecamatan: kecamatan || null,
@@ -194,6 +204,8 @@ export default function ProfilPage() {
       }
 
       setAvatarUrl(finalAvatarUrl)
+      // Tampilkan bentuk yang benar-benar tersimpan (62…), bukan yang diketik
+      setNoHp(hpBersih ?? '')
       setFile(null)
       setPreview(null)
       setPesan('Profil berhasil diperbarui!')
@@ -431,9 +443,16 @@ export default function ProfilPage() {
           <div style={{ fontSize: '11px', color: '#9ab4cc', marginBottom: '16px' }}>Ditampilkan ke pembeli supaya tahu lokasimu</div>
 
           <div style={{ marginBottom: '14px' }}>
-            <label style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '6px' }}>Nomor HP / WhatsApp</label>
-            <input value={noHp} onChange={e => setNoHp(e.target.value)} type="tel" inputMode="tel" placeholder="08xxxxxxxxxx"
-              style={{ width: '100%', padding: '10px 12px', border: '0.5px solid #c5d9ef', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
+            <label htmlFor="no-hp" style={{ fontSize: '12px', color: '#5a7da0', display: 'block', marginBottom: '6px' }}>Nomor HP / WhatsApp</label>
+            <input id="no-hp" value={noHp} onChange={e => { setNoHp(e.target.value); setGalatHp(null) }} type="tel" inputMode="tel" placeholder="08xxxxxxxxxx"
+              style={{ width: '100%', padding: '10px 12px', border: `0.5px solid ${galatHp ? '#f09595' : '#c5d9ef'}`, borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
+            {galatHp ? (
+              <div style={{ fontSize: '11px', color: '#c62828', marginTop: '4px' }}>{galatHp}</div>
+            ) : (
+              <div style={{ fontSize: '11px', color: '#9ab4cc', marginTop: '4px' }}>
+                Tidak ditampilkan ke publik. Boleh ditulis 08…, +62…, atau 62… — nanti dirapikan otomatis.
+              </div>
+            )}
           </div>
 
           <div style={{ marginBottom: '14px' }}>
