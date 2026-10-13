@@ -328,12 +328,16 @@ sakelar /profil "Sembunyikan profil saya dari Direktori Alumni publik"
 (ON = `false`) dan centang /auth dengan bunyi yang sama. Arti kolomnya tidak
 berubah — `true` tetap berarti tampil.
 
-**Jebakan: default kolom TIDAK dipakai pendaftaran.** `trg_buat_profil_baru`
-menulis kolomnya secara eksplisit dari metadata (hanya `'true'` yang berarti
-tampil), jadi tanpa kunci `tampil_publik` di metadata hasilnya tetap `false`.
-Karena itu /auth SELALU mengirim `tampil_publik` (`true` kecuali alumni
-mencentang sembunyikan). Jalur daftar lain yang tidak mengirim kuncinya akan
-menghasilkan `false` sampai trigger-nya diubah (migrasi, dikerjakan Inyo).
+**Trigger-nya juga opt-out.** `trg_buat_profil_baru` menulis kolomnya
+secara eksplisit dari metadata — jadi default kolom sebenarnya tidak pernah
+terpakai saat daftar — dengan aturan
+`coalesce(raw_user_meta_data->>'tampil_publik', 'true') <> 'false'`:
+**tampil kecuali metadata eksplisit `'false'`**. Tanpa kuncinya (jalur daftar
+lain, user dibuat dari dashboard) hasilnya `true`, sama dengan default kolom.
+Sebelum 13 Oktober 2026 aturannya kebalikan (hanya `'true'` yang tampil),
+dan itu yang dulu membuat default kolom tidak berarti apa-apa. /auth tetap
+selalu mengirim `tampil_publik` (`true` kecuali alumni mencentang
+sembunyikan) — tidak wajib lagi, tapi pilihannya jadi tertulis terang.
 
 Pilihan milik pemiliknya sendiri — **sengaja tidak masuk `jaga_field_sensitif`**,
 karena ini pilihan privasi, bukan kewenangan; pemiliknya harus bisa
@@ -2010,7 +2014,7 @@ Jangan tulis manual hal-hal di bawah ini dari aplikasi — sudah ditangani datab
 | `trg_jaga_toko_official` | BEFORE INSERT/UPDATE `toko` | Kembalikan `is_official` ke false / nilai lama kalau yang mengubah bukan admin |
 | `trg_jaga_field_sensitif` | BEFORE UPDATE `users` | Kembalikan 22 kolom kewenangan (`role`, `status_alumni`, `status_penjual`, dan seterusnya) ke nilai lama **diam-diam**, kecuali admin atau ada penanda `superfive.lewat_rpc` — ditambah `angkatan` kalau sudah alumni. Daftar kolomnya baca dari database, lihat [Keduanya dijaga](#keduanya-dijaga-jaga_field_sensitif) |
 | `trg_catat_riwayat_angkatan` | AFTER UPDATE OF angkatan `users` | Catat perubahan angkatan yang benar-benar terjadi ke `riwayat_angkatan` (`user_id`, `angkatan_lama`, `angkatan_baru`, `diubah_oleh` = `auth.uid()`, `diubah_at`). Tabelnya RLS, hanya bisa dibaca admin (`riwayat_angkatan_admin_read`), tanpa hak tulis untuk siapa pun |
-| `trg_buat_profil_baru` | AFTER INSERT `auth.users` | Buat baris `public.users` (`id`, `email`, `nama` dari metadata, `tampil_publik`). `tampil_publik` hanya true kalau metadata `tampil_publik` bernilai `true` / `"true"` — tanpa kuncinya (pendaftaran tanpa centang, atau jalur daftar lain) hasilnya false. Hanya dibaca saat INSERT; mengubah metadata sesudahnya tidak berefek. `ON CONFLICT DO NOTHING`, jadi aman terhadap baris yang sudah ada |
+| `trg_buat_profil_baru` | AFTER INSERT `auth.users` | Buat baris `public.users` (`id`, `email`, `nama` dari metadata, `tampil_publik`). `tampil_publik` true **kecuali** metadata `tampil_publik` bernilai `false` / `"false"` — tanpa kuncinya (jalur daftar lain) hasilnya true (opt-out, sejak 13 Okt 2026). Hanya dibaca saat INSERT; mengubah metadata sesudahnya tidak berefek. `ON CONFLICT DO NOTHING`, jadi aman terhadap baris yang sudah ada |
 
 `trg_kurangi_stok` melewati produk PO dengan sengaja — itu sebabnya stok produk
 PO selalu 0 dan **tidak boleh ditampilkan** sebagai angka di UI.

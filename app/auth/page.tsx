@@ -51,10 +51,10 @@ function AuthContent() {
   const [jenis, setJenis] = useState<'' | 'alumni' | 'umum'>('')
   const [angkatan, setAngkatan] = useState('')
   // Pilihan MENYEMBUNYIKAN profil dari Direktori Alumni publik. Bawaannya
-  // tampil (sejak 13 Oktober 2026), jadi tidak tercentang. Metadata
-  // tampil_publik SELALU dikirim: trigger trg_buat_profil_baru menulis kolomnya
-  // secara eksplisit dari metadata (hanya 'true' yang berarti tampil), jadi
-  // default kolom tidak pernah terpakai — tanpa kuncinya hasilnya false.
+  // tampil (sejak 13 Oktober 2026), jadi tidak tercentang. Trigger
+  // trg_buat_profil_baru juga opt-out: tampil kecuali metadata eksplisit
+  // 'false'. Metadata tampil_publik tetap selalu dikirim supaya pilihannya
+  // tertulis terang, bukan bergantung pada aturan trigger.
   const [sembunyikanPublik, setSembunyikanPublik] = useState(false)
   const [loading, setLoading] = useState(false)
   const [pesan, setPesan] = useState('')

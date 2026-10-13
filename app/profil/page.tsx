@@ -404,7 +404,7 @@ export default function ProfilPage() {
             </div>
             <div style={{ fontSize: '11px', color: '#9ab4cc', lineHeight: '1.7', marginTop: '6px' }}>
               Tentang foto: foto profil disimpan di penyimpanan publik. Alamat langsung foto yang
-              pernah dibuka orang lain mungkin tetap dapat diakses setelah pengaturan ini dimatikan.
+              pernah dibuka orang lain mungkin tetap dapat diakses setelah profilmu disembunyikan.
             </div>
             {statusAlumni !== 'alumni' && (
               <div style={{ fontSize: '11px', color: '#5a7da0', lineHeight: '1.7', marginTop: '6px' }}>
