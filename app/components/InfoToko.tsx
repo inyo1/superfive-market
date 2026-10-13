@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { formatNomorWA, rapikanKota } from '../../lib/kontak'
+import { salinTeks } from '../../lib/salin'
 import { IkonPin, IkonWhatsApp } from './beranda/Ikon'
 
 type Info = { kota: string | null; no_wa: string | null }
@@ -9,25 +10,6 @@ type Info = { kota: string | null; no_wa: string | null }
 const TEMA = {
   terang: { teks: '#33465a', ikon: '#5a7da0', wa: '#128C7E', tombolLatar: '#fff', tombolGaris: '#c5d9ef', tombolTeks: '#0C447C' },
   gelap:  { teks: '#fff',    ikon: '#B5D4F4', wa: '#7be3a6', tombolLatar: 'rgba(255,255,255,0.12)', tombolGaris: 'rgba(255,255,255,0.3)', tombolTeks: '#fff' },
-}
-
-/** execCommand('copy') lewat textarea tersembunyi. Usang, tapi masih jalan di
- *  tempat navigator.clipboard tidak ada atau menggantung. */
-function salinCaraLama(teks: string): boolean {
-  const ta = document.createElement('textarea')
-  ta.value = teks
-  ta.setAttribute('readonly', '')
-  ta.style.position = 'fixed'
-  ta.style.opacity = '0'
-  document.body.appendChild(ta)
-  ta.select()
-  try {
-    return document.execCommand('copy')
-  } catch {
-    return false
-  } finally {
-    ta.remove()
-  }
 }
 
 /**
@@ -70,22 +52,7 @@ export default function InfoToko({ tokoId, tema = 'terang' }: { tokoId: string; 
   async function salinNomor() {
     // Yang disalin tanpa spasi dan tanda hubung, supaya langsung dikenali
     // aplikasi kontak dan kolom telepon mana pun
-    const teks = '+' + (info?.no_wa ?? '').replace(/\D/g, '')
-    let berhasil = false
-    try {
-      // Dibatasi 1,5 detik: di sebagian peramban writeText menunggu izin
-      // yang promptnya tidak pernah terlihat, dan tombolnya diam tanpa
-      // feedback apa pun — terbukti di panel pratinjau saat QA
-      await Promise.race([
-        navigator.clipboard.writeText(teks),
-        new Promise((_, tolak) => setTimeout(() => tolak(new Error('lewat waktu')), 1500)),
-      ])
-      berhasil = true
-    } catch {
-      // navigator.clipboard tidak ada di konteks tidak aman (http), bisa
-      // ditolak izin, atau menggantung. Cadangannya cara lama
-      berhasil = salinCaraLama(teks)
-    }
+    const berhasil = await salinTeks('+' + (info?.no_wa ?? '').replace(/\D/g, ''))
     setSalin(berhasil ? 'tersalin' : 'gagal')
     if (pewaktu.current) clearTimeout(pewaktu.current)
     pewaktu.current = setTimeout(() => setSalin('diam'), 2000)

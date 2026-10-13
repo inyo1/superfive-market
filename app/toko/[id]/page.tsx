@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '../../../lib/supabase'
 import Navbar from '../../components/Navbar'
@@ -20,6 +20,8 @@ import { emojiKategori } from '../../../lib/kategori'
 import { ambilSatuPenjualPublik, penjualAlumni } from '../../../lib/penjualPublik'
 import TombolLapor from '../../components/TombolLapor'
 import InfoToko from '../../components/InfoToko'
+import { IkonEtalase } from '../../components/beranda/Ikon'
+import { salinTeks } from '../../../lib/salin'
 
 type Toko = {
   id: string
@@ -79,10 +81,22 @@ export default function TokoPage() {
   const [pesanEdit, setPesanEdit] = useState('')
 
   const [startingChat, setStartingChat] = useState(false)
+  const [salinLink, setSalinLink] = useState<'diam' | 'tersalin' | 'gagal'>('diam')
+  const pewaktuSalin = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id ?? null))
+    return () => { if (pewaktuSalin.current) clearTimeout(pewaktuSalin.current) }
   }, [])
+
+  // Bagikan Link Toko — pola salin yang sama dengan nomor WA di InfoToko
+  // (batas waktu + cadangan execCommand, lihat lib/salin.ts)
+  async function bagikanLink() {
+    const berhasil = await salinTeks(`${window.location.origin}/toko/${id}`)
+    setSalinLink(berhasil ? 'tersalin' : 'gagal')
+    if (pewaktuSalin.current) clearTimeout(pewaktuSalin.current)
+    pewaktuSalin.current = setTimeout(() => setSalinLink('diam'), 2000)
+  }
 
   useEffect(() => {
     if (!id) return
@@ -409,8 +423,9 @@ export default function TokoPage() {
           </div>
         )}
 
-        {/* Tombol owner */}
-        {isOwner && (
+        {/* Tombol owner — saat toko masih kosong, tombolnya ada di state
+            kosong di bawah, jadi tidak diulang di sini */}
+        {isOwner && produk.length > 0 && (
           <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
             <Link
               href="/produk/tambah"
@@ -443,13 +458,42 @@ export default function TokoPage() {
         </div>
 
         {produk.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px 20px', background: '#fff', borderRadius: '10px', border: '0.5px solid #c5d9ef' }}>
-            <div style={{ fontSize: '36px', marginBottom: '10px' }}>📦</div>
-            <div style={{ fontSize: '13px', color: '#5a7da0', marginBottom: isOwner ? '14px' : '0' }}>Belum ada produk di toko ini</div>
+          // Toko kosong tidak muncul di daftar publik mana pun (produk!inner),
+          // tapi tautan langsungnya tetap terbuka — jadi halaman ini harus
+          // menjelaskan dirinya, untuk pengunjung maupun pemiliknya.
+          <div style={{ textAlign: 'center', padding: '36px 20px', background: '#fff', borderRadius: '12px', border: '0.5px solid #c5d9ef', marginBottom: '20px' }}>
+            <div style={{
+              width: '64px', height: '64px', borderRadius: '50%', background: '#E6F1FB', color: '#0C447C',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: '14px',
+            }}>
+              <IkonEtalase size={30} />
+            </div>
+            <div style={{ fontSize: '15px', fontWeight: '700', color: '#1a1a1a', marginBottom: '6px' }}>
+              {isOwner ? 'Tokomu belum punya produk' : 'Toko ini belum menambahkan produk'}
+            </div>
+            <div style={{ fontSize: '13px', color: '#5a7da0', lineHeight: 1.6, maxWidth: '320px', margin: '0 auto' }}>
+              {isOwner
+                ? 'Tokomu belum tampil di daftar Superfive Market sampai ada produk pertama. Bagikan linknya setelah produkmu siap.'
+                : 'Penjualnya sedang menyiapkan etalase. Coba kunjungi lagi nanti.'}
+            </div>
             {isOwner && (
-              <Link href="/produk/tambah" style={{ background: '#0C447C', color: '#fff', padding: '8px 20px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none' }}>
-                Tambah Produk Pertama
-              </Link>
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap', marginTop: '18px' }}>
+                <Link href="/produk/tambah" style={{
+                  background: '#0C447C', color: '#fff', padding: '0 20px', minHeight: '44px', borderRadius: '9px',
+                  fontSize: '13px', fontWeight: '600', textDecoration: 'none', display: 'inline-flex', alignItems: 'center',
+                }}>
+                  + Tambah Produk
+                </Link>
+                <button type="button" onClick={bagikanLink} style={{
+                  background: '#fff', color: '#0C447C', border: '1px solid #0C447C', padding: '0 20px', minHeight: '44px',
+                  borderRadius: '9px', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+                }}>
+                  {salinLink === 'tersalin' ? 'Link tersalin' : salinLink === 'gagal' ? 'Gagal menyalin' : 'Bagikan Link Toko'}
+                </button>
+                <span role="status" aria-live="polite" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
+                  {salinLink === 'tersalin' ? 'Link toko tersalin' : salinLink === 'gagal' ? 'Gagal menyalin link toko' : ''}
+                </span>
+              </div>
             )}
           </div>
         ) : (
