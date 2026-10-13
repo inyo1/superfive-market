@@ -349,6 +349,30 @@ export default function Home() {
       {/* ── Official Merchandise IniLima ── */}
       <SectionOfficial />
 
+      {/* ── Toko Alumni ── tepat setelah merchandise resmi, sebelum Produk
+          Terbaru: lapak alumni ditampilkan duluan karena rak produk di
+          bawahnya sengaja tanpa merchandise resmi dan sering masih kosong.
+          Tidak tampil kalau kosong atau gagal dimuat. */}
+      {/* ETALASE-KLIMAX: toko tanpa produk ikut tampil, tinjau setelah 17 Okt 2026 */}
+      {(tokoBeranda === null || tokoBeranda.length > 0) && (
+        <section className="b-seksi" aria-labelledby="judul-toko-alumni">
+          <div className="b-wadah">
+            <div className="b-kepala">
+              <div>
+                <h2 id="judul-toko-alumni" className="b-judul">Toko Alumni</h2>
+                <p className="b-sub">Lapak para alumni Superfive — kunjungi dan hubungi penjualnya langsung.</p>
+              </div>
+              <Link href="/toko" className="b-tautan">Lihat semua toko <IkonPanah size={16} tebal={2} /></Link>
+            </div>
+            <ul className="t-grid" role="list">
+              {tokoBeranda === null
+                ? Array.from({ length: 4 }).map((_, i) => <li key={i}><KartuTokoKerangka /></li>)
+                : tokoBeranda.map(t => <li key={t.id}><KartuToko t={t} /></li>)}
+            </ul>
+          </div>
+        </section>
+      )}
+
       {/* ── Produk Terbaru ── khusus lapak alumni */}
       <section className="b-seksi" aria-labelledby="judul-terbaru">
         <div className="b-wadah">
@@ -376,30 +400,6 @@ export default function Home() {
           )}
         </div>
       </section>
-
-      {/* ── Toko Alumni ── setelah Produk Terbaru: dari barang ke yang
-          menjualnya. Rak produk di atasnya sengaja tanpa merchandise resmi
-          dan sering masih kosong; seksi ini yang menunjukkan lapak alumni
-          memang sudah buka. Tidak tampil kalau kosong atau gagal dimuat. */}
-      {/* ETALASE-KLIMAX: toko tanpa produk ikut tampil, tinjau setelah 17 Okt 2026 */}
-      {(tokoBeranda === null || tokoBeranda.length > 0) && (
-        <section className="b-seksi" aria-labelledby="judul-toko-alumni">
-          <div className="b-wadah">
-            <div className="b-kepala">
-              <div>
-                <h2 id="judul-toko-alumni" className="b-judul">Toko Alumni</h2>
-                <p className="b-sub">Lapak para alumni Superfive — kunjungi dan hubungi penjualnya langsung.</p>
-              </div>
-              <Link href="/toko" className="b-tautan">Lihat semua toko <IkonPanah size={16} tebal={2} /></Link>
-            </div>
-            <ul className="t-grid" role="list">
-              {tokoBeranda === null
-                ? Array.from({ length: 4 }).map((_, i) => <li key={i}><KartuTokoKerangka /></li>)
-                : tokoBeranda.map(t => <li key={t.id}><KartuToko t={t} /></li>)}
-            </ul>
-          </div>
-        </section>
-      )}
 
       {/* ── Kenapa Superfive ── */}
       <section className="b-seksi" aria-labelledby="judul-kenapa">

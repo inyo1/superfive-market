@@ -4,7 +4,7 @@ import LogoInilima from './LogoInilima'
 import { HOST_FOTO } from './KartuPasar'
 import { IKON_KATEGORI, IkonEtalase, IkonPanah, IkonPin } from './beranda/Ikon'
 import { kategoriSah } from '../../lib/kategori'
-import { rapikanKota, rapikanKotaRingkas } from '../../lib/kontak'
+import { rapikanKota, rapikanKotaHP, rapikanKotaRingkas } from '../../lib/kontak'
 import { labelJumlahProduk, type TokoRingkas } from '../../lib/toko'
 
 /**
@@ -31,8 +31,10 @@ export default function KartuToko({ t }: { t: TokoRingkas }) {
   // next/image hanya menerima host Supabase (next.config.ts)
   const mosaik = t.foto_produk.filter(f => f.startsWith(HOST_FOTO)).slice(0, 3)
   const inisial = (t.nama_toko.trim()[0] ?? '?').toUpperCase()
-  // Kartu sempit: "Jakarta Pusat", "Kab. Bandung". Nama lengkapnya di title
+  // Kartu sempit: "Kota Bandung", "Jakarta Pusat", "Kab. Bandung"; di HP
+  // (≤480px) awalan "Kota " ikut dibuang. Nama lengkapnya di title
   const kota = rapikanKotaRingkas(t.kota)
+  const kotaHP = rapikanKotaHP(t.kota)
   const kotaLengkap = rapikanKota(t.kota)
   const IkonKat = kategoriSah(t.kategori) ? IKON_KATEGORI[t.kategori] : IkonEtalase
   // ETALASE-KLIMAX: toko tanpa produk ikut tampil, tinjau setelah 17 Okt 2026
@@ -78,7 +80,11 @@ export default function KartuToko({ t }: { t: TokoRingkas }) {
             {t.label_angkatan && <span className="tk-angkatan">{t.label_angkatan}</span>}
             {kota && (
               <span className="tk-kota" title={kotaLengkap ?? undefined}>
-                <IkonPin size={13} tebal={2} /><span className="tk-kota-teks">{kota}</span>
+                <IkonPin size={13} tebal={2} />
+                {/* Dua versi, dipilih CSS di 480px — bukan matchMedia di JS,
+                    supaya render server dan klien tidak berbeda */}
+                <span className="tk-kota-teks tk-kota-lebar">{kota}</span>
+                <span className="tk-kota-teks tk-kota-hp">{kotaHP}</span>
               </span>
             )}
           </div>

@@ -120,6 +120,17 @@ export function rapikanKotaRingkas(kota: string | null | undefined): string | nu
     .replace(/^Kabupaten (Administrasi )?/, 'Kab. ')
 }
 
+/**
+ * Lebih ringkas lagi untuk KartuToko di HP (≤480px), tempat kartunya cuma
+ * ±165px: awalan "Kota " ikut dibuang — "Bandung", "Jakarta Pusat". "Kab."
+ * tetap, supaya Kabupaten Bandung tidak tertukar dengan Kota Bandung.
+ */
+export function rapikanKotaHP(kota: string | null | undefined): string | null {
+  const ringkas = rapikanKotaRingkas(kota)
+  if (!ringkas) return null
+  return ringkas.replace(/^Kota /, '') || ringkas
+}
+
 export const PESAN_IG_TIDAK_VALID =
   'Username Instagram cuma boleh huruf, angka, titik, dan underscore, tanpa spasi. Contoh: inilima.shop'
 
