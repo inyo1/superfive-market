@@ -22,7 +22,7 @@ import { KATEGORI, type Kategori } from '../lib/kategori'
 import { ambilPenjualPublik, type PenjualPublik } from '../lib/penjualPublik'
 import NamaPenjual from './components/NamaPenjual'
 import BannerPenjual from './components/BannerPenjual'
-import KartuToko from './components/KartuToko'
+import KartuToko, { KartuTokoKerangka } from './components/KartuToko'
 import { ambilDaftarToko, type TokoRingkas } from '../lib/toko'
 
 // Beranda — redesain Oktober 2026.
@@ -130,7 +130,8 @@ export default function Home() {
   const [stats, setStats] = useState<Stats>({ produk: 0, toko: 0, alumni: 0 })
   const [latest, setLatest] = useState<Produk[]>([])
   // Maksimal 8, urutan dari ambilDaftarToko (resmi, produk terbanyak, terlama)
-  const [tokoBeranda, setTokoBeranda] = useState<TokoRingkas[]>([])
+  // null = masih dimuat (kerangka tampil); [] = kosong/gagal (seksi hilang)
+  const [tokoBeranda, setTokoBeranda] = useState<TokoRingkas[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [loggedIn, setLoggedIn] = useState(false)
   // Hanya penjual aktif yang ditawari menambah produk saat raknya kosong
@@ -381,7 +382,7 @@ export default function Home() {
           dan sering masih kosong; seksi ini yang menunjukkan lapak alumni
           memang sudah buka. Tidak tampil kalau kosong atau gagal dimuat. */}
       {/* ETALASE-KLIMAX: toko tanpa produk ikut tampil, tinjau setelah 17 Okt 2026 */}
-      {tokoBeranda.length > 0 && (
+      {(tokoBeranda === null || tokoBeranda.length > 0) && (
         <section className="b-seksi" aria-labelledby="judul-toko-alumni">
           <div className="b-wadah">
             <div className="b-kepala">
@@ -392,7 +393,9 @@ export default function Home() {
               <Link href="/toko" className="b-tautan">Lihat semua toko <IkonPanah size={16} tebal={2} /></Link>
             </div>
             <ul className="t-grid" role="list">
-              {tokoBeranda.map(t => <li key={t.id}><KartuToko t={t} /></li>)}
+              {tokoBeranda === null
+                ? Array.from({ length: 4 }).map((_, i) => <li key={i}><KartuTokoKerangka /></li>)
+                : tokoBeranda.map(t => <li key={t.id}><KartuToko t={t} /></li>)}
             </ul>
           </div>
         </section>

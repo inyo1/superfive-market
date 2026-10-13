@@ -65,30 +65,40 @@ export type TokoRingkas = {
   /** null kalau hitungannya tidak terbaca — jangan dianggap 0 */
   jumlahProduk: number | null
   created_at: string
+  /** users.kota penjual (mentah — rapikan dengan rapikanKota saat tampil) */
+  kota: string | null
+  /** "Superfive 92" dari database; NULL untuk akun institusi */
+  label_angkatan: string | null
+  /** Maksimal 3 URL foto produk, untuk mosaik sampul kartu */
+  foto_produk: string[]
 }
 
 /**
- * Semua toko yang terlihat pembacanya (RLS toko_select_public: hanya toko
- * penjual aktif), beserta jumlah produknya.
+ * Semua toko yang terlihat pembacanya, lewat RPC `daftar_toko_publik`
+ * (boleh anon; hanya toko penjual aktif). Sekali panggil sudah memuat kota
+ * dan label angkatan penjual, jumlah produk, dan sampai 3 foto produk —
+ * tanpa membaca `users` dari klien.
  *
  * ETALASE-KLIMAX: toko tanpa produk ikut tampil, tinjau setelah 17 Okt 2026
  *
  * Urutan: toko resmi dulu, lalu yang produknya paling banyak, lalu yang
- * paling lama. Diurutkan di sini karena PostgREST tidak bisa mengurutkan
- * menurut hitungan embed `produk(count)`. Jumlah toko kecil, jadi aman
- * diambil semua sekali jalan.
+ * paling lama — diurutkan di sini, bukan di RPC, supaya aturannya terbaca
+ * di satu tempat bersama kartunya. Jumlah toko kecil, aman diambil semua.
  */
 export async function ambilDaftarToko(): Promise<{ data: TokoRingkas[]; galat: string | null }> {
-  const { data, error } = await supabase
-    .from('toko')
-    .select('id, nama_toko, deskripsi, kategori, foto_toko, is_official, created_at, produk(count)')
+  const { data, error } = await supabase.rpc('daftar_toko_publik')
   if (error) return { data: [], galat: error.message }
 
-  type Baris = Omit<TokoRingkas, 'jumlahProduk'> & { produk: { count: number }[] | null }
-  const daftar = ((data ?? []) as Baris[]).map(({ produk, ...t }) => ({
+  type Baris = Omit<TokoRingkas, 'jumlahProduk' | 'foto_produk'> & {
+    jumlah_produk: number | string | null
+    foto_produk: string[] | null
+  }
+  const daftar: TokoRingkas[] = ((data ?? []) as Baris[]).map(({ jumlah_produk, foto_produk, ...t }) => ({
     ...t,
     is_official: Boolean(t.is_official),
-    jumlahProduk: produk?.[0]?.count ?? null,
+    // bigint bisa datang sebagai string dari PostgREST
+    jumlahProduk: jumlah_produk === null || jumlah_produk === undefined ? null : Number(jumlah_produk),
+    foto_produk: (foto_produk ?? []).filter(Boolean).slice(0, 3),
   }))
 
   daftar.sort((a, b) =>
@@ -98,8 +108,14 @@ export async function ambilDaftarToko(): Promise<{ data: TokoRingkas[]; galat: s
   return { data: daftar, galat: null }
 }
 
-/** "3 produk" atau label toko kosong yang sama dengan ETALASE-KLIMAX. */
+/**
+ * Label jumlah produk di KartuToko: "3 produk", atau "Segera buka lapak"
+ * untuk toko yang belum berproduk (ETALASE-KLIMAX). Satu-satunya sumber
+ * bunyinya untuk kartu — pencarian dan /alumni punya label kosongnya sendiri
+ * ("Belum menambahkan produk") karena tempatnya lebih sempit dan nadanya
+ * informatif, bukan ajakan.
+ */
 export function labelJumlahProduk(n: number | null): string | null {
   if (n === null) return null
-  return n > 0 ? `${n.toLocaleString('id-ID')} produk` : 'Belum menambahkan produk'
+  return n > 0 ? `${n.toLocaleString('id-ID')} produk` : 'Segera buka lapak'
 }

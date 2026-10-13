@@ -3059,49 +3059,139 @@ a.a-kartu:hover { border-color: #b9d3ec; box-shadow: 0 10px 24px rgba(6, 47, 89,
 }
 @media (min-width: 640px) { .t-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (min-width: 900px) { .t-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; } }
-@media (min-width: 1200px) { .t-grid-penuh { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+/* Maksimal 4 kolom, juga di /toko: di 5 kolom (±230px) chip kategori dan
+   badge "Segera buka lapak" tidak muat sebaris dan kakinya terlipat */
+@media (min-width: 1200px) { .t-grid { gap: 18px; } }
 .t-grid > li { display: flex; min-width: 0; }
 
-.t-kartu {
+/* KartuToko (redesain Oktober 2026). Satu hal yang mencolok: SAMPUL.
+   Toko berfoto mendapat mosaik produknya; toko kosong mendapat gradien
+   kategorinya + ikon kategori raksasa + pola titik, supaya tidak tampil
+   sebagai kotak abu-abu. Badan dan kaki sengaja tenang. */
+.tk-kartu {
+  --tk-a: var(--sf-navy);
+  --tk-b: var(--sf-biru);
   flex: 1;
   min-width: 0;
+  position: relative;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 18px 12px 16px;
   background: #fff;
   border: 1px solid var(--sf-garis);
-  border-radius: 14px;
-  text-align: center;
+  border-radius: 16px;
+  overflow: hidden;
   text-decoration: none;
   color: inherit;
-  transition: box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
-.t-kartu:hover { border-color: #b9d3ec; box-shadow: 0 10px 24px rgba(6, 47, 89, 0.08); transform: translateY(-2px); }
-.t-kartu:focus-visible { outline: 2px solid var(--sf-aksi); outline-offset: 2px; }
-.t-avatar {
-  width: 64px;
-  height: 64px;
+.tk-kartu:hover {
+  transform: translateY(-4px);
+  border-color: #b9d3ec;
+  box-shadow: 0 18px 36px rgba(6, 47, 89, 0.14);
+}
+.tk-kartu:focus-visible { outline: 3px solid var(--sf-aksi); outline-offset: 3px; }
+/* Toko resmi: aksen emas tipis, bukan bingkai tebal */
+.tk-kartu.resmi { border-color: color-mix(in srgb, var(--sf-emas) 70%, #fff); }
+.tk-kartu.resmi:hover { border-color: var(--sf-emas); }
+/* Garis emas di atas sampul — pseudo-elemen, karena inset shadow tertutup
+   foto sampul */
+.tk-kartu.resmi::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 3;
+  background: var(--sf-emas);
+}
+
+/* ── Sampul ── */
+.tk-sampul {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background:
+    radial-gradient(rgba(255, 255, 255, 0.16) 1px, transparent 1.4px) 0 0 / 12px 12px,
+    linear-gradient(135deg, var(--tk-a) 0%, var(--tk-b) 100%);
+}
+/* Enam pasangan warna, semuanya bermula gelap supaya serumpun dengan navy
+   situs. Sengaja di CSS, satu tempat untuk palet kategori */
+.tk-sampul[data-kategori="Teknologi"] { --tk-a: #0B3D91; --tk-b: #1E88E5; }
+.tk-sampul[data-kategori="Fashion"]   { --tk-a: #5E1A50; --tk-b: #C2407A; }
+.tk-sampul[data-kategori="Kuliner"]   { --tk-a: #7A2E1F; --tk-b: #E0603A; }
+.tk-sampul[data-kategori="Properti"]  { --tk-a: #1F4A3D; --tk-b: #3E8E6E; }
+.tk-sampul[data-kategori="Jasa"]      { --tk-a: #2C2A6B; --tk-b: #5C6BC0; }
+.tk-sampul[data-kategori="UMKM"]      { --tk-a: #5A3E0E; --tk-b: #D99A1E; }
+.tk-sampul-watermark {
+  position: absolute;
+  right: -14px;
+  bottom: -22px;
+  display: flex;
+  color: #fff;
+  opacity: 0.2;
+  transform: rotate(-12deg);
+  pointer-events: none;
+}
+/* Mosaik foto: 1 penuh · 2 belah dua · 3 = satu besar kiri + dua kanan */
+.tk-sampul[data-foto="1"], .tk-sampul[data-foto="2"], .tk-sampul[data-foto="3"] {
+  display: grid;
+  gap: 2px;
+  background: var(--sf-garis);
+}
+.tk-sampul[data-foto="2"] { grid-template-columns: 1fr 1fr; }
+.tk-sampul[data-foto="3"] { grid-template-columns: 1.4fr 1fr; grid-template-rows: 1fr 1fr; }
+.tk-sampul[data-foto="3"] .tk-f0 { grid-row: 1 / 3; }
+.tk-sampul-foto { position: relative; overflow: hidden; min-height: 0; }
+.tk-sampul-foto img { transition: transform 0.5s ease; }
+.tk-kartu:hover .tk-sampul-foto img { transform: scale(1.05); }
+.tk-sampul-lencana {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--sf-navy);
+  color: var(--sf-emas);
+  border: 1px solid var(--sf-emas);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+/* ── Avatar menimpa tepi bawah sampul ── */
+.tk-avatar {
+  position: relative;
+  z-index: 2;
+  width: 58px;
+  height: 58px;
+  margin: -29px 0 0 14px;
   flex-shrink: 0;
-  margin-bottom: 4px;
   border-radius: 50%;
   overflow: hidden;
   background: var(--sf-biru-muda);
   color: var(--sf-biru);
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 800;
   display: flex;
   align-items: center;
   justify-content: center;
+  border: 3px solid #fff;
+  box-shadow: 0 6px 16px rgba(6, 47, 89, 0.18);
 }
-/* Logo IniLima sudah punya cincinnya sendiri — tanpa latar dan bingkai */
-.t-avatar.resmi { background: none; border-radius: 0; overflow: visible; }
-.t-nama {
-  width: 100%;
-  font-size: 14.5px;
-  font-weight: 700;
-  line-height: 1.35;
+/* Logo IniLima: cincinnya sudah ada di logonya sendiri */
+.tk-avatar.logo { background: #fff; border: 0; box-shadow: none; overflow: visible; }
+
+/* ── Badan ── */
+.tk-badan { flex: 1; display: flex; flex-direction: column; gap: 6px; padding: 8px 14px 12px; min-width: 0; }
+.tk-nama {
+  margin: 0;
+  font-size: 15.5px;
+  font-weight: 800;
+  line-height: 1.3;
   color: var(--sf-teks);
   overflow-wrap: anywhere;
   display: -webkit-box;
@@ -3109,19 +3199,113 @@ a.a-kartu:hover { border-color: #b9d3ec; box-shadow: 0 10px 24px rgba(6, 47, 89,
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.t-kategori {
-  padding: 2px 10px;
+.tk-identitas { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.tk-angkatan {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--sf-navy);
+  color: #fff;
+  border: 1px solid var(--sf-emas);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+.tk-kota { display: inline-flex; align-items: center; gap: 3px; font-size: 12.5px; color: var(--sf-teks-2); min-width: 0; }
+.tk-kota svg { flex-shrink: 0; color: var(--sf-biru); }
+.tk-desk {
+  margin: 2px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--sf-teks-2);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ── Kaki ── */
+.tk-kaki {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  padding: 10px 14px 12px;
+  border-top: 1px solid var(--sf-garis);
+}
+.tk-kategori {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
   border-radius: 999px;
   background: var(--sf-biru-muda);
   color: var(--sf-biru);
   font-size: 12px;
   font-weight: 600;
+  white-space: nowrap;
 }
-.t-jumlah { margin-top: auto; padding-top: 2px; font-size: 12.5px; font-weight: 600; color: var(--sf-teks-2); }
-.t-jumlah.kosong { font-weight: 500; color: #8aa3bb; }
+.tk-jumlah { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; color: var(--sf-aksi); white-space: nowrap; }
+.tk-panah { display: inline-flex; transition: transform 0.2s ease; }
+.tk-kartu:hover .tk-panah { transform: translateX(3px); }
+/* Badge amber untuk toko yang belum berproduk — ajakan, bukan kekurangan */
+.tk-segera {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #FFF4DB;
+  color: #8A5A00;
+  border: 1px solid #FFE0A3;
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.tk-denyut { position: relative; width: 7px; height: 7px; border-radius: 50%; background: var(--sf-emas); flex-shrink: 0; }
+.tk-denyut::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--sf-emas);
+  animation: tkDenyut 1.8s ease-out infinite;
+}
+@keyframes tkDenyut {
+  0% { transform: scale(1); opacity: 0.7; }
+  100% { transform: scale(2.8); opacity: 0; }
+}
+
+/* ── Kerangka ── */
+.tk-kerangka { pointer-events: none; }
+.tk-kerangka .tk-sampul { background: #E8F0F8; }
+.tk-kerangka .tk-avatar { background: #DDE8F4; box-shadow: none; }
+.tk-garis { display: block; border-radius: 6px; background: #E8F0F8; animation: tkKedip 1.4s ease-in-out infinite; }
+.tk-kerangka .tk-sampul, .tk-kerangka .tk-avatar { animation: tkKedip 1.4s ease-in-out infinite; }
+@keyframes tkKedip { 50% { opacity: 0.55; } }
+
+/* ── HP: dua kolom tetap terbaca ── */
+@media (max-width: 639px) {
+  .tk-kartu { border-radius: 14px; }
+  .tk-avatar { width: 44px; height: 44px; margin: -22px 0 0 10px; font-size: 17px; border-width: 2px; }
+  .tk-badan { padding: 6px 10px 10px; gap: 5px; }
+  .tk-nama { font-size: 13.5px; }
+  .tk-angkatan { font-size: 10.5px; padding: 1px 7px; }
+  .tk-kota { font-size: 11.5px; }
+  .tk-desk { display: none; }
+  .tk-kaki { padding: 8px 10px 10px; gap: 6px; }
+  .tk-kategori { font-size: 11px; padding: 2px 7px; }
+  .tk-jumlah { font-size: 12px; }
+  .tk-segera { font-size: 10.5px; padding: 2px 7px; gap: 5px; }
+  .tk-sampul-watermark svg { width: 84px; height: 84px; }
+  .tk-sampul-lencana { top: 6px; right: 6px; font-size: 9.5px; padding: 2px 7px; letter-spacing: 0.4px; }
+}
 
 .t-isi { padding-top: 16px; padding-bottom: 48px; }
 .t-cari-kosong { margin: 0 0 12px; }
 @media (prefers-reduced-motion: reduce) {
-  .t-kartu, .t-kartu:hover { transition: none; transform: none; }
+  .tk-kartu, .tk-kartu:hover, .tk-sampul-foto img, .tk-kartu:hover .tk-sampul-foto img,
+  .tk-panah, .tk-kartu:hover .tk-panah { transition: none; transform: none; }
+  .tk-denyut::after, .tk-garis, .tk-kerangka .tk-sampul, .tk-kerangka .tk-avatar { animation: none; }
 }

@@ -3,8 +3,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useEffect, useMemo, useState } from 'react'
 import Navbar from '../components/Navbar'
-import KartuToko from '../components/KartuToko'
-import Skeleton from '../components/Skeleton'
+import KartuToko, { KartuTokoKerangka } from '../components/KartuToko'
 import SiteFooter from '../components/beranda/SiteFooter'
 import { IkonCari, IkonEtalase, IkonTutup } from '../components/beranda/Ikon'
 import { useTampilSkeleton } from '../hooks/useSkeleton'
@@ -115,16 +114,8 @@ export default function DaftarToko() {
 
       <section className="b-wadah t-isi" aria-label="Daftar toko">
         {tampilSkeleton ? (
-          <ul className="t-grid t-grid-penuh" role="list">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <li key={i}>
-                <div className="t-kartu">
-                  <Skeleton lebar={64} tinggi={64} radius={32} />
-                  <Skeleton lebar="70%" tinggi={13} style={{ marginTop: 10 }} />
-                  <Skeleton lebar="40%" tinggi={16} radius={8} style={{ marginTop: 6 }} />
-                </div>
-              </li>
-            ))}
+          <ul className="t-grid t-grid-penuh" role="list" aria-label="Memuat daftar toko">
+            {Array.from({ length: 8 }).map((_, i) => <li key={i}><KartuTokoKerangka /></li>)}
           </ul>
         ) : toko.length === 0 ? (
           <div className="m-kosong">

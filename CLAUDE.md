@@ -843,12 +843,26 @@ grep -rn "ETALASE-KLIMAX" app
 | [/toko/[id]](app/toko/[id]/page.tsx) | selalu terbuka, dengan state kosong |
 | indeks [/toko](app/toko/DaftarToko.tsx) dan seksi Toko Alumni di beranda | tampil lewat `ambilDaftarToko()` di [lib/toko.ts](lib/toko.ts), kartu [KartuToko](app/components/KartuToko.tsx) |
 
-`ambilDaftarToko()` mengambil semua toko yang terlihat dengan `produk(count)`
-dan mengurutkannya **di klien** (resmi dulu, produk terbanyak, terlama) —
-PostgREST tidak bisa mengurutkan menurut hitungan embed. Label jumlahnya dari
-`labelJumlahProduk()`, satu sumber untuk "N produk" / "Belum menambahkan
-produk". Chip kategori di /toko hanya untuk kategori yang berisi, dan hanya
-tampil kalau lebih dari satu.
+`ambilDaftarToko()` memanggil RPC **`daftar_toko_publik`** (boleh anon; hanya
+toko penjual aktif) yang sekali jalan mengembalikan toko + `kota` dan
+`label_angkatan` penjual + `jumlah_produk` + `foto_produk` (maks 3, untuk
+mosaik sampul). Urutannya tetap **di klien** (resmi dulu, produk terbanyak,
+terlama). Label jumlah di kartu dari `labelJumlahProduk()`: "N produk" atau
+**"Segera buka lapak"** untuk toko kosong — pencarian dan /alumni sengaja
+memakai bunyi sendiri ("Belum menambahkan produk"). Chip kategori di /toko
+hanya untuk kategori yang berisi, dan hanya tampil kalau lebih dari satu.
+
+**KartuToko (redesain Oktober 2026)** memakai kelas `tk-`. Ciri khasnya
+sampul 16:9: mosaik foto produk (1 penuh / 2 belah / 3 = besar kiri + dua
+kanan), atau — untuk toko tanpa foto — gradien kategori + ikon kategori
+raksasa + pola titik. **Enam pasangan warna gradien ada di globals.css**
+(`.tk-sampul[data-kategori=…]`), bukan di komponen; menambah kategori ketujuh
+berarti menambah satu baris di sana juga (kalau lupa, jatuh ke navy bawaan).
+Lencana ★ OFFICIAL di sampul sengaja pil navy-emas sendiri, bukan
+BadgeOfficial — lencana emas transparan itu hilang di atas foto terang. Logo
+IniLima di avatar tetap tanpa cincin/bayangan tambahan. Grid maksimal 4
+kolom: di 5 kolom chip kategori dan badge "Segera buka lapak" tidak muat
+sebaris.
 
 Untuk menyembunyikannya lagi (13–14 Oktober 2026 sempat begitu): kembalikan
 `produk!inner(id)` di query toko, dengan embed dibatasi
