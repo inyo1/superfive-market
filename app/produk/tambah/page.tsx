@@ -11,6 +11,7 @@ import { keAngka } from '../../../lib/format'
 import EditorPreorder from '../../components/EditorPreorder'
 import { FORM_PO_KOSONG, validasiFormPO, formPOKeKolom, formPOAktif, type FormPO } from '../../../lib/preorder'
 import { KATEGORI, type PilihanKategori } from '../../../lib/kategori'
+import { ambilAtauBuatTokoSaya } from '../../../lib/toko'
 
 export default function TambahProduk() {
   const router = useRouter()
@@ -78,8 +79,8 @@ export default function TambahProduk() {
 
   async function handleTambah() {
     if (!nama.trim() || !harga) { setPesan('Nama dan harga wajib diisi.'); return }
-    // Diperiksa sebelum apa pun disimpan — kategori ikut dipakai saat toko
-    // dibuat otomatis di bawah, jadi tidak boleh kosong sampai sana
+    // Diperiksa sebelum apa pun disimpan, supaya penjual membaca kalimat,
+    // bukan bunyi CHECK kategori dari Postgres
     if (!kategori) { setPesan('Pilih dulu kategori produknya.'); return }
 
     // Diperiksa di sini supaya penjual dapat pesan yang jelas, bukan bunyi
@@ -93,18 +94,11 @@ export default function TambahProduk() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.replace('/auth?msg=login-required'); return }
 
-    let tokoId: string | null = null
-    const { data: toko } = await supabase.from('toko').select('id').eq('seller_id', user.id).single()
-    tokoId = toko?.id ?? null
-
-    if (!tokoId) {
-      const { data: tokoData } = await supabase
-        .from('toko')
-        .insert({ seller_id: user.id, nama_toko: 'Toko Saya', kategori })
-        .select()
-        .single()
-      tokoId = tokoData?.id ?? null
-    }
+    // Toko sudah dibuat saat pengajuan penjual disetujui; ini mengambilnya,
+    // dan hanya membuat sebagai cadangan (lihat lib/toko.ts)
+    const hasilToko = await ambilAtauBuatTokoSaya(user.id)
+    if (!hasilToko.ok) { setPesan(hasilToko.pesan); setLoading(false); return }
+    const tokoId = hasilToko.id
 
     let foto_url: string | null = null
     if (foto) {
