@@ -19,6 +19,7 @@ import { janjiKirim } from '../../../lib/preorder'
 import { emojiKategori } from '../../../lib/kategori'
 import { ambilSatuPenjualPublik, penjualAlumni } from '../../../lib/penjualPublik'
 import TombolLapor from '../../components/TombolLapor'
+import InfoToko from '../../components/InfoToko'
 
 type Toko = {
   id: string
@@ -382,6 +383,9 @@ export default function TokoPage() {
               <p style={{ fontSize: '13px', color: '#B5D4F4', margin: 0, lineHeight: '1.5' }}>{toko.deskripsi}</p>
             )
           )}
+
+          {/* Kota asal + nomor WA (teks + Salin, bukan tautan — lihat InfoToko) */}
+          {!editMode && <InfoToko tokoId={toko.id} tema="gelap" />}
 
           {/* Statistik */}
           <div style={{ display: 'flex', gap: '0', marginTop: '16px', background: 'rgba(255,255,255,0.1)', borderRadius: '8px', overflow: 'hidden' }}>

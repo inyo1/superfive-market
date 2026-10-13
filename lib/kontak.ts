@@ -52,12 +52,43 @@ export function normalisasiWA(masukan: string): HasilNomor {
   return { ok: true, nomor: n }
 }
 
-/** Tampilan nomor yang enak dibaca di dashboard: `+62 812-3456-7890`. */
-export function tampilkanWA(nomor: string | null | undefined): string {
-  if (!nomor) return ''
-  const sisa = nomor.startsWith('62') ? nomor.slice(2) : nomor
-  const bagian = sisa.replace(/(\d{3})(\d{4})(\d+)/, '$1-$2-$3')
-  return `+62 ${bagian}`
+/**
+ * Tampilan nomor yang enak dibaca: `6281322305799` → `+62 813-2230-5799`.
+ *
+ * Satu-satunya formatter nomor WA — dipakai kartu toko dan helper text form
+ * kontak. Masukannya boleh bentuk tersimpan (62…) maupun yang sedang diketik
+ * penjual (08…, +62…, 8…): awalan 0 dibuang dulu, karena "+62 081…" itu
+ * nomor yang salah, bukan sekadar jelek. Masukan yang tidak dikenali
+ * dikembalikan apa adanya, bukan ditebak.
+ */
+export function formatNomorWA(nomor: string | null | undefined): string {
+  const mentah = (nomor ?? '').trim()
+  if (!mentah) return ''
+
+  let digit = mentah.replace(/[\s\-().]/g, '')
+  if (digit.startsWith('+')) digit = digit.slice(1)
+  if (!/^\d+$/.test(digit)) return mentah
+
+  if (digit.startsWith('0')) digit = '62' + digit.slice(1)
+  else if (digit.startsWith('8')) digit = '62' + digit
+  if (!digit.startsWith('62') || digit.length < 5) return mentah
+
+  const sisa = digit.slice(2).replace(/^0+/, '')
+  return `+62 ${sisa.replace(/^(\d{3})(\d{4})(\d+)$/, '$1-$2-$3')}`
+}
+
+/**
+ * Merapikan kapitalisasi nama kota: "KOTA BANDUNG" → "Kota Bandung",
+ * "kab. bandung barat" → "Kab. Bandung Barat". Kosong → null, supaya
+ * pemanggil cukup memeriksa satu nilai untuk menyembunyikan barisnya.
+ */
+export function rapikanKota(kota: string | null | undefined): string | null {
+  const teks = (kota ?? '').trim().replace(/\s+/g, ' ')
+  if (!teks) return null
+  return teks
+    .toLocaleLowerCase('id-ID')
+    .replace(/(^|[\s\-(./])(\p{L})/gu, (_, pemisah: string, huruf: string) =>
+      pemisah + huruf.toLocaleUpperCase('id-ID'))
 }
 
 export const PESAN_IG_TIDAK_VALID =

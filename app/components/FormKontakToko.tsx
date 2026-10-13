@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToast } from '../context/ToastContext'
 import {
-  normalisasiWA, normalisasiUsernameIG, normalisasiLink, tampilkanWA, pesanPelanggaranKontak,
+  normalisasiWA, normalisasiUsernameIG, normalisasiLink, formatNomorWA, pesanPelanggaranKontak,
 } from '../../lib/kontak'
 
 type Kontak = {
@@ -194,7 +194,7 @@ export default function FormKontakToko({ tokoId }: { tokoId: string }) {
         ) : (
           <div style={gayaBantuan}>
             Boleh ditulis 08…, +62…, atau 62… — nanti dirapikan otomatis.
-            {nilai.no_wa ? ` Tersimpan sebagai ${tampilkanWA(nilai.no_wa)}.` : ''}
+            {nilai.no_wa ? ` Tersimpan sebagai ${formatNomorWA(nilai.no_wa)}.` : ''}
           </div>
         )}
       </div>

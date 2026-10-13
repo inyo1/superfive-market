@@ -24,6 +24,7 @@ import { statusPO, alasanTidakBisa, tanggalPanjang, formatSisa, janjiKirim, type
 import { transaksiBeku } from '../../../lib/config'
 import { ambilPenjualPublik, ambilSatuPenjualPublik, type PenjualPublik } from '../../../lib/penjualPublik'
 import NamaPenjual from '../../components/NamaPenjual'
+import InfoToko from '../../components/InfoToko'
 
 // Detail produk — redesain Oktober 2026 (fase 3).
 //
@@ -500,6 +501,9 @@ export default function DetailProduk() {
                 Merchandise resmi komunitas alumni SMPN 5 Bandung.
               </p>
             )}
+
+            {/* Kota asal + nomor WA (teks + Salin, bukan tautan — lihat InfoToko) */}
+            {tokoId && <InfoToko tokoId={tokoId} />}
 
             <div className="d-penjual-aksi">
               {tokoId && (
